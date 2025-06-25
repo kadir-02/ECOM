@@ -3,18 +3,8 @@ import prisma from '../db/prisma';
 import cloudinary from '../upload/cloudinary';
 import { Readable } from 'stream';
 import { MulterError } from 'multer';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
-// Utility to handle Cloudinary stream upload
-export const uploadToCloudinary = (buffer: Buffer, folder: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ folder }, (error, result) => {
-      if (error) reject(error);
-      else resolve(result);
-    });
-
-    Readable.from(buffer).pipe(stream);
-  });
-};
 
 export const getBanners = async (req: Request, res: Response) => {
   try {

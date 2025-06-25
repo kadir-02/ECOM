@@ -1,19 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
-import cloudinary from '../upload/cloudinary';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
-// Utility for uploading to Cloudinary
-const uploadToCloudinary = (buffer: Buffer, folder: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ folder }, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-    stream.end(buffer);
-  });
-};
-
-// Create Category
+// CREATE CATEGORY
 export const createCategory = async (req: Request, res: Response) => {
   const { name, sequence_number } = req.body;
 
@@ -45,28 +34,29 @@ export const createCategory = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(category);
+    res.status(201).json({ success: true, message: 'Category created', category });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error creating category' });
+    console.error('Create category error:', error);
+    res.status(500).json({ success: false, message: 'Error creating category' });
   }
 };
 
-
-// Get All Categories
+// GET ALL CATEGORIES
 export const getAllCategories = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
       where: { isDeleted: false },
       include: { subcategories: true },
+      orderBy: { sequence_number: 'asc' },
     });
-    res.json(categories);
+    res.status(200).json({ success: true, categories });
   } catch (error) {
-    res.status(500).json({ message: 'Error retrieving categories' });
+    console.error('Get categories error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving categories' });
   }
 };
 
-// Get Category By ID (instead of slug)
+// GET CATEGORY BY ID
 export const getCategoryById = async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -77,27 +67,27 @@ export const getCategoryById = async (req: Request, res: Response) => {
     });
 
     if (!category || category.isDeleted) {
-       res.status(404).json({ message: 'Category not found' });
+       res.status(404).json({ success: false, message: 'Category not found' });
        return
     }
 
-    res.json(category);
+    res.status(200).json({ success: true, category });
   } catch (error) {
-    console.error('Error retrieving category by ID:', error);
-    res.status(500).json({ message: 'Error retrieving category' });
+    console.error('Get category by ID error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving category' });
   }
 };
 
-// Update Category
+// UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { name, sequence_number } = req.body;
 
   try {
-    const data: any = {
-      name,
-      sequence_number: sequence_number ? Number(sequence_number) : undefined,
-    };
+    const data: any = {};
+
+    if (name) data.name = name;
+    if (sequence_number) data.sequence_number = Number(sequence_number);
 
     if (req.files && 'image' in req.files) {
       const imageFile = Array.isArray(req.files['image']) ? req.files['image'][0] : req.files['image'];
@@ -117,27 +107,27 @@ export const updateCategory = async (req: Request, res: Response) => {
       data,
     });
 
-    res.json(updated);
+    res.status(200).json({ success: true, message: 'Category updated', category: updated });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error updating category' });
+    console.error('Update category error:', error);
+    res.status(500).json({ success: false, message: 'Error updating category' });
   }
 };
 
-
-// Hard Delete
+// HARD DELETE
 export const deleteCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
     await prisma.category.delete({ where: { id: Number(id) } });
-    res.json({ message: 'Category deleted' });
+    res.status(200).json({ success: true, message: 'Category deleted' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting category' });
+    console.error('Delete category error:', error);
+    res.status(500).json({ success: false, message: 'Error deleting category' });
   }
 };
 
-// Soft Delete
+// SOFT DELETE
 export const softDeleteCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -146,14 +136,14 @@ export const softDeleteCategory = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: { isDeleted: true },
     });
-    res.json({ message: 'Category soft deleted', category: updated });
+    res.status(200).json({ success: true, message: 'Category soft deleted', category: updated });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error soft deleting category' });
+    console.error('Soft delete category error:', error);
+    res.status(500).json({ success: false, message: 'Error soft deleting category' });
   }
 };
 
-// Restore Category
+// RESTORE
 export const restoreCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
 
@@ -162,9 +152,9 @@ export const restoreCategory = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: { isDeleted: false },
     });
-    res.json({ message: 'Category restored', category: restored });
+    res.status(200).json({ success: true, message: 'Category restored', category: restored });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error restoring category' });
+    console.error('Restore category error:', error);
+    res.status(500).json({ success: false, message: 'Error restoring category' });
   }
 };
