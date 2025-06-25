@@ -15,7 +15,7 @@ const uploadToCloudinary = (buffer: Buffer, folder: string): Promise<any> => {
 
 // Create Category
 export const createCategory = async (req: Request, res: Response) => {
-  const { name } = req.body;
+  const { name, sequence_number } = req.body;
 
   try {
     let imageUrl: string | undefined;
@@ -36,7 +36,13 @@ export const createCategory = async (req: Request, res: Response) => {
     }
 
     const category = await prisma.category.create({
-      data: { name, imageUrl, banner, publicId },
+      data: {
+        name,
+        sequence_number: Number(sequence_number),
+        imageUrl,
+        banner,
+        publicId,
+      },
     });
 
     res.status(201).json(category);
@@ -45,6 +51,7 @@ export const createCategory = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error creating category' });
   }
 };
+
 
 // Get All Categories
 export const getAllCategories = async (_req: Request, res: Response) => {
@@ -84,10 +91,13 @@ export const getCategoryById = async (req: Request, res: Response) => {
 // Update Category
 export const updateCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, sequence_number } = req.body;
 
   try {
-    const data: any = { name };
+    const data: any = {
+      name,
+      sequence_number: sequence_number ? Number(sequence_number) : undefined,
+    };
 
     if (req.files && 'image' in req.files) {
       const imageFile = Array.isArray(req.files['image']) ? req.files['image'][0] : req.files['image'];
@@ -113,6 +123,7 @@ export const updateCategory = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error updating category' });
   }
 };
+
 
 // Hard Delete
 export const deleteCategory = async (req: Request, res: Response) => {

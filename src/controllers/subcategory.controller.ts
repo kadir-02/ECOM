@@ -16,10 +16,10 @@ const uploadToCloudinary = (buffer: Buffer, folder: string): Promise<any> => {
 
 // Create Subcategory
 export const createSubcategory = async (req: Request, res: Response) => {
-  const { name, categoryId } = req.body;
+  const { name, categoryId, sequence_number } = req.body;
 
-  if (!name || !categoryId) {
-    res.status(400).json({ message: 'Name and categoryId are required' });
+  if (!name || !categoryId || !sequence_number) {
+    res.status(400).json({ message: 'Name, categoryId, and sequence_number are required' });
     return;
   }
 
@@ -44,6 +44,7 @@ export const createSubcategory = async (req: Request, res: Response) => {
     const subcategory = await prisma.subcategory.create({
       data: {
         name,
+        sequence_number: Number(sequence_number),
         categoryId: parseInt(categoryId),
         imageUrl,
         banner,
@@ -58,15 +59,17 @@ export const createSubcategory = async (req: Request, res: Response) => {
   }
 };
 
+
 // Update Subcategory
 export const updateSubcategory = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  const { name, categoryId } = req.body;
+  const { name, categoryId, sequence_number } = req.body;
 
   try {
     const data: any = {
       name,
       categoryId: categoryId ? parseInt(categoryId) : undefined,
+      sequence_number: sequence_number ? Number(sequence_number) : undefined,
     };
 
     if (req.files && 'image' in req.files) {
@@ -97,6 +100,7 @@ export const updateSubcategory = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error updating subcategory' });
   }
 };
+
 
 // Get All Subcategories
 export const getAllSubcategories = async (_req: Request, res: Response) => {

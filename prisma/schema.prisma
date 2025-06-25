@@ -49,6 +49,7 @@ model Profile {
 
 model Category {
   id            Int           @id @default(autoincrement())
+  sequence_number Int? 
   name          String        @unique
   subcategories Subcategory[]
   products      Product[]     @relation("CategoryToProduct")
@@ -62,6 +63,7 @@ model Category {
 model Subcategory {
   id         Int       @id @default(autoincrement())
   name       String
+  sequence_number Int?
   category   Category  @relation(fields: [categoryId], references: [id])
   categoryId Int
   products   Product[] @relation("SubcategoryToProduct")
