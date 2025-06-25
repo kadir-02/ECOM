@@ -7,6 +7,7 @@ import {
   restoreSubcategory,
   softDeleteSubcategory,
   getSubcategoryById,
+  getSubcategoriesByCategoryId,
 } from '../controllers/subcategory.controller';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeAdmin } from '../middlewares/authorizaAdmin';
@@ -32,5 +33,6 @@ router.patch('/:id', fileUploadMiddleware, updateSubcategory);
 router.delete('/:id', deleteSubcategory);
 router.patch('/deactivate/:id', softDeleteSubcategory);
 router.patch('/restore/:id', restoreSubcategory);
+router.get('/by-category/:categoryId', getSubcategoriesByCategoryId);
 
 export default router;

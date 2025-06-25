@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
-import { uploadToCloudinary } from '../banner.controller';
-
+import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
 
 // 🔹 Create new company settings
 export const createCompanySettings = async (req: Request, res: Response) => {
@@ -63,7 +62,7 @@ export const createCompanySettings = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json({ message: 'Settings created successfully', settings });
+    res.status(201).json({ success:true, message: 'Settings created successfully', settings });
   } catch (error) {
     res.status(500).json({
       message: 'Failed to create company settings',
@@ -76,7 +75,7 @@ export const createCompanySettings = async (req: Request, res: Response) => {
 export const getAllCompanySettings = async (req: Request, res: Response) => {
   try {
     const settings = await prisma.companySettings.findMany();
-    res.status(200).json(settings);
+    res.status(200).json({result:settings});
   } catch (error) {
     res.status(500).json({ message: 'Failed to retrieve settings', details: (error as Error).message });
   }
