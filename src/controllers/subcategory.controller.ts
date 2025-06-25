@@ -58,8 +58,6 @@ export const createSubcategory = async (req: Request, res: Response) => {
   }
 };
 
-// Remaining functions (getAllSubcategories, getSubcategoryById, delete, soft/restore) remain the same
-
 // Update Subcategory
 export const updateSubcategory = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
