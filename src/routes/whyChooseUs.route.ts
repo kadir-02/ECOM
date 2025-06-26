@@ -20,7 +20,7 @@ router.get('/:id', getWhyChooseUsItemById);
 router.use(authenticate, authorizeAdmin);
 
 router.post('/', uploadMemory.single('image'), createWhyChooseUsItem);
-router.put('/:id', uploadMemory.single('image'), updateWhyChooseUsItem);
+router.patch('/:id', uploadMemory.single('image'), updateWhyChooseUsItem);
 router.delete('/:id', deleteWhyChooseUsItem);
 
 export default router;
