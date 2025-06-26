@@ -21,8 +21,10 @@ import './jobs/abandonedCartReminder';
 import './jobs/cancelPendingOrders'; 
 import bannerRoutes from './routes/banner.route';
 import whyChooseUs from './routes/whyChooseUs.route';
-import galleryRoutes from './routes/gallery.route';
+import galleryRoutes from './routes/galleryItem.route';
 import notificationRoutes from './routes/notification.route';
+import gallerytypeRoutes from './routes/galleryType.route';
+import galleryitemRoutes from './routes/galleryItem.route';
 import companyRoutes from './routes/ComponySettingsRoutes/companySettings.route';
 import TestimonialRoutes from './routes/TestimonialRoutes/testimonial.route';
 import { globalErrorHandler } from './utils/globalErrorHandler';
@@ -55,6 +57,8 @@ app.use('/discount-codes', discountCodeRoutes);
 app.use('/header', headerRoutes);
 app.use('/company-settings',companyRoutes)
 app.use('/frontend/testimonial',TestimonialRoutes)
+app.use('/gallerytype',gallerytypeRoutes)
+app.use('/galleryitem',galleryitemRoutes)
 
 
 app.use(globalErrorHandler);
