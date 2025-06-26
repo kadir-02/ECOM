@@ -17,7 +17,7 @@ router.get('/:id', getTestimonialById);
 
 router.use(authenticate, authorizeAdmin);
 router.post('/', uploadMemory.single('image'), createTestimonial);
-router.put('/:id', uploadMemory.single('image'), updateTestimonial);
+router.patch('/:id', uploadMemory.single('image'), updateTestimonial);
 router.delete('/:id', deleteTestimonial);
 
 export default router;
