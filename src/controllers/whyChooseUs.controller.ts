@@ -7,43 +7,39 @@ interface CloudinaryUploadResult {
   public_id: string;
 }
 
+// 🔸 Create WhyChooseUsItem
 export const createWhyChooseUsItem = async (req: Request, res: Response) => {
-  const { mainTitle, title, subtitle, description, order } = req.body;
+  const { sequenceNumber, heading, description, isActive } = req.body;
 
-  if (!title || !subtitle || !description) {
-     res.status(400).json({ message: 'Title, subtitle, and description are required.' });
-     return;
+  if (!sequenceNumber || !heading || !description) {
+    res.status(400).json({ message: 'sequenceNumber, heading, and description are required.' });
+    return;
   }
 
   try {
-    let iconUrl: string | undefined;
-    let publicId: string | undefined;
+    let image: string | undefined;
 
     if (req.file) {
       const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'whyChooseUsIcons' },
+        cloudinary.uploader.upload_stream(
+          { folder: 'whyChooseUsImages' },
           (error, result) => {
             if (error || !result) return reject(error);
             resolve(result as CloudinaryUploadResult);
           }
-        );
-        uploadStream.end(req.file?.buffer);
+        ).end(req.file?.buffer);
       });
 
-      iconUrl = result.secure_url;
-      publicId = result.public_id;
+      image = result.secure_url;
     }
 
     const newItem = await prisma.whyChooseUsItem.create({
       data: {
-        mainTitle,
-        title,
-        subtitle,
+        sequence_number: sequenceNumber,
+        heading,
         description,
-        iconUrl,
-        // Optionally save publicId if you want to manage/delete images later
-        order: order ? parseInt(order) : 0,
+        image,
+        isActive: isActive === 'false' ? false : true, // handle stringified bool from form
       },
     });
 
@@ -54,72 +50,62 @@ export const createWhyChooseUsItem = async (req: Request, res: Response) => {
   }
 };
 
-// Similarly, update function for handling image replacement
-
+// 🔸 Update WhyChooseUsItem
 export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  const { mainTitle, title, subtitle, description, order } = req.body;
+  const { sequenceNumber, heading, description, isActive } = req.body;
 
   try {
     const existing = await prisma.whyChooseUsItem.findUnique({ where: { id } });
+
     if (!existing) {
-       res.status(404).json({ message: 'Item not found' });
-       return;
+      res.status(404).json({ message: 'Item not found' });
+      return;
     }
 
-    let iconUrl = existing.iconUrl;
-    // You might want to store publicId in model for deleting old images
-    // let publicId = existing.publicId;
+    let image = existing.image;
 
     if (req.file) {
-      // Delete old image on Cloudinary if you store publicId (optional)
-      // if (publicId) {
-      //   await cloudinary.uploader.destroy(publicId).catch(console.error);
-      // }
-
       const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'whyChooseUsIcons' },
+        cloudinary.uploader.upload_stream(
+          { folder: 'whyChooseUsImages' },
           (error, result) => {
             if (error || !result) return reject(error);
             resolve(result as CloudinaryUploadResult);
           }
-        );
-        uploadStream.end(req.file?.buffer);
+        ).end(req.file?.buffer);
       });
 
-      iconUrl = result.secure_url;
-      // publicId = result.public_id; // If you want to save it
+      image = result.secure_url;
     }
 
     const updated = await prisma.whyChooseUsItem.update({
       where: { id },
       data: {
-        mainTitle,
-        title,
-        subtitle,
+        sequence_number: sequenceNumber,
+        heading,
         description,
-        iconUrl,
-        order: order ? parseInt(order) : existing.order,
-        // publicId, // save if you added this to model
+        image,
+        isActive: isActive === 'false' ? false : true,
       },
     });
 
     res.json(updated);
   } catch (error: any) {
     if (error.code === 'P2025') {
-       res.status(404).json({ message: 'Item not found' });
-       return;
+      res.status(404).json({ message: 'Item not found' });
+      return;
     }
     console.error('Update WhyChooseUsItem error:', error);
     res.status(500).json({ message: 'Error updating item' });
   }
 };
 
+// 🔸 Get all
 export const getAllWhyChooseUsItems = async (_req: Request, res: Response) => {
   try {
     const items = await prisma.whyChooseUsItem.findMany({
-      orderBy: { order: 'asc' }, // optional sorting by order field
+      orderBy: { sequence_number: 'asc' },
     });
     res.json(items);
   } catch (error) {
@@ -128,18 +114,16 @@ export const getAllWhyChooseUsItems = async (_req: Request, res: Response) => {
   }
 };
 
-// Get single item by id
+// 🔸 Get one
 export const getWhyChooseUsItemById = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
 
   try {
-    const item = await prisma.whyChooseUsItem.findUnique({
-      where: { id },
-    });
+    const item = await prisma.whyChooseUsItem.findUnique({ where: { id } });
 
     if (!item) {
-       res.status(404).json({ message: 'Item not found' });
-       return;
+      res.status(404).json({ message: 'Item not found' });
+      return;
     }
 
     res.json(item);
@@ -149,7 +133,7 @@ export const getWhyChooseUsItemById = async (req: Request, res: Response) => {
   }
 };
 
-// Delete an item by id (optionally also delete image on Cloudinary if you save publicId)
+// 🔸 Delete
 export const deleteWhyChooseUsItem = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
 
@@ -157,14 +141,9 @@ export const deleteWhyChooseUsItem = async (req: Request, res: Response) => {
     const item = await prisma.whyChooseUsItem.findUnique({ where: { id } });
 
     if (!item) {
-       res.status(404).json({ message: 'Item not found' });
-         return;
+      res.status(404).json({ message: 'Item not found' });
+      return;
     }
-
-    // If you stored publicId for icon image and want to delete it from Cloudinary:
-    // if (item.publicId) {
-    //   await cloudinary.uploader.destroy(item.publicId).catch(console.error);
-    // }
 
     await prisma.whyChooseUsItem.delete({ where: { id } });
 
