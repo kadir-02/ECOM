@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
-import prisma from '../db/prisma';
-import { uploadToCloudinary } from '../utils/uploadToCloudinary';
+import { Request, Response } from "express";
+import prisma from "../db/prisma";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
 
 // CREATE CATEGORY
 export const createCategory = async (req: Request, res: Response) => {
@@ -11,16 +11,26 @@ export const createCategory = async (req: Request, res: Response) => {
     let banner: string | undefined;
     let publicId: string | undefined;
 
-    if (req.files && 'image' in req.files) {
-      const imageFile = Array.isArray(req.files['image']) ? req.files['image'][0] : req.files['image'];
-      const result = await uploadToCloudinary(imageFile.buffer, 'categories/image');
+    if (req.files && "image" in req.files) {
+      const imageFile = Array.isArray(req.files["image"])
+        ? req.files["image"][0]
+        : req.files["image"];
+      const result = await uploadToCloudinary(
+        imageFile.buffer,
+        "categories/image"
+      );
       imageUrl = result.secure_url;
       publicId = result.public_id;
     }
 
-    if (req.files && 'banner' in req.files) {
-      const bannerFile = Array.isArray(req.files['banner']) ? req.files['banner'][0] : req.files['banner'];
-      const result = await uploadToCloudinary(bannerFile.buffer, 'categories/banner');
+    if (req.files && "banner" in req.files) {
+      const bannerFile = Array.isArray(req.files["banner"])
+        ? req.files["banner"][0]
+        : req.files["banner"];
+      const result = await uploadToCloudinary(
+        bannerFile.buffer,
+        "categories/banner"
+      );
       banner = result.secure_url;
     }
 
@@ -34,10 +44,14 @@ export const createCategory = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json({ success: true, message: 'Category created', category });
+    res
+      .status(201)
+      .json({ success: true, message: "Category created", category });
   } catch (error) {
-    console.error('Create category error:', error);
-    res.status(500).json({ success: false, message: 'Error creating category' });
+    console.error("Create category error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error creating category" });
   }
 };
 
@@ -47,12 +61,14 @@ export const getAllCategories = async (_req: Request, res: Response) => {
     const categories = await prisma.category.findMany({
       // where: { isDeleted: false },
       include: { subcategories: true },
-      orderBy: { sequence_number: 'asc' },
+      orderBy: { sequence_number: "asc" },
     });
     res.status(200).json({ success: true, categories });
   } catch (error) {
-    console.error('Get categories error:', error);
-    res.status(500).json({ success: false, message: 'Error retrieving categories' });
+    console.error("Get categories error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error retrieving categories" });
   }
 };
 
@@ -67,50 +83,67 @@ export const getCategoryById = async (req: Request, res: Response) => {
     });
 
     if (!category || category.isDeleted) {
-       res.status(404).json({ success: false, message: 'Category not found' });
-       return
+      res.status(404).json({ success: false, message: "Category not found" });
+      return;
     }
 
     res.status(200).json({ success: true, category });
   } catch (error) {
-    console.error('Get category by ID error:', error);
-    res.status(500).json({ success: false, message: 'Error retrieving category' });
+    console.error("Get category by ID error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error retrieving category" });
   }
 };
 
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, sequence_number,isDeleted } = req.body;
+  const { name, sequence_number, isDeleted } = req.body;
 
   try {
     const data: any = {};
 
+    console.log("isDeleted", isDeleted);
     if (name) data.name = name;
-    if(isDeleted) data.isDeleted=Boolean(isDeleted);
+    if (typeof isDeleted !== "undefined") {
+      data.isDeleted = isDeleted === "true" || isDeleted === true;
+    }
     if (sequence_number) data.sequence_number = Number(sequence_number);
 
-    if (req.files && 'image' in req.files) {
-      const imageFile = Array.isArray(req.files['image']) ? req.files['image'][0] : req.files['image'];
-      const result = await uploadToCloudinary(imageFile.buffer, 'categories/image');
+    if (req.files && "image" in req.files) {
+      const imageFile = Array.isArray(req.files["image"])
+        ? req.files["image"][0]
+        : req.files["image"];
+      const result = await uploadToCloudinary(
+        imageFile.buffer,
+        "categories/image"
+      );
       data.imageUrl = result.secure_url;
       data.publicId = result.public_id;
     }
 
-    if (req.files && 'banner' in req.files) {
-      const bannerFile = Array.isArray(req.files['banner']) ? req.files['banner'][0] : req.files['banner'];
-      const result = await uploadToCloudinary(bannerFile.buffer, 'categories/banner');
+    if (req.files && "banner" in req.files) {
+      const bannerFile = Array.isArray(req.files["banner"])
+        ? req.files["banner"][0]
+        : req.files["banner"];
+      const result = await uploadToCloudinary(
+        bannerFile.buffer,
+        "categories/banner"
+      );
       data.banner = result.secure_url;
     }
-
+    console.log("data", data);
     const updated = await prisma.category.update({
       where: { id: Number(id) },
       data,
     });
 
-    res.status(200).json({ success: true, message: 'Category updated', category: updated });
-  } catch (error:any) {
-    console.error('Update category error:', error);
+    res
+      .status(200)
+      .json({ success: true, message: "Category updated", category: updated });
+  } catch (error: any) {
+    console.error("Update category error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -121,10 +154,12 @@ export const deleteCategory = async (req: Request, res: Response) => {
 
   try {
     await prisma.category.delete({ where: { id: Number(id) } });
-    res.status(200).json({ success: true, message: 'Category deleted' });
+    res.status(200).json({ success: true, message: "Category deleted" });
   } catch (error) {
-    console.error('Delete category error:', error);
-    res.status(500).json({ success: false, message: 'Error deleting category' });
+    console.error("Delete category error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error deleting category" });
   }
 };
 
@@ -137,10 +172,18 @@ export const softDeleteCategory = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: { isDeleted: true },
     });
-    res.status(200).json({ success: true, message: 'Category soft deleted', category: updated });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Category soft deleted",
+        category: updated,
+      });
   } catch (error) {
-    console.error('Soft delete category error:', error);
-    res.status(500).json({ success: false, message: 'Error soft deleting category' });
+    console.error("Soft delete category error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error soft deleting category" });
   }
 };
 
@@ -153,9 +196,17 @@ export const restoreCategory = async (req: Request, res: Response) => {
       where: { id: Number(id) },
       data: { isDeleted: false },
     });
-    res.status(200).json({ success: true, message: 'Category restored', category: restored });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Category restored",
+        category: restored,
+      });
   } catch (error) {
-    console.error('Restore category error:', error);
-    res.status(500).json({ success: false, message: 'Error restoring category' });
+    console.error("Restore category error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error restoring category" });
   }
 };
