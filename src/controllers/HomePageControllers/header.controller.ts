@@ -16,6 +16,19 @@ export const addHeaderData = async (req: Request, res: Response) => {
   }
 
   try {
+    const checkSequence = await prisma.header.findUnique({
+      where: {
+        sequence_number,
+      },
+    });
+    if (checkSequence) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: "This sequence number already exists",
+        });
+    }
     const user = await prisma.user.findUnique({
       where: {
         id: userId,
@@ -48,7 +61,6 @@ export const addHeaderData = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getHeaders = async (req: Request, res: Response) => {
   const { ordering } = req.query;
 
@@ -75,7 +87,6 @@ export const getHeaders = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateHeaderData = async (req: Request, res: Response) => {
   const { sequence_number, name, link, is_active } = req.body;
   const { header_id } = req.params;
@@ -91,6 +102,19 @@ export const updateHeaderData = async (req: Request, res: Response) => {
   }
 
   try {
+    const checkSequence = await prisma.header.findUnique({
+      where: {
+        sequence_number,
+      },
+    });
+    if (checkSequence) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: "This sequence number already exists",
+        });
+    }
     const header = await prisma.header.update({
       where: {
         id: Number(header_id),
@@ -108,15 +132,12 @@ export const updateHeaderData = async (req: Request, res: Response) => {
   }
 };
 
-
 export const deleteHeaderData = async (req: Request, res: Response) => {
   const { header_id } = req.params;
 
   if (!header_id || isNaN(Number(header_id))) {
-    res
-      .status(400)
-      .json({ success: false, message: "Invalid header ID" });
-      return
+    res.status(400).json({ success: false, message: "Invalid header ID" });
+    return;
   }
 
   try {
@@ -129,14 +150,12 @@ export const deleteHeaderData = async (req: Request, res: Response) => {
     res
       .status(200)
       .json({ success: true, message: "Header deleted successfully" });
-      return
+    return;
   } catch (error: any) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: error.message || "Internal server error",
-      });
-      return;
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+    return;
   }
 };
