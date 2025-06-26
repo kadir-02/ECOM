@@ -114,7 +114,6 @@ export const updateTestimonial = async (req: Request, res: Response) => {
     if (req.file?.buffer) {
       const result = await uploadToCloudinary(req.file.buffer, 'testimonials');
       image = result.secure_url;
-      return;
     }
 
     const updated = await prisma.testimonial.update({
