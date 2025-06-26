@@ -259,23 +259,22 @@ model WhyChooseUsItem {
 }
 
 model GalleryType {
-  id        Int           @id @default(autoincrement())
-  name      String
+  name      String        @id         // make `name` the primary key
   isActive  Boolean       @default(true)
-  galleries GalleryItem[] // One-to-many relationship
+  galleries GalleryItem[] @relation("GalleryTypeToItems")
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 }
 
 model GalleryItem {
-  id              Int        @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   sequence_number String
-  image           String     // stores image URL
-  is_active       Boolean    @default(true)
-  typeId          Int?       // FK to GalleryType
-  type            GalleryType? @relation(fields: [typeId], references: [id])
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  image           String
+  is_active       Boolean       @default(true)
+  typeName        String?       // foreign key referencing name
+  type            GalleryType?  @relation("GalleryTypeToItems", fields: [typeName], references: [name])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 enum NotificationType {
