@@ -54,7 +54,7 @@ app.use('/payment', paymentRoutes);
 app.use('/discount-codes', discountCodeRoutes);
 app.use('/header', headerRoutes);
 app.use('/company-settings',companyRoutes)
-app.use('/testimonials',TestimonialRoutes)
+app.use('/frontend/testimonial',TestimonialRoutes)
 
 
 app.use(globalErrorHandler);
