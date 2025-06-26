@@ -36,7 +36,7 @@ export const createTestimonial = async (req: Request, res: Response) => {
      res.status(201).json({
       success: true,
       message: 'Testimonial created successfully',
-      result: testimonial,
+      testimonial,
     });
   } catch (error) {
     console.error('Create error:', error);
@@ -56,7 +56,7 @@ export const getAllTestimonials = async (_req: Request, res: Response) => {
 
      res.status(200).json({
       success: true,
-      result: testimonials,
+      testimonials,
     });
   } catch (error) {
     console.error('Fetch error:', error);
@@ -84,7 +84,7 @@ export const getTestimonialById = async (req: Request, res: Response) => {
 
      res.status(200).json({
       success: true,
-      result: testimonial,
+      testimonial,
     });
   } catch (error) {
     console.error('Get by ID error:', error);
@@ -132,7 +132,7 @@ export const updateTestimonial = async (req: Request, res: Response) => {
      res.status(200).json({
       success: true,
       message: 'Testimonial updated successfully',
-      result: updated,
+      updated,
     });
   } catch (error) {
     console.error('Update error:', error);

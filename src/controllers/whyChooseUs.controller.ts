@@ -107,7 +107,7 @@ export const getAllWhyChooseUsItems = async (_req: Request, res: Response) => {
     const items = await prisma.whyChooseUsItem.findMany({
       orderBy: { sequence_number: 'asc' },
     });
-    res.json({success:true,result:items});
+    res.json({success:true,items});
   } catch (error) {
     console.error('Get all WhyChooseUs items error:', error);
     res.status(500).json({ message: 'Error fetching items' });
@@ -126,7 +126,7 @@ export const getWhyChooseUsItemById = async (req: Request, res: Response) => {
       return;
     }
 
-    res.json(item);
+    res.json({success:true,item});
   } catch (error) {
     console.error('Get WhyChooseUs item by id error:', error);
     res.status(500).json({ message: 'Error fetching item' });
