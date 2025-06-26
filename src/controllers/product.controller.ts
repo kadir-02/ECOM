@@ -49,10 +49,10 @@ export const createProduct = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(product);
+    res.status(201).json({ success: true, message: 'Product created', product });
   } catch (error) {
     console.error('Create product error:', error);
-    res.status(500).json({ message: 'Error creating product' });
+    res.status(500).json({ success: false, message: 'Error creating product' });
   }
 };
 
@@ -75,8 +75,10 @@ export const getAllProducts = async (req: Request, res: Response) => {
       prisma.product.count({ where }),
     ]);
 
-    res.json({
-      data: products,
+    res.status(200).json({
+      success: true,
+      message: 'Products fetched successfully',
+      result: products,
       total,
       page,
       limit,
@@ -84,7 +86,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Product fetch error:', error);
-    res.status(500).json({ message: 'Error fetching products' });
+    res.status(500).json({ success: false, message: 'Error fetching products' });
   }
 };
 
@@ -92,33 +94,29 @@ export const getProductBySlug = async (req: Request, res: Response) => {
   const { slug } = req.params;
 
   if (!slug) {
-     res.status(400).json({ message: 'Missing slug' });
-     return;
+    res.status(400).json({ success: false, message: 'Missing slug' });
+    return;
   }
 
   try {
     const foundProduct = await prisma.product.findUnique({
-      where: { slug, isDeleted: false, },
+      where: { slug, isDeleted: false },
       include: {
         category: true,
         subcategory: true,
-        variants: {
-          include: {
-            images: true
-          }
-        }
+        variants: { include: { images: true } },
       },
     });
 
     if (!foundProduct) {
-       res.status(404).json({ message: 'Product not found' });
-       return;
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
     }
 
-    res.json(foundProduct);
+    res.status(200).json({ success: true, message: 'Product found', product: foundProduct });
   } catch (error) {
     console.error('Error fetching product by slug:', error);
-    res.status(500).json({ message: 'Error fetching product' });
+    res.status(500).json({ success: false, message: 'Error fetching product' });
   }
 };
 
@@ -129,22 +127,20 @@ export const updateProduct = async (req: Request, res: Response) => {
   try {
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) {
-       res.status(404).json({ message: 'Product not found' });
-       return;
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
     }
 
     let imageUrl = existing.imageUrl;
     let publicId = existing.publicId;
 
     if (req.file) {
-      // Delete old image from Cloudinary if exists
       if (publicId) {
         await cloudinary.uploader.destroy(publicId).catch((err) => {
           console.warn('Failed to delete old image from Cloudinary:', err.message);
         });
       }
 
-      // Upload new image
       const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           { folder: 'products' },
@@ -174,15 +170,15 @@ export const updateProduct = async (req: Request, res: Response) => {
       },
     });
 
-    res.json(updated);
+    res.status(200).json({ success: true, message: 'Product updated', product: updated });
   } catch (error: any) {
     console.error('Update product error:', error);
     if (error.code === 'P2025') {
-       res.status(404).json({ message: 'Product not found' });
-       return;
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
     }
 
-    res.status(500).json({ message: 'Error updating product', details: error.message });
+    res.status(500).json({ success: false, message: 'Error updating product', details: error.message });
   }
 };
 
@@ -195,13 +191,13 @@ export const softDeleteProduct = async (req: Request, res: Response) => {
       data: { isDeleted: true },
     });
 
-    res.json({ message: 'Product soft deleted', product: updated });
+    res.status(200).json({ success: true, message: 'Product soft deleted', product: updated });
   } catch (error: any) {
     if (error.code === 'P2025') {
-      res.status(404).json({ message: 'Product not found' });
+      res.status(404).json({ success: false, message: 'Product not found' });
     } else {
       console.error('Soft delete product error:', error);
-      res.status(500).json({ message: 'Error soft deleting product' });
+      res.status(500).json({ success: false, message: 'Error soft deleting product' });
     }
   }
 };
@@ -215,17 +211,16 @@ export const restoreProduct = async (req: Request, res: Response) => {
       data: { isDeleted: false },
     });
 
-    res.json({ message: 'Product restored', product: restored });
+    res.status(200).json({ success: true, message: 'Product restored', product: restored });
   } catch (error: any) {
     if (error.code === 'P2025') {
-      res.status(404).json({ message: 'Product not found' });
+      res.status(404).json({ success: false, message: 'Product not found' });
     } else {
       console.error('Restore product error:', error);
-      res.status(500).json({ message: 'Error restoring product' });
+      res.status(500).json({ success: false, message: 'Error restoring product' });
     }
   }
 };
-
 
 export const deleteProduct = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
@@ -234,11 +229,10 @@ export const deleteProduct = async (req: Request, res: Response) => {
     const product = await prisma.product.findUnique({ where: { id } });
 
     if (!product) {
-      res.status(404).json({ message: 'Product not found' });
+      res.status(404).json({ success: false, message: 'Product not found' });
       return;
     }
 
-    // Delete image from Cloudinary if exists
     if (product.publicId) {
       await cloudinary.uploader.destroy(product.publicId).catch((err) => {
         console.warn('Failed to delete Cloudinary image:', err.message);
@@ -247,62 +241,67 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
     await prisma.product.delete({ where: { id } });
 
-    res.json({ message: 'Product and image deleted' });
+    res.status(200).json({ success: true, message: 'Product and image deleted' });
   } catch (error: any) {
     console.error('Delete product error:', error);
     if (error.code === 'P2025') {
-      res.status(404).json({ message: 'Product not found' });
+      res.status(404).json({ success: false, message: 'Product not found' });
     } else {
-      res.status(500).json({ message: 'Error deleting product' });
+      res.status(500).json({ success: false, message: 'Error deleting product' });
     }
   }
 };
 
-export const getBestSellingProducts= async (req: Request, res: Response) => {
-  const productLimit=Number(req.query.limit!) || 10;
+export const getBestSellingProducts = async (req: Request, res: Response) => {
+  const productLimit = Number(req.query.limit!) || 10;
   try {
-    const highSelling=await prisma.orderItem.groupBy({
+    const highSelling = await prisma.orderItem.groupBy({
       by: ['productId'],
-      _sum:{
+      _sum: {
         quantity: true,
       },
-      orderBy:{
-        _sum:{
+      orderBy: {
+        _sum: {
           quantity: 'desc',
         }
       },
       take: productLimit,
     });
 
-    highSelling.length===0 && res.json({ data: [], message: 'No sales found' });
-    const pIds=highSelling.map(i=>i.productId).filter((id): id is number => id !== null);
-    // console.log("Best Selling Product IDs:", pIds);
-    const products=await prisma.product.findMany({
-      where:{
+    if (highSelling.length === 0) {
+      res.status(200).json({ success: true, data: [], message: 'No sales found' });
+      return;
+    }
+
+    const pIds = highSelling.map(i => i.productId).filter((id): id is number => id !== null);
+
+    const products = await prisma.product.findMany({
+      where: {
         id: { in: pIds },
         isDeleted: false,
       },
-      include:{
+      include: {
         category: true,
         subcategory: true,
         variants: {
-          include: {
-            images: true
-          }
-        },
+          include: { images: true }
+        }
       }
     });
-    const highSellingProducts=products.map(product=>{
-      const salesData=highSelling.find(b=>b.productId===product.id);
+
+    const highSellingProducts = products.map(product => {
+      const salesData = highSelling.find(b => b.productId === product.id);
       return {
         ...product,
         totalQuantitySold: salesData?._sum?.quantity || 0,
       };
     });
+
     highSellingProducts.sort((a, b) => b.totalQuantitySold - a.totalQuantitySold);
-    res.json({ data: highSellingProducts });
-  }catch (error) {
+
+    res.status(200).json({ success: true, message: 'Best-selling products fetched', data: highSellingProducts });
+  } catch (error) {
     console.error('Error fetching best selling products:', error);
-    res.status(500).json({ message: 'Error fetching best selling products' });
+    res.status(500).json({ success: false, message: 'Error fetching best selling products' });
   }
 };
