@@ -45,7 +45,7 @@ export const createCategory = async (req: Request, res: Response) => {
 export const getAllCategories = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
-      where: { isDeleted: false },
+      // where: { isDeleted: false },
       include: { subcategories: true },
       orderBy: { sequence_number: 'asc' },
     });
@@ -87,7 +87,7 @@ export const updateCategory = async (req: Request, res: Response) => {
     const data: any = {};
 
     if (name) data.name = name;
-    if(isDeleted) data.isDeleted=isDeleted;
+    if(isDeleted) data.isDeleted=Boolean(isDeleted);
     if (sequence_number) data.sequence_number = Number(sequence_number);
 
     if (req.files && 'image' in req.files) {
@@ -109,9 +109,9 @@ export const updateCategory = async (req: Request, res: Response) => {
     });
 
     res.status(200).json({ success: true, message: 'Category updated', category: updated });
-  } catch (error) {
+  } catch (error:any) {
     console.error('Update category error:', error);
-    res.status(500).json({ success: false, message: 'Error updating category' });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
