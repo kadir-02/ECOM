@@ -315,9 +315,9 @@ model HomepageBanner {
 
 model CompanySettings {
   id                          String   @id @default(uuid())
-  country                     String
-  currency                    String
-  currency_symbol             String
+  country                     String?
+  currency                    String?
+  currency_symbol             String?
   logo                        String?   // Optional logo
   address                     String
   phone                       String
@@ -333,8 +333,8 @@ model CompanySettings {
   linkedin_icon               String?
   linkedin_link               String?
 
-  product_low_stock_threshold Int
-  minimum_order_quantity      Int
+  product_low_stock_threshold Int?
+  minimum_order_quantity      Int?
 
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
