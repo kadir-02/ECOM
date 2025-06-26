@@ -45,15 +45,26 @@ export const getAllGalleryItems = async (_req: Request, res: Response) => {
       orderBy: { sequence_number: 'asc' },
     });
 
+    const formatted = items.map(item => ({
+      id: item.id,
+      sequence_number: item.sequence_number,
+      image: item.image,
+      is_active: item.is_active,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      typeName: item.type?.name || null,  // <- Add this line
+    }));
+
     res.status(200).json({
       success: true,
-      result: items,
+      result: formatted,
     });
   } catch (error) {
     console.error('Fetch error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
 
 // 🔹 Update gallery item
 export const updateGalleryItem = async (req: Request, res: Response) => {
