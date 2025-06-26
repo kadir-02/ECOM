@@ -43,7 +43,7 @@ export const createWhyChooseUsItem = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(newItem);
+    res.status(201).json({success:true,newItem});
   } catch (error) {
     console.error('Create WhyChooseUsItem error:', error);
     res.status(500).json({ message: 'Error creating item' });
@@ -90,7 +90,7 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
       },
     });
 
-    res.json(updated);
+    res.json({success:true,updated});
   } catch (error: any) {
     if (error.code === 'P2025') {
       res.status(404).json({ message: 'Item not found' });
@@ -107,7 +107,7 @@ export const getAllWhyChooseUsItems = async (_req: Request, res: Response) => {
     const items = await prisma.whyChooseUsItem.findMany({
       orderBy: { sequence_number: 'asc' },
     });
-    res.json(items);
+    res.json({success:true,result:items});
   } catch (error) {
     console.error('Get all WhyChooseUs items error:', error);
     res.status(500).json({ message: 'Error fetching items' });
