@@ -12,6 +12,6 @@ const router = express.Router();
 router.get('/', getAllGalleryTypes);
 router.use(authenticate, authorizeAdmin);
 router.post('/', createGalleryType);
-router.put('/:id', updateGalleryType);
+router.patch('/:id', updateGalleryType);
 router.delete('/:id', deleteGalleryType);
 export default router;

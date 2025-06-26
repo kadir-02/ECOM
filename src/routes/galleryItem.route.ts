@@ -18,7 +18,7 @@ router.post(
   uploadMemory.single('image'),
   createGalleryItem
 );
-router.put(
+router.patch(
   '/:id',
   authenticate,
   authorizeAdmin,
