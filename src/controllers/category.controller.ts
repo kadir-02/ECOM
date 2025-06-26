@@ -81,12 +81,13 @@ export const getCategoryById = async (req: Request, res: Response) => {
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, sequence_number } = req.body;
+  const { name, sequence_number,isDeleted } = req.body;
 
   try {
     const data: any = {};
 
     if (name) data.name = name;
+    if(isDeleted) data.isDeleted=isDeleted;
     if (sequence_number) data.sequence_number = Number(sequence_number);
 
     if (req.files && 'image' in req.files) {
