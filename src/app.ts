@@ -24,6 +24,7 @@ import whyChooseUs from './routes/whyChooseUs.route';
 import galleryRoutes from './routes/gallery.route';
 import notificationRoutes from './routes/notification.route';
 import companyRoutes from './routes/ComponySettingsRoutes/companySettings.route';
+import TestimonialRoutes from './routes/TestimonialRoutes/testimonial.route';
 import { globalErrorHandler } from './utils/globalErrorHandler';
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use('/payment', paymentRoutes);
 app.use('/discount-codes', discountCodeRoutes);
 app.use('/header', headerRoutes);
 app.use('/company-settings',companyRoutes)
+app.use('/testimonials',TestimonialRoutes)
 
 
 app.use(globalErrorHandler);
