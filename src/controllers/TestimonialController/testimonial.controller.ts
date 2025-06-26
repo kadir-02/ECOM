@@ -20,7 +20,6 @@ export const createTestimonial = async (req: Request, res: Response) => {
     if (req.file?.buffer) {
       const result = await uploadToCloudinary(req.file.buffer, 'testimonials');
       image = result.secure_url;
-      return;
     }
 
     const testimonial = await prisma.testimonial.create({
