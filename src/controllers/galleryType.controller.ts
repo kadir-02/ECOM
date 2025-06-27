@@ -37,27 +37,23 @@ export const getAllGalleryTypes = async (_req: Request, res: Response) => {
   }
 };
 
+// 🔹 Update GalleryType by name
 export const updateGalleryType = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
+  const name = req.params.name;
   const { isActive, newName } = req.body;
 
-  if (isNaN(id)) {
-    res.status(400).json({ success: false, message: 'Invalid ID' });
-    return;
-  }
-
   try {
-    const existing = await prisma.galleryType.findUnique({ where: { id } });
+    const existing = await prisma.galleryType.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ success: false, message: 'GalleryType not found' });
-      return;
+       res.status(404).json({ success: false, message: 'GalleryType not found' });
+       return
     }
 
     const updated = await prisma.galleryType.update({
-      where: { id },
+      where: { name },
       data: {
-        name: newName ?? existing.name,
-        isActive: isActive !== undefined ? parseBoolean(isActive) : existing.isActive,
+        name: newName ?? name,
+        isActive: isActive !== undefined ? isActive !== 'false' : existing.isActive,
       },
     });
 
@@ -67,21 +63,14 @@ export const updateGalleryType = async (req: Request, res: Response) => {
   }
 };
 
-// Delete GalleryType by id
+// 🔹 Delete GalleryType by name
 export const deleteGalleryType = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-
-  if (isNaN(id)) {
-    res.status(400).json({ success: false, message: 'Invalid ID' });
-    return;
-  }
+  const name = req.params.name;
 
   try {
-    await prisma.galleryType.delete({ where: { id } });
+    await prisma.galleryType.delete({ where: { name } });
     res.status(200).json({ success: true, message: 'GalleryType deleted' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error deleting GalleryType' });
   }
 };
-const parseBoolean = (value: any) =>
-  typeof value === 'string' ? value.toLowerCase() === 'true' : Boolean(value);
