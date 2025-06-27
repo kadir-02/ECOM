@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  //output   = "../generated/prisma"
 }
 
 datasource db {
@@ -19,11 +12,36 @@ enum Role {
   ADMIN
 }
 
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum NotificationType {
+  ORDER
+  ALERT
+  SYSTEM
+}
+
 model User {
   id             Int            @id @default(autoincrement())
   email          String         @unique
-  password       String? // 🔄 Made optional for guests
-  isGuest        Boolean        @default(false) // ✅ NEW: Flag for guest users
+  password       String?
+  isGuest        Boolean        @default(false)
   profile        Profile?       @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId      Int?           @unique
   createdAt      DateTime       @default(now())
@@ -48,67 +66,112 @@ model Profile {
 }
 
 model Category {
-  id            Int           @id @default(autoincrement())
-  sequence_number Int? 
-  name          String        @unique
-  subcategories Subcategory[]
-  products      Product[]     @relation("CategoryToProduct")
-  createdAt     DateTime      @default(now())
-  isDeleted     Boolean       @default(false)
-  banner  String?
-  imageUrl String? // Optional image URL
-  publicId String? // Optional Cloudinary public ID
+  id              Int           @id @default(autoincrement())
+  sequence_number Int?
+  name            String        @unique
+  subcategories   Subcategory[]
+  products        Product[]
+  createdAt       DateTime      @default(now())
+  isDeleted       Boolean       @default(false)
+  banner          String?
+  imageUrl        String?
+  publicId        String?
 }
 
 model Subcategory {
-  id         Int       @id @default(autoincrement())
-  name       String
+  id              Int       @id @default(autoincrement())
+  name            String
   sequence_number Int?
-  category   Category  @relation(fields: [categoryId], references: [id])
-  categoryId Int
-  products   Product[] @relation("SubcategoryToProduct")
-  createdAt  DateTime  @default(now())
-  isDeleted  Boolean   @default(false)
-  banner  String?
-  imageUrl String? // Optional image URL
-  publicId String? // Optional Cloudinary public ID
+  category        Category  @relation(fields: [categoryId], references: [id])
+  categoryId      Int
+  products        Product[]
+  createdAt       DateTime  @default(now())
+  isDeleted       Boolean   @default(false)
+  banner          String?
+  imageUrl        String?
+  publicId        String?
 
   @@unique([name, categoryId])
 }
 
 model Product {
-  id            Int          @id @default(autoincrement())
-  name          String
-  description   String?
-  imageUrl      String?
-  publicId      String?
-  basePrice     Float?
-  oldPrice      Float?
-  category      Category?    @relation("CategoryToProduct", fields: [categoryId], references: [id])
-  categoryId    Int?
-  subcategory   Subcategory? @relation("SubcategoryToProduct", fields: [subcategoryId], references: [id])
-  subcategoryId Int?
-  variants      Variant[]
-  createdAt     DateTime     @default(now())
-  slug          String       @unique
-  isDeleted     Boolean      @default(false)
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
+  id                     Int    @id @default(autoincrement())
+  isActive               Boolean
+  createdAt              DateTime  @db.Timestamptz(6)
+  updatedAt              DateTime  @db.Timestamptz(6)
+  isDeleted              Boolean
+  deletedAt              DateTime? @db.Timestamptz(6)
+  name                   String    @db.VarChar(200)
+  description            String?
+  SKU                    String    @db.VarChar(100)
+  basePrice              Decimal   @db.Decimal(7, 2)
+  sellingPrice           Decimal   @db.Decimal(7, 2)
+  priceDifferencePercent Float
+  stock                  Int       @db.SmallInt
+  isNewArrival           Boolean
+  createdById            Int
+  deletedById            Int?
+  updatedById            Int
+  categoryId             Int
+  subcategoryId          Int?
 
-  tags String[] // ✅ Optional string array
+  length         String? @db.VarChar(15)
+  width          String? @db.VarChar(15)
+  weight         String? @db.VarChar(15)
+  slug           String? @db.VarChar(50)
+  sequenceNumber Int?    @db.SmallInt
+  seoTitle       String?
+  seoKeyword     String?
+  seoDescription String?
+  productDetails String?
+
+  category       Category               @relation(fields: [categoryId], references: [id])
+  subcategory    Subcategory?           @relation(fields: [subcategoryId], references: [id])
+  images         ProductImage[]
+  variants       ProductVariant[]
+  specifications ProductSpecification[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
 }
 
-model Variant {
-  id         Int            @id @default(autoincrement())
-  name       String // e.g., "Red - Medium"
-  price      Float
-  oldPrice   Float?
-  stock      Int
-  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId  Int
-  createdAt  DateTime       @default(now())
+model ProductSpecification {
+  id        Int    @id @default(autoincrement())
+  isActive  Boolean
+  createdAt DateTime  @db.Timestamptz(6)
+  updatedAt DateTime  @db.Timestamptz(6)
+  isDeleted Boolean
+  deletedAt DateTime? @db.Timestamptz(6)
+  name      String    @db.VarChar(30)
+  value     String    @db.VarChar(30)
+  productId Int
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model ProductImage {
+  id        Int   @id @default(autoincrement())
+  createdAt DateTime @db.Timestamptz(6)
+  updatedAt DateTime @db.Timestamptz(6)
+  sequence  Int      @db.SmallInt
+  image     String   @db.VarChar(100)
+  productId Int
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model ProductVariant {
+  id            Int      @id @default(autoincrement())
+  name          String
+  specification Json
+  price         Float
+  oldPrice      Float?
+  stock         Int
+  productId     Int
+  createdAt     DateTime @default(now())
+  isDeleted     Boolean  @default(false)
+
+  product    Product        @relation(fields: [productId], references: [id])
   images     VariantImage[]
-  isDeleted  Boolean        @default(false)
   cartItems  CartItem[]
   orderItems OrderItem[]
 }
@@ -116,16 +179,17 @@ model Variant {
 model VariantImage {
   id        Int      @id @default(autoincrement())
   url       String
-  variant   Variant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  variantId Int
   publicId  String?
   createdAt DateTime @default(now())
+  variantId Int
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
 }
 
 model Cart {
   id             Int            @id @default(autoincrement())
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         Int            @unique
+  user           User           @relation(fields: [userId], references: [id])
   items          CartItem[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -136,26 +200,21 @@ model Cart {
 
 model CartItem {
   id        Int      @id @default(autoincrement())
-  cart      Cart     @relation(fields: [cartId], references: [id])
   cartId    Int
-  product   Product? @relation(fields: [productId], references: [id])
-  productId Int? // used if there's no variant
-  variant   Variant? @relation(fields: [variantId], references: [id])
-  variantId Int? // used if a variant is selected
+  productId Int?
+  variantId Int?
   quantity  Int
   createdAt DateTime @default(now())
-}
 
-enum AddressType {
-  SHIPPING
-  BILLING
+  cart    Cart            @relation(fields: [cartId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model Address {
   id          Int         @id @default(autoincrement())
-  user        User        @relation(fields: [userId], references: [id])
   userId      Int
-  type        AddressType @default(SHIPPING) // billing or shipping
+  type        AddressType @default(SHIPPING)
   fullName    String
   phone       String
   pincode     String
@@ -166,60 +225,48 @@ model Address {
   isDefault   Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  orders      Order[]
-}
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELLED
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
 }
 
 model Order {
   id             Int         @id @default(autoincrement())
-  user           User        @relation(fields: [userId], references: [id])
   userId         Int
-  items          OrderItem[]
   totalAmount    Float
   status         OrderStatus @default(PENDING)
+  subtotal       Float?
+  discountAmount Float?
+  discountCode   String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
-  subtotal       Float? // total before discount
-  discountAmount Float? // discount applied
-  discountCode   String? // optional code/label
+  paymentId      Int?        @unique
+  addressId      Int
 
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-  paymentId Int?     @unique
-
-  address   Address @relation(fields: [addressId], references: [id])
-  addressId Int
+  user    User        @relation(fields: [userId], references: [id])
+  items   OrderItem[]
+  payment Payment?    @relation(fields: [paymentId], references: [id])
+  address Address     @relation(fields: [addressId], references: [id])
 }
 
 model OrderItem {
-  id        Int      @id @default(autoincrement())
-  order     Order    @relation(fields: [orderId], references: [id])
+  id        Int     @id @default(autoincrement())
   orderId   Int
-  product   Product? @relation(fields: [productId], references: [id])
   productId Int?
-  variant   Variant? @relation(fields: [variantId], references: [id])
   variantId Int?
   quantity  Int
   price     Float
-}
 
-enum PaymentStatus {
-  PENDING
-  SUCCESS
-  FAILED
+  order   Order           @relation(fields: [orderId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model Payment {
   id            Int           @id @default(autoincrement())
-  method        String // e.g., "Razorpay", "COD"
+  method        String
   status        PaymentStatus @default(PENDING)
-  transactionId String? // from gateway
+  transactionId String?
   paidAt        DateTime?
   createdAt     DateTime      @default(now())
 
@@ -242,59 +289,22 @@ model DiscountCode {
 
 model DiscountRule {
   id         Int      @id @default(autoincrement())
-  percentage Int // e.g., 10 for 10%
-  minItems   Int // e.g., 5 items minimum
+  percentage Int
+  minItems   Int
   createdAt  DateTime @default(now())
-}
-
-model WhyChooseUsItem {
-  id             Int      @id @default(autoincrement())
-  sequence_number String
-  heading        String
-  description    String
-  image          String?  // storing the image URL here, field named `image`
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model GalleryType {
-  id        Int           @id @default(autoincrement())
-  name      String        @unique
-  isActive  Boolean       @default(true)
-  galleries GalleryItem[] @relation("GalleryTypeToItems")
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-}
-
-model GalleryItem {
-  id              Int           @id @default(autoincrement())
-  sequence_number String
-  image           String
-  is_active       Boolean       @default(true)
-  section         String?       
-  type            GalleryType?  @relation("GalleryTypeToItems", fields: [section], references: [name])
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-enum NotificationType {
-  ORDER
-  ALERT
-  SYSTEM
 }
 
 model Notification {
   id        Int              @id @default(autoincrement())
-  user      User             @relation(fields: [userId], references: [id])
   userId    Int
   message   String
-  type      NotificationType @default(ORDER) // ✅ Added type field
+  type      NotificationType @default(ORDER)
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
 }
 
-// Home Page Tables
 model header {
   id              Int      @id @default(autoincrement())
   sequence_number Int      @unique
@@ -323,30 +333,30 @@ model HomepageBanner {
 }
 
 model CompanySettings {
-  id                          String   @id @default(uuid())
-  country                     String?
-  currency                    String?
-  currency_symbol             String?
-  logo                        String?   // Optional logo
-  address                     String
-  phone                       String
-  email                       String
-  description                 String?
+  id              String  @id @default(uuid())
+  country         String?
+  currency        String?
+  currency_symbol String?
+  logo            String? // Optional logo
+  address         String
+  phone           String
+  email           String
+  description     String?
 
-  facebook_icon               String?   // Optional social icons/links
-  facebook_link               String?
-  instagram_icon              String?
-  instagram_link              String?
-  twitter_icon                String?
-  twitter_link                String?
-  linkedin_icon               String?
-  linkedin_link               String?
+  facebook_icon  String? // Optional social icons/links
+  facebook_link  String?
+  instagram_icon String?
+  instagram_link String?
+  twitter_icon   String?
+  twitter_link   String?
+  linkedin_icon  String?
+  linkedin_link  String?
 
   product_low_stock_threshold Int?
   minimum_order_quantity      Int?
 
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Testimonial {
@@ -358,4 +368,35 @@ model Testimonial {
   is_active   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model WhyChooseUsItem {
+  id              Int      @id @default(autoincrement())
+  sequence_number String
+  heading         String
+  description     String
+  image           String? // storing the image URL here, field named `image`
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model GalleryType {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
+  isActive  Boolean       @default(true)
+  galleries GalleryItem[] @relation("GalleryTypeToItems")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model GalleryItem {
+  id              Int          @id @default(autoincrement())
+  sequence_number String
+  image           String
+  is_active       Boolean      @default(true)
+  section         String?
+  type            GalleryType? @relation("GalleryTypeToItems", fields: [section], references: [name])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 }
