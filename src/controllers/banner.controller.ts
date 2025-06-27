@@ -202,7 +202,10 @@ export const updateBanner = async (req: Request, res: Response) => {
     if (imageUrl) updateData.imageUrl = imageUrl;
     if (publicId) updateData.publicId = publicId;
     if (mobileBanner) updateData.mobile_banner = mobileBanner;
-    if(isActive) updateData.isActive === 'true'|| isActive === true
+    if (typeof isActive !== 'undefined') {
+  updateData.isActive = isActive === 'true' || isActive === true;
+}
+
 
     const updated = await prisma.homepageBanner.update({
       where: { id: parseInt(id) },
