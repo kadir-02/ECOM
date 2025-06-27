@@ -4,18 +4,17 @@ import { sendOTPEmail } from '../email/mail';
 import bcrypt from 'bcryptjs';
 import prisma from '../db/prisma';
 
-
 export const requestPasswordReset = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    res.status(404).json({ message: 'User not found' });
-    return;
+     res.status(404).json({ message: 'User not found' });
+     return
   }
 
   const otp = generateOTP();
-  const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+  const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
   await prisma.user.update({
     where: { email },
@@ -24,7 +23,7 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
 
   await sendOTPEmail(email, otp);
 
-   res.json({ message: 'OTP sent to your email' });
+   res.status(200).json({ message: 'OTP sent successfully!' });
 };
 
 export const verifyOTP = async (req: Request, res: Response) => {
@@ -34,10 +33,10 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
   if (!user || user.resetOTP !== otp || !user.resetOTPExpiry || user.resetOTPExpiry < new Date()) {
      res.status(400).json({ message: 'Invalid or expired OTP' });
-     return;
+     return
   }
 
-   res.json({ message: 'OTP verified' });
+   res.status(200).json({ message: 'OTP verified' });
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
@@ -47,7 +46,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
   if (!user || user.resetOTP !== otp || !user.resetOTPExpiry || user.resetOTPExpiry < new Date()) {
      res.status(400).json({ message: 'Invalid or expired OTP' });
-     return;
+     return
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -61,5 +60,5 @@ export const resetPassword = async (req: Request, res: Response) => {
     },
   });
 
-   res.json({ message: 'Password reset successful' });
+   res.status(200).json({ message: 'Password reset successfully' });
 };
