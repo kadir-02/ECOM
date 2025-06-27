@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
-// 🔹 Create gallery item
+// Create gallery item
 export const createGalleryItem = async (req: Request, res: Response) => {
-  const { sequence_number, typeName, is_active } = req.body;
+  const { sequence_number, section, is_active } = req.body;
 
   if (!sequence_number || !req.file?.buffer) {
      res.status(400).json({
@@ -15,6 +15,20 @@ export const createGalleryItem = async (req: Request, res: Response) => {
   }
 
   try {
+    // Validate section if provided
+    if (section) {
+      const type = await prisma.galleryType.findUnique({
+        where: { name: section },
+      });
+      if (!type) {
+         res.status(400).json({
+          success: false,
+          message: 'Invalid section — GalleryType not found',
+        });
+        return
+      }
+    }
+
     const result = await uploadToCloudinary(req.file.buffer, 'gallery');
 
     const item = await prisma.galleryItem.create({
@@ -22,7 +36,7 @@ export const createGalleryItem = async (req: Request, res: Response) => {
         sequence_number,
         image: result.secure_url,
         is_active: is_active === 'true' || is_active === true,
-        typeName: typeName || undefined,
+        section: section || undefined,
       },
     });
 
@@ -37,7 +51,7 @@ export const createGalleryItem = async (req: Request, res: Response) => {
   }
 };
 
-// 🔹 Get all gallery items
+// Get all gallery items
 export const getAllGalleryItems = async (_req: Request, res: Response) => {
   try {
     const items = await prisma.galleryItem.findMany({
@@ -52,7 +66,7 @@ export const getAllGalleryItems = async (_req: Request, res: Response) => {
       is_active: item.is_active,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
-      typeName: item.type?.name || null,  // <- Add this line
+      section: item.section || null,
     }));
 
     res.status(200).json({
@@ -65,8 +79,7 @@ export const getAllGalleryItems = async (_req: Request, res: Response) => {
   }
 };
 
-
-// 🔹 Update gallery item
+// Update gallery item
 export const updateGalleryItem = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const existing = await prisma.galleryItem.findUnique({ where: { id } });
@@ -76,7 +89,7 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
      return
   }
 
-  const { sequence_number, typeName, is_active } = req.body;
+  const { sequence_number, section, is_active } = req.body;
   let image = existing.image;
 
   try {
@@ -85,13 +98,27 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
       image = result.secure_url;
     }
 
+    // Validate section if provided
+    if (section) {
+      const type = await prisma.galleryType.findUnique({
+        where: { name: section },
+      });
+      if (!type) {
+         res.status(400).json({
+          success: false,
+          message: 'Invalid section — GalleryType not found',
+        });
+        return
+      }
+    }
+
     const updated = await prisma.galleryItem.update({
       where: { id },
       data: {
         sequence_number: sequence_number ?? existing.sequence_number,
         image,
         is_active: is_active !== undefined ? (is_active === 'true' || is_active === true) : existing.is_active,
-        typeName: typeName ?? existing.typeName,
+        section: section || existing.section,
       },
     });
 
@@ -106,7 +133,7 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
   }
 };
 
-// 🔹 Delete gallery item
+// Delete gallery item
 export const deleteGalleryItem = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
 

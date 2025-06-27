@@ -259,7 +259,8 @@ model WhyChooseUsItem {
 }
 
 model GalleryType {
-  name      String        @id         // make `name` the primary key
+  id        Int           @id @default(autoincrement())
+  name      String        @unique
   isActive  Boolean       @default(true)
   galleries GalleryItem[] @relation("GalleryTypeToItems")
   createdAt DateTime      @default(now())
@@ -271,8 +272,8 @@ model GalleryItem {
   sequence_number String
   image           String
   is_active       Boolean       @default(true)
-  typeName        String?       // foreign key referencing name
-  type            GalleryType?  @relation("GalleryTypeToItems", fields: [typeName], references: [name])
+  section         String?       
+  type            GalleryType?  @relation("GalleryTypeToItems", fields: [section], references: [name])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 }
