@@ -28,6 +28,7 @@ export const createBanner = async (req: Request, res: Response) => {
       subheading2,
       buttonText,
       buttonLink,
+      isActive
     } = req.body;
     console.log(req.body)
     // Basic validation
@@ -95,6 +96,7 @@ export const createBanner = async (req: Request, res: Response) => {
         buttonText,
         buttonLink,
         imageUrl,
+        isActive:isActive=== 'true' || isActive === true,
         mobile_banner: mobileBanner,
         publicId,
       },
@@ -132,6 +134,7 @@ export const updateBanner = async (req: Request, res: Response) => {
       subheading2,
       buttonText,
       buttonLink,
+      isActive
     } = req.body;
 
     if (!heading || !sequence_number || !buttonText || !buttonLink) {
@@ -193,11 +196,13 @@ export const updateBanner = async (req: Request, res: Response) => {
       subheading2,
       buttonText,
       buttonLink,
+      isActive
     };
 
     if (imageUrl) updateData.imageUrl = imageUrl;
     if (publicId) updateData.publicId = publicId;
     if (mobileBanner) updateData.mobile_banner = mobileBanner;
+    if(isActive) updateData.isActive === 'true'|| isActive === true
 
     const updated = await prisma.homepageBanner.update({
       where: { id: parseInt(id) },
