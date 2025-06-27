@@ -40,7 +40,7 @@ export const getAllGalleryTypes = async (_req: Request, res: Response) => {
 // 🔹 Update GalleryType by id
 export const updateGalleryType = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  const { isActive, newName } = req.body;
+  const { isActive, name } = req.body;
 
   try {
     const existing = await prisma.galleryType.findUnique({ where: { id } });
@@ -52,7 +52,7 @@ export const updateGalleryType = async (req: Request, res: Response) => {
     const updated = await prisma.galleryType.update({
       where: { id },
       data: {
-        name: newName ?? existing.name,
+        name: name ?? existing.name,
         isActive: isActive !== undefined ? isActive !== 'false' : existing.isActive,
       },
     });
