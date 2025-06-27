@@ -97,8 +97,8 @@ model Subcategory {
 model Product {
   id                     Int    @id @default(autoincrement())
   isActive               Boolean
-  createdAt              DateTime  @db.Timestamptz(6)
-  updatedAt              DateTime  @db.Timestamptz(6)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
   isDeleted              Boolean
   deletedAt              DateTime? @db.Timestamptz(6)
   name                   String    @db.VarChar(200)
