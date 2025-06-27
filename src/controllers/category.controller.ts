@@ -4,7 +4,7 @@ import { uploadToCloudinary } from "../utils/uploadToCloudinary";
 
 // CREATE CATEGORY
 export const createCategory = async (req: Request, res: Response) => {
-  const { name, sequence_number } = req.body;
+  const { name, sequence_number, isDeleted } = req.body;
 
   try {
     let imageUrl: string | undefined;
@@ -41,6 +41,7 @@ export const createCategory = async (req: Request, res: Response) => {
         imageUrl,
         banner,
         publicId,
+        isDeleted:isDeleted === "true" || isDeleted === true
       },
     });
 
