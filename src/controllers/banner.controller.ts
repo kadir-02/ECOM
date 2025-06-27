@@ -9,7 +9,7 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 export const getBanners = async (req: Request, res: Response) => {
   try {
     const banners = await prisma.homepageBanner.findMany({
-      where: { isActive: true },
+      // where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     });
     res.json(banners);
