@@ -22,8 +22,8 @@ router.get('/:variantId', getVariantImageById);
 // Admin-only routes
 router.use(authenticate, authorizeAdmin);
 
-router.post('/', uploadMemory.array('images', 5), createVariantImage);
-router.patch('/:id', uploadMemory.array('images', 5), updateVariantImage);
+router.post('/', uploadMemory.array('images',1), createVariantImage);
+router.patch('/:id', uploadMemory.array('images',1), updateVariantImage);
 router.delete('/:id', deleteVariantImage);
 
 export default router;

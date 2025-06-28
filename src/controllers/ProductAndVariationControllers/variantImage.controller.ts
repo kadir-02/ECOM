@@ -1,122 +1,87 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
 import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinary from '../../upload/cloudinary';
 
-interface JwtPayload {
-  userId: number;
-  role: 'USER' | 'ADMIN';
-}
-
-export interface UpdateRequest extends Request {
-  user?: JwtPayload;
-  file?: Express.Multer.File;
-  files?: Express.Multer.File[];
-}
 
 // CREATE
 export const createVariantImage = async (req: Request, res: Response) => {
-  const typedReq = req as UpdateRequest;
-  const variantId = +typedReq.body.variantId;
-  const sequenceNumber = typedReq.body.sequence_number ? +typedReq.body.sequence_number : undefined;
-  const isActiveRaw = typedReq.body.is_active;
-  const isActive = isActiveRaw === 'false' || isActiveRaw === false ? false : true;
+  const { variantId, sequence_number } = req.body;
 
-  if (!variantId || isNaN(variantId)) {
-     res.status(400).json({ success: false, message: 'Invalid or missing variantId' });
-     return
-  }
-
-  const filesInput = typedReq.files;
-  const files: Express.Multer.File[] = Array.isArray(filesInput) ? filesInput : [];
-
-  if (!files || files.length === 0) {
-     res.status(400).json({ success: false, message: 'At least one image is required' });
-     return
+  if (!variantId || !req.files) {
+    res.status(400).json({ success: false, message: 'variantId and images are required' });
+    return;
   }
 
   try {
-    const existingCount = await prisma.variantImage.count({ where: { variantId } });
-
-    const uploadResults = await Promise.all(
-      files.map((file, index) =>
-        uploadToCloudinary(file.buffer, 'products/images')
-          .then((result) => ({
-            url: result.url,
-            publicId: result.public_id,
-            sequence_number: sequenceNumber !== undefined ? sequenceNumber + index : existingCount + index,
-          }))
-      )
-    );
-
-    const created = await prisma.variantImage.createMany({
-      data: uploadResults.map((result) => ({
-        url: result.url,
-        publicId: result.publicId,
-        variantId,
-        sequence_number: result.sequence_number,
-        is_active: isActive,
-      })),
+    const seq = sequence_number ? Number(sequence_number) : 0;
+    const existing = await prisma.variantImage.findFirst({
+      where: { variantId: Number(variantId), sequence_number: seq },
     });
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        message: `Sequence number ${seq} already exists for this variant.`,
+      });
+      return;
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'Images uploaded to Cloudinary',
-      count: created.count,
-    });
-  } catch (err) {
-    console.error('Cloudinary upload failed:', err);
-    res.status(500).json({ success: false, message: 'Failed to upload images' });
+    const createdImages = [];
+    for (const file of req.files as Express.Multer.File[]) {
+      const result = await uploadToCloudinary(file.buffer, 'products/images');
+      const created = await prisma.variantImage.create({
+        data: {
+          variantId: Number(variantId),
+          url: result.secure_url,
+          publicId: result.public_id,
+          sequence_number: seq,
+          is_active: true,
+        },
+      });
+      createdImages.push(created);
+    }
+
+    res.status(201).json({ success: true, variantImages: createdImages });
+  } catch (error: any) {
+    console.error('Error uploading variant image(s):', error);
+    res.status(500).json({ success: false, message: 'Failed to upload image(s)' });
   }
 };
 
-
+// UPDATE variant image
 export const updateVariantImage = async (req: Request, res: Response) => {
-  const typedReq = req as UpdateRequest;
-  const id = +typedReq.params.id;
-  const variantId = typedReq.body.variantId ? +typedReq.body.variantId : undefined;
+  const id = Number(req.params.id);
 
   try {
     const existing = await prisma.variantImage.findUnique({ where: { id } });
-
     if (!existing) {
-       res.status(404).json({ success: false, message: 'Image not found' });
-       return
+      res.status(404).json({ success: false, message: 'Image not found' });
+      return;
     }
 
-    let imageUrl = existing.url;
-    let publicId = existing.publicId;
-
-    // ✅ Handle new file upload
-    if (typedReq.file) {
-      // Delete old image from Cloudinary if exists
-      if (publicId) {
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (err: any) {
-          console.warn('Failed to delete old image from Cloudinary:', err.message);
-        }
+    let updateData: any = {};
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      // delete old image
+      if (existing.publicId) {
+        try { await cloudinary.uploader.destroy(existing.publicId); }
+        catch (err) { console.warn('Failed to delete old publicId:', err); }
       }
 
-      // Upload new image
-      const result = await uploadToCloudinary(typedReq.file.buffer, 'products/images');
-      imageUrl = result.url;
-      publicId = result.public_id;
+      // upload new one
+      const file = (req.files as Express.Multer.File[])[0];
+      const result = await uploadToCloudinary(file.buffer, 'products/images');
+      updateData.url = result.secure_url;
+      updateData.publicId = result.public_id;
     }
 
-    // ✅ Optional fields
-    const updateData: any = {
-      url: imageUrl,
-      publicId,
-    };
-
-    if (variantId) updateData.variantId = variantId;
-    if (typedReq.body.sequence_number !== undefined) {
-      updateData.sequence_number = +typedReq.body.sequence_number;
+    if (req.body.sequence_number !== undefined) {
+      updateData.sequence_number = Number(req.body.sequence_number);
     }
-    if (typedReq.body.is_active !== undefined) {
-      const isActiveRaw = typedReq.body.is_active;
-      updateData.is_active = isActiveRaw === 'true' || isActiveRaw === true;
+    if (req.body.is_active !== undefined) {
+      updateData.is_active = req.body.is_active === 'false' || req.body.is_active === false ? false : true;
+    }
+    if (req.body.variantId !== undefined) {
+      updateData.variantId = Number(req.body.variantId);
     }
 
     const updated = await prisma.variantImage.update({
@@ -124,13 +89,9 @@ export const updateVariantImage = async (req: Request, res: Response) => {
       data: updateData,
     });
 
-    res.status(200).json({
-      success: true,
-      message: 'Variant image updated successfully',
-      variantImage: updated,
-    });
-  } catch (err) {
-    console.error('Error updating variant image:', err);
+    res.status(200).json({ success: true, variantImage: updated });
+  } catch (error: any) {
+    console.error('Error updating variant image:', error);
     res.status(500).json({ success: false, message: 'Failed to update variant image' });
   }
 };
