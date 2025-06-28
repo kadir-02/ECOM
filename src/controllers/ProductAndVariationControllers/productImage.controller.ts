@@ -34,3 +34,19 @@ export const deleteProductImage = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Error deleting product image' });
   }
 };
+
+export const getProductImages = async (req:Request, res:Response) => {
+  const productId = Number(req.params.productId);
+  const images = await prisma.productImage.findMany({ where: { productId } });
+  res.json({ success: true, images });
+};
+
+export const updateProductImage = async (req:Request, res:Response) => {
+  const id = Number(req.params.id);
+  const { image, sequence } = req.body;
+  const updated = await prisma.productImage.update({
+    where: { id },
+    data: { image, sequence: sequence ? Number(sequence) : undefined },
+  });
+  res.json({ success: true, productImage: updated });
+};
