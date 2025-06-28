@@ -9,8 +9,8 @@ const router = Router({ mergeParams: true });
 
 // Public routes
 router.get('/', getProducts);
-router.get('/image/',productImageRoutes)
-router.get('/spec/',productSpecRoutes)
+router.use('/image/',productImageRoutes)
+router.use('/spec/',productSpecRoutes)
 // router.get('/info/:slug', getProductBySlug);
 // router.use('/:productId/variant', variantRoutes);
 // router.get('/best-selling', getBestSellingProducts);
