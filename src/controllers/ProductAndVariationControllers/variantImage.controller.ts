@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
+import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
 import { v2 as cloudinary } from 'cloudinary';
 
 interface JwtPayload {
@@ -17,6 +18,9 @@ export interface UpdateRequest extends Request {
 export const createVariantImage = async (req: Request, res: Response) => {
   const typedReq = req as UpdateRequest;
   const variantId = +typedReq.body.variantId;
+  const sequenceNumber = typedReq.body.sequence_number ? +typedReq.body.sequence_number : undefined;
+  const isActiveRaw = typedReq.body.is_active;
+  const isActive = isActiveRaw === 'false' || isActiveRaw === false ? false : true;
 
   if (!variantId || isNaN(variantId)) {
      res.status(400).json({ success: false, message: 'Invalid or missing variantId' });
@@ -24,8 +28,7 @@ export const createVariantImage = async (req: Request, res: Response) => {
   }
 
   const filesInput = typedReq.files;
-  const files: Express.Multer.File[] =
-    Array.isArray(filesInput) ? filesInput : [];
+  const files: Express.Multer.File[] = Array.isArray(filesInput) ? filesInput : [];
 
   if (!files || files.length === 0) {
      res.status(400).json({ success: false, message: 'At least one image is required' });
@@ -36,30 +39,23 @@ export const createVariantImage = async (req: Request, res: Response) => {
     const existingCount = await prisma.variantImage.count({ where: { variantId } });
 
     const uploadResults = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<{ url: string; public_id: string }>((resolve, reject) => {
-            cloudinary.uploader.upload_stream(
-              { folder: 'variant_images' },
-              (error, result) => {
-                if (error || !result) return reject(error);
-                resolve({
-                  url: result.secure_url,
-                  public_id: result.public_id,
-                });
-              }
-            ).end(file.buffer);
-          })
+      files.map((file, index) =>
+        uploadToCloudinary(file.buffer, 'products/images')
+          .then((result) => ({
+            url: result.url,
+            publicId: result.public_id,
+            sequence_number: sequenceNumber !== undefined ? sequenceNumber + index : existingCount + index,
+          }))
       )
     );
 
     const created = await prisma.variantImage.createMany({
-      data: uploadResults.map((result, idx) => ({
+      data: uploadResults.map((result) => ({
         url: result.url,
-        publicId: result.public_id,
+        publicId: result.publicId,
         variantId,
-        sequence_number: existingCount + idx,
-        is_active: true,
+        sequence_number: result.sequence_number,
+        is_active: isActive,
       })),
     });
 
@@ -76,12 +72,13 @@ export const createVariantImage = async (req: Request, res: Response) => {
 
 
 export const updateVariantImage = async (req: Request, res: Response) => {
-  const typedReq = req as unknown as UpdateRequest;
+  const typedReq = req as UpdateRequest;
   const id = +typedReq.params.id;
   const variantId = typedReq.body.variantId ? +typedReq.body.variantId : undefined;
 
   try {
     const existing = await prisma.variantImage.findUnique({ where: { id } });
+
     if (!existing) {
        res.status(404).json({ success: false, message: 'Image not found' });
        return
@@ -90,46 +87,51 @@ export const updateVariantImage = async (req: Request, res: Response) => {
     let imageUrl = existing.url;
     let publicId = existing.publicId;
 
+    // ✅ Handle new file upload
     if (typedReq.file) {
+      // Delete old image from Cloudinary if exists
       if (publicId) {
-        await cloudinary.uploader.destroy(publicId).catch((err) => {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (err: any) {
           console.warn('Failed to delete old image from Cloudinary:', err.message);
-        });
+        }
       }
 
-      const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          { folder: 'variant_images' },
-          (error, result) => {
-            if (error || !result) return reject(error);
-            resolve({ secure_url: result.secure_url, public_id: result.public_id });
-          }
-        ).end(typedReq.file!.buffer);
-      });
-
-      imageUrl = result.secure_url;
+      // Upload new image
+      const result = await uploadToCloudinary(typedReq.file.buffer, 'products/images');
+      imageUrl = result.url;
       publicId = result.public_id;
+    }
+
+    // ✅ Optional fields
+    const updateData: any = {
+      url: imageUrl,
+      publicId,
+    };
+
+    if (variantId) updateData.variantId = variantId;
+    if (typedReq.body.sequence_number !== undefined) {
+      updateData.sequence_number = +typedReq.body.sequence_number;
+    }
+    if (typedReq.body.is_active !== undefined) {
+      const isActiveRaw = typedReq.body.is_active;
+      updateData.is_active = isActiveRaw === 'true' || isActiveRaw === true;
     }
 
     const updated = await prisma.variantImage.update({
       where: { id },
-      data: {
-        url: imageUrl,
-        publicId,
-        ...(variantId ? { variantId } : {}),
-        ...(typedReq.body.sequence_number !== undefined
-          ? { sequence_number: +typedReq.body.sequence_number }
-          : {}),
-        ...(typedReq.body.is_active !== undefined
-          ? { is_active: typedReq.body.is_active === 'true' || typedReq.body.is_active === true }
-          : {}),
-      },
+      data: updateData,
     });
 
-    res.status(200).json({ success: true, message: 'Variant image updated', variantImage: updated });
+    res.status(200).json({
+      success: true,
+      message: 'Variant image updated successfully',
+      variantImage: updated,
+    });
   } catch (err) {
-    console.error('Error updating image:', err);
-    res.status(500).json({ success: false, message: 'Failed to update image' });
+    console.error('Error updating variant image:', err);
+    res.status(500).json({ success: false, message: 'Failed to update variant image' });
   }
 };
 
