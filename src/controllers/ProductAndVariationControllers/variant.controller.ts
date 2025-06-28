@@ -49,7 +49,7 @@ export const createVariant = async (req: Request, res: Response) => {
         is_selected: is_selected === 'true' || is_selected === true,
         is_active: is_active === 'true' || is_active === true,
         is_new_arrival: is_new_arrival === 'true' || is_new_arrival === true,
-        created_by: created_by ? parseInt(created_by) : undefined,
+        created_by: created_by ? parseInt(created_by) : 0,
         low_stock_threshold: low_stock_threshold ? parseInt(low_stock_threshold) : undefined,
         productId: parseInt(productId),
       },
