@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticate } from '../middlewares/authenticate';
-import { authorizeAdmin } from '../middlewares/authorizaAdmin';
-import { createProduct, getProducts, updateProductSequence } from '../controllers/ProductAndVariationControllers/product.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
+import { createProduct, getProducts, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
 
 const router = Router({ mergeParams: true });
 
