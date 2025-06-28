@@ -100,16 +100,11 @@ export const createProduct = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const getProducts = async (req: Request, res: Response) => {
   try {
     const { category } = req.query;
 
-    const whereClause: any = {
-      isDeleted: false,
-    };
-
+    const whereClause: any = { isDeleted: false };
     if (category && !isNaN(Number(category))) {
       whereClause.categoryId = Number(category);
     }
@@ -120,24 +115,31 @@ export const getProducts = async (req: Request, res: Response) => {
         category: true,
         subcategory: true,
         images: true,
-        variants: {
-          include: {
-            images: true,
-          },
-        },
+        variants: { include: { images: true } },
         specifications: true,
       },
-      orderBy: {
-        sequenceNumber: 'asc',
-      },
+      orderBy: { sequenceNumber: 'asc' },
     });
 
-    res.status(200).json({ success: true, count: products.length, products });
+    const transformed = products.map((p) => {
+      const specsObj: Record<string, string[]> = {};
+      p.specifications.forEach((s) => {
+        if (!specsObj[s.name]) specsObj[s.name] = [];
+        if (!specsObj[s.name].includes(s.value)) specsObj[s.name].push(s.value);
+      });
+      return {
+        ...p,
+        specifications: specsObj,
+      };
+    });
+
+    res.status(200).json({ success: true, count: transformed.length, products: transformed });
   } catch (error: any) {
     console.error('Get products error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 export const updateProductSequence = async (req: Request, res: Response) => {
   try {
