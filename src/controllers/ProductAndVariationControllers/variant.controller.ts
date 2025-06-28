@@ -6,6 +6,7 @@ export const createVariant = async (req: Request, res: Response) => {
     name,
     description,
     specification,
+    SKU,
     selling_price,
     base_and_selling_price_difference_in_percent,
     stock,
@@ -39,6 +40,7 @@ export const createVariant = async (req: Request, res: Response) => {
         name,
         description,
         specification: typeof specification === 'string' ? JSON.parse(specification) : specification,
+        SKU,
         selling_price: parseFloat(selling_price),
         base_and_selling_price_difference_in_percent:
           base_and_selling_price_difference_in_percent != null
@@ -68,6 +70,7 @@ export const updateVariant = async (req: Request, res: Response) => {
     name,
     description,
     specification,
+    SKU,
     selling_price,
     base_and_selling_price_difference_in_percent,
     stock,
@@ -88,6 +91,7 @@ export const updateVariant = async (req: Request, res: Response) => {
           ? JSON.parse(specification)
           : specification
         : undefined,
+      SKU,
       selling_price: selling_price != null ? parseFloat(selling_price) : undefined,
       base_and_selling_price_difference_in_percent:
         base_and_selling_price_difference_in_percent != null

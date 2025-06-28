@@ -163,6 +163,7 @@ model ProductVariant {
   id                   Int             @id @default(autoincrement())
   productId            Int
   name                 String
+  SKU                  String @unique
   description          String
   specification        Json
   selling_price        Float           // actual selling price
