@@ -4,6 +4,7 @@ import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 import { createProduct, deleteProduct, getProducts, updateProduct, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
 import productImageRoutes from './productImage.routes'
 import productSpecRoutes from './productSpecification.route'
+import variantRoutes from '../ProductRoutes/variant.route';
 
 const router = Router({ mergeParams: true });
 
@@ -11,8 +12,8 @@ const router = Router({ mergeParams: true });
 router.get('/', getProducts);
 router.use('/image/',productImageRoutes)
 router.use('/spec/',productSpecRoutes)
+router.use('/:productId/variant', variantRoutes);
 // router.get('/info/:slug', getProductBySlug);
-// router.use('/:productId/variant', variantRoutes);
 // router.get('/best-selling', getBestSellingProducts);
 
 // Admin-only routes

@@ -9,6 +9,22 @@ export const createProductImage = async (req: Request, res: Response) => {
      return;
   }
 
+      if (sequence) {
+      const existing = await prisma.productImage.findFirst({
+        where: {
+          productId: Number(productId),
+          sequence: Number(sequence),
+        },
+      });
+
+      if (existing) {
+         res.status(400).json({
+          message: `Sequence number ${sequence} already exists for this product.`,
+        });
+        return
+      }
+    }
+
   try {
     const createdImages = [];
     for (const file of req.files as Express.Multer.File[]) {
@@ -54,6 +70,8 @@ export const updateProductImage = async (req: Request, res: Response) => {
     const result = await uploadToCloudinary(req.file.buffer, "products/images");
     imageUrl = result.secure_url;
   }
+
+  
 
   const updated = await prisma.productImage.update({
     where: { id },

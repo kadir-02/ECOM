@@ -141,7 +141,6 @@ export const getProducts = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateProductSequence = async (req: Request, res: Response) => {
   try {
     const updates: Array<{ id: number; sequence_number: number }> =

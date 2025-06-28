@@ -6,11 +6,10 @@ import {
   updateVariantImage,
   deleteVariantImage,
   getAllVariantImagesForProduct,
-} from '../controllers/variantImage.controller';
-import { upload } from '../upload/multer';
-import { uploadMemory } from '../upload/multerCloudinary';
-import { authenticate } from '../middlewares/authenticate';
-import { authorizeAdmin } from '../middlewares/authorizaAdmin';
+} from '../../controllers/ProductAndVariationControllers/variantImage.controller';
+import { uploadMemory } from '../../upload/multerCloudinary';
+import { authenticate } from '../../middlewares/authenticate';
+import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 
 const router = Router({ mergeParams: true });
 

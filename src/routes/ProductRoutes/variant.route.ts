@@ -7,10 +7,10 @@ import {
   deleteVariant,
   restoreVariant,
   softDeleteVariant,
-} from '../controllers/variant.controller';
-import { authenticate } from '../middlewares/authenticate';
-import { authorizeAdmin } from '../middlewares/authorizaAdmin';
-import variantImageRoutes from './variantImage.route';
+} from '../../controllers/ProductAndVariationControllers/variant.controller';
+import { authenticate } from '../../middlewares/authenticate';
+import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
+import variantImageRoutes from '../ProductRoutes/variantImage.route';
 
 
 

@@ -16,9 +16,7 @@ export const createProductSpecification = async (req: Request, res: Response) =>
         name,
         value,
         isActive: isActive ?? true,
-        isDeleted: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        isDeleted: false
       },
     });
     res.status(201).json({ success: true, productSpecification: created });
@@ -49,7 +47,6 @@ export const updateProductSpecification = async (req: Request, res: Response) =>
         name,
         value,
         isActive,
-        updatedAt: new Date(),
       },
     });
     res.json({ success: true, productSpecification: updated });

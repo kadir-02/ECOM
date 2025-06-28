@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../db/prisma';
+import prisma from '../../db/prisma';
 import { v2 as cloudinary } from 'cloudinary';
 
 interface JwtPayload {

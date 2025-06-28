@@ -1,7 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import path from 'path';
 import guestRoutes from './routes/guest.route';
 import authRoutes from './routes/auth.route';
 import adminRoutes from './routes/admin.route';
@@ -35,7 +34,6 @@ const app = express();
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 
 app.use('/gallery', galleryRoutes);
