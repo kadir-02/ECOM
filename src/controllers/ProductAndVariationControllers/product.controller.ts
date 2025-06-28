@@ -278,7 +278,6 @@ export const deleteProduct = async (req: Request, res: Response) => {
       where: { id },
       data: {
         isDeleted: true,
-        deletedAt: new Date(),
         deletedById: Number(req.body.deletedById) || existing.deletedById,
       },
     });
