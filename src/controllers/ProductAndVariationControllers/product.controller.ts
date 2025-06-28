@@ -29,17 +29,23 @@ export const createProduct = async (req: Request, res: Response) => {
       variant_specifications
     } = req.body;
 
-    // validation code here (same as before)
-
     const slug = await generateSlug(name, SKU);
 
     const latestProductInCategory = await prisma.product.findFirst({
       where: { categoryId: Number(categoryId) },
-      orderBy: { sequenceNumber: "desc" },
+      orderBy: { sequenceNumber: 'desc' },
       select: { sequenceNumber: true },
     });
 
-    const nextSequenceNumber = latestProductInCategory?.sequenceNumber ? latestProductInCategory.sequenceNumber + 1 : 1;
+    const nextSequenceNumber = latestProductInCategory?.sequenceNumber
+      ? latestProductInCategory.sequenceNumber + 1
+      : 1;
+
+    const specs = Array.isArray(variant_specifications)
+      ? variant_specifications
+      : variant_specifications
+      ? [variant_specifications]
+      : [];
 
     const product = await prisma.product.create({
       data: {
@@ -50,7 +56,7 @@ export const createProduct = async (req: Request, res: Response) => {
         sellingPrice: parseFloat(sellingPrice),
         priceDifferencePercent: parseFloat(priceDifferencePercent),
         stock: parseInt(stock),
-        isNewArrival: isNewArrival === "true",
+        isNewArrival: isNewArrival === 'true',
         isActive: is_active,
         isDeleted: false,
         createdById: Number(createdById),
@@ -67,22 +73,20 @@ export const createProduct = async (req: Request, res: Response) => {
         seoDescription,
         productDetails,
         specifications: {
-          create: variant_specifications?.map((spec: any) => ({
+          create: specs.map((spec: any) => ({
             name: spec.name,
             value: spec.value,
             isActive: true,
             isDeleted: false,
-          })) || []
-        }
+          })),
+        },
       },
-      include: {
-        specifications: true
-      }
+      include: { specifications: true },
     });
 
     res.status(201).json({ success: true, product });
   } catch (error: any) {
-    console.error("Create product error:", error);
+    console.error('Create product error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
