@@ -10,17 +10,22 @@ interface JwtPayload {
 export interface UpdateRequest extends Request {
   user?: JwtPayload;
   file?: Express.Multer.File;
+  files?: Express.Multer.File[];
 }
 
-export const createVariantImage = async (req: UpdateRequest, res: Response) => {
-  const variantId = +req.body.variantId;
+// CREATE
+export const createVariantImage = async (req: Request, res: Response) => {
+  const typedReq = req as UpdateRequest;
+  const variantId = +typedReq.body.variantId;
 
   if (!variantId || isNaN(variantId)) {
      res.status(400).json({ success: false, message: 'Invalid or missing variantId' });
      return
   }
 
-  const files = req.files as Express.Multer.File[];
+  const filesInput = typedReq.files;
+  const files: Express.Multer.File[] =
+    Array.isArray(filesInput) ? filesInput : [];
 
   if (!files || files.length === 0) {
      res.status(400).json({ success: false, message: 'At least one image is required' });
@@ -28,25 +33,33 @@ export const createVariantImage = async (req: UpdateRequest, res: Response) => {
   }
 
   try {
+    const existingCount = await prisma.variantImage.count({ where: { variantId } });
+
     const uploadResults = await Promise.all(
-      files.map((file) =>
-        new Promise<{ url: string; public_id: string }>((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            { folder: 'variant_images' },
-            (error, result) => {
-              if (error || !result) return reject(error);
-              resolve({ url: result.secure_url, public_id: result.public_id });
-            }
-          ).end(file.buffer);
-        })
+      files.map(
+        (file) =>
+          new Promise<{ url: string; public_id: string }>((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              { folder: 'variant_images' },
+              (error, result) => {
+                if (error || !result) return reject(error);
+                resolve({
+                  url: result.secure_url,
+                  public_id: result.public_id,
+                });
+              }
+            ).end(file.buffer);
+          })
       )
     );
 
     const created = await prisma.variantImage.createMany({
-      data: uploadResults.map((result) => ({
+      data: uploadResults.map((result, idx) => ({
         url: result.url,
         publicId: result.public_id,
         variantId,
+        sequence_number: existingCount + idx,
+        is_active: true,
       })),
     });
 
@@ -61,9 +74,11 @@ export const createVariantImage = async (req: UpdateRequest, res: Response) => {
   }
 };
 
-export const updateVariantImage = async (req: UpdateRequest, res: Response) => {
-  const id = +req.params.id;
-  const variantId = req.body.variantId ? +req.body.variantId : undefined;
+
+export const updateVariantImage = async (req: Request, res: Response) => {
+  const typedReq = req as unknown as UpdateRequest;
+  const id = +typedReq.params.id;
+  const variantId = typedReq.body.variantId ? +typedReq.body.variantId : undefined;
 
   try {
     const existing = await prisma.variantImage.findUnique({ where: { id } });
@@ -75,7 +90,7 @@ export const updateVariantImage = async (req: UpdateRequest, res: Response) => {
     let imageUrl = existing.url;
     let publicId = existing.publicId;
 
-    if (req.file) {
+    if (typedReq.file) {
       if (publicId) {
         await cloudinary.uploader.destroy(publicId).catch((err) => {
           console.warn('Failed to delete old image from Cloudinary:', err.message);
@@ -89,7 +104,7 @@ export const updateVariantImage = async (req: UpdateRequest, res: Response) => {
             if (error || !result) return reject(error);
             resolve({ secure_url: result.secure_url, public_id: result.public_id });
           }
-        ).end(req.file!.buffer);
+        ).end(typedReq.file!.buffer);
       });
 
       imageUrl = result.secure_url;
@@ -102,6 +117,12 @@ export const updateVariantImage = async (req: UpdateRequest, res: Response) => {
         url: imageUrl,
         publicId,
         ...(variantId ? { variantId } : {}),
+        ...(typedReq.body.sequence_number !== undefined
+          ? { sequence_number: +typedReq.body.sequence_number }
+          : {}),
+        ...(typedReq.body.is_active !== undefined
+          ? { is_active: typedReq.body.is_active === 'true' || typedReq.body.is_active === true }
+          : {}),
       },
     });
 
@@ -112,6 +133,8 @@ export const updateVariantImage = async (req: UpdateRequest, res: Response) => {
   }
 };
 
+
+// DELETE
 export const deleteVariantImage = async (req: Request, res: Response) => {
   const id = +req.params.id;
 
@@ -138,12 +161,14 @@ export const deleteVariantImage = async (req: Request, res: Response) => {
   }
 };
 
+// GET ALL FOR VARIANT
 export const getAllVariantImages = async (req: Request, res: Response) => {
   const variantId = Number(req.params.variantId);
 
   try {
     const images = await prisma.variantImage.findMany({
       where: variantId ? { variantId } : undefined,
+      orderBy: { sequence_number: 'asc' },
       include: { variant: true },
     });
 
@@ -158,8 +183,9 @@ export const getAllVariantImages = async (req: Request, res: Response) => {
   }
 };
 
+// GET BY ID
 export const getVariantImageById = async (req: Request, res: Response) => {
-  const id = Number(req.params.variantId);
+  const id = Number(req.params.id);
 
   if (isNaN(id)) {
      res.status(400).json({ success: false, message: 'Invalid variant image id' });
@@ -188,6 +214,7 @@ export const getVariantImageById = async (req: Request, res: Response) => {
   }
 };
 
+// GET ALL FOR PRODUCT + VARIANT
 export const getAllVariantImagesForProduct = async (req: Request, res: Response) => {
   const productId = Number(req.params.productId);
   const variantId = Number(req.params.variantId);
@@ -220,7 +247,7 @@ export const getAllVariantImagesForProduct = async (req: Request, res: Response)
 
     const images = await prisma.variantImage.findMany({
       where: { variantId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { sequence_number: 'asc' },
     });
 
     res.status(200).json({
