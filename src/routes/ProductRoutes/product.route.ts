@@ -3,12 +3,14 @@ import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 import { createProduct, getProducts, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
 import productImageRoutes from './productImage.routes'
+import productSpecRoutes from './productSpecification.route'
 
 const router = Router({ mergeParams: true });
 
 // Public routes
 router.get('/', getProducts);
-router.get('/',productImageRoutes)
+router.get('/image/',productImageRoutes)
+router.get('/spec/',productSpecRoutes)
 // router.get('/info/:slug', getProductBySlug);
 // router.use('/:productId/variant', variantRoutes);
 // router.get('/best-selling', getBestSellingProducts);
