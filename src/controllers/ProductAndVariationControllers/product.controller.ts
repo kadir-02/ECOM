@@ -196,3 +196,96 @@ export const updateProductSequence = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const updateProduct = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const {
+    name,
+    description,
+    SKU,
+    basePrice,
+    sellingPrice,
+    priceDifferencePercent,
+    stock,
+    isNewArrival,
+    updatedById,
+    categoryId,
+    subcategoryId,
+    length,
+    width,
+    weight,
+    sequenceNumber,
+    seoTitle,
+    seoKeyword,
+    seoDescription,
+    productDetails,
+    is_active,
+  } = req.body;
+
+  try {
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+       res.status(404).json({ success: false, message: "Product not found" });
+       return
+    }
+
+    const slug = name ? await generateSlug(name, SKU) : existing.slug;
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        name: name ?? existing.name,
+        description,
+        SKU: SKU ?? existing.SKU,
+        basePrice: basePrice ? parseFloat(basePrice) : existing.basePrice,
+        sellingPrice: sellingPrice ? parseFloat(sellingPrice) : existing.sellingPrice,
+        priceDifferencePercent: priceDifferencePercent ? parseFloat(priceDifferencePercent) : existing.priceDifferencePercent,
+        stock: stock ? parseInt(stock) : existing.stock,
+        isNewArrival: isNewArrival !== undefined ? isNewArrival === "true" : existing.isNewArrival,
+        isActive: is_active !== undefined ? is_active : existing.isActive,
+        updatedById: Number(updatedById),
+        categoryId: categoryId ? Number(categoryId) : existing.categoryId,
+        subcategoryId: subcategoryId ? Number(subcategoryId) : existing.subcategoryId,
+        length,
+        width,
+        weight,
+        slug,
+        sequenceNumber: sequenceNumber ? Number(sequenceNumber) : existing.sequenceNumber,
+        seoTitle,
+        seoKeyword,
+        seoDescription,
+        productDetails,
+      },
+    });
+
+    res.status(200).json({ success: true, product: updated });
+  } catch (error: any) {
+    console.error("Update product error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteProduct = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  try {
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+       res.status(404).json({ success: false, message: "Product not found" });
+       return
+    }
+
+    await prisma.product.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedById: Number(req.body.deletedById) || existing.deletedById,
+      },
+    });
+
+    res.status(200).json({ success: true, message: "Product soft deleted" });
+  } catch (error: any) {
+    console.error("Delete product error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
-import { createProduct, getProducts, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
+import { createProduct, deleteProduct, getProducts, updateProduct, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
 import productImageRoutes from './productImage.routes'
 import productSpecRoutes from './productSpecification.route'
 
@@ -19,6 +19,8 @@ router.use('/spec/',productSpecRoutes)
 router.use(authenticate, authorizeAdmin);
 
 router.post('/', createProduct);
+router.patch('/:id', updateProduct);
+router.delete('/:id', deleteProduct);
 router.patch('/update-sequence', updateProductSequence);
 // router.delete('/:id', deleteProduct);
 // router.patch('/deactivate/:id', softDeleteProduct);
