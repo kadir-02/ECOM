@@ -20,32 +20,41 @@ export const createProduct = async (req: Request, res: Response) => {
       length,
       width,
       weight,
-      sequenceNumber,
       seoTitle,
       seoKeyword,
       seoDescription,
       productDetails,
       is_active,
-      variant_specifications
+      variant_specifications,
     } = req.body;
+
+    // Basic validation (add more checks as needed)
+    if (!name || !SKU || !basePrice || !sellingPrice) {
+       res.status(400).json({ message: "Required fields missing" });
+       return
+    }
 
     const slug = await generateSlug(name, SKU);
 
-    const latestProductInCategory = await prisma.product.findFirst({
+    // Determine next sequenceNumber
+    const last = await prisma.product.findFirst({
       where: { categoryId: Number(categoryId) },
-      orderBy: { sequenceNumber: 'desc' },
+      orderBy: { sequenceNumber: "desc" },
       select: { sequenceNumber: true },
     });
+    const nextSeq = (last?.sequenceNumber ?? 0) + 1;
 
-    const nextSequenceNumber = latestProductInCategory?.sequenceNumber
-      ? latestProductInCategory.sequenceNumber + 1
-      : 1;
-
-    const specs = Array.isArray(variant_specifications)
-      ? variant_specifications
-      : variant_specifications
-      ? [variant_specifications]
-      : [];
+    // Normalize specifications object into array of { name, value }
+    const specs: { name: string; value: string }[] = [];
+    if (variant_specifications && typeof variant_specifications === "object") {
+      for (const [key, vals] of Object.entries(variant_specifications)) {
+        if (Array.isArray(vals)) {
+          for (const v of vals) specs.push({ name: key, value: String(v) });
+        } else {
+          specs.push({ name: key, value: String(vals) });
+        }
+      }
+    }
 
     const product = await prisma.product.create({
       data: {
@@ -56,8 +65,8 @@ export const createProduct = async (req: Request, res: Response) => {
         sellingPrice: parseFloat(sellingPrice),
         priceDifferencePercent: parseFloat(priceDifferencePercent),
         stock: parseInt(stock),
-        isNewArrival: isNewArrival === 'true',
-        isActive: is_active,
+        isNewArrival: isNewArrival === "true",
+        isActive: is_active === "true" || is_active === true,
         isDeleted: false,
         createdById: Number(createdById),
         updatedById: Number(createdById),
@@ -67,15 +76,15 @@ export const createProduct = async (req: Request, res: Response) => {
         width,
         weight,
         slug,
-        sequenceNumber: nextSequenceNumber,
+        sequenceNumber: nextSeq,
         seoTitle,
         seoKeyword,
         seoDescription,
         productDetails,
         specifications: {
-          create: specs.map((spec: any) => ({
-            name: spec.name,
-            value: spec.value,
+          create: specs.map((s) => ({
+            name: s.name,
+            value: s.value,
             isActive: true,
             isDeleted: false,
           })),
@@ -85,11 +94,12 @@ export const createProduct = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ success: true, product });
-  } catch (error: any) {
-    console.error('Create product error:', error);
-    res.status(500).json({ success: false, message: error.message });
+  } catch (err: any) {
+    console.error("Create product error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 export const getProducts = async (req: Request, res: Response) => {
