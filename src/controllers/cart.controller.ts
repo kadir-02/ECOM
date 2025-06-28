@@ -41,13 +41,14 @@ export const addToCart = async (req: CustomRequest, res: Response) => {
   const userId = req.user?.userId;
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
-    return
+    return;
   }
 
   const { productId, variantId, quantity } = req.body;
-  if (!productId && !variantId){
+
+  if (!productId && !variantId) {
     res.status(400).json({ message: 'ProductId or VariantId required' });
-    return
+    return;
   }
 
   const cart = await prisma.cart.upsert({
@@ -57,30 +58,69 @@ export const addToCart = async (req: CustomRequest, res: Response) => {
   });
 
   if (variantId) {
-    const variant = await prisma.productVariant.findUnique({ where: { id: variantId } });
+    const variant = await prisma.productVariant.findUnique({
+      where: { id: variantId },
+    });
+
     if (!variant || variant.isDeleted) {
       res.status(404).json({ message: 'Variant not found' });
-      return
+      return;
     }
 
-    const existing = await prisma.cartItem.findFirst({ where: { cartId: cart.id, variantId } });
+    const existing = await prisma.cartItem.findFirst({
+      where: { cartId: cart.id, variantId },
+    });
+
     const updatedOrNew = existing
-      ? await prisma.cartItem.update({ where: { id: existing.id }, data: { quantity: existing.quantity + (quantity ?? 1) } })
-      : await prisma.cartItem.create({ data: { cartId: cart.id, variantId, quantity: quantity ?? 1 } });
+      ? await prisma.cartItem.update({
+          where: { id: existing.id },
+          data: { quantity: existing.quantity + (quantity ?? 1) },
+        })
+      : await prisma.cartItem.create({
+          data: {
+            cartId: cart.id,
+            variantId,
+            quantity: quantity ?? 1,
+          },
+        });
 
     res.json(updatedOrNew);
+    return;
   }
 
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product || product.isDeleted){
-     res.status(404).json({ message: 'Product not found' });
-     return
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { variants: true },
+  });
+
+  if (!product || product.isDeleted) {
+    res.status(404).json({ message: 'Product not found' });
+    return;
   }
 
-  const existing = await prisma.cartItem.findFirst({ where: { cartId: cart.id, productId } });
+  if (product.variants && product.variants.length > 0) {
+    res.status(400).json({
+      message: 'This product has variants. Please select a variant instead.',
+    });
+    return;
+  }
+
+  const existing = await prisma.cartItem.findFirst({
+    where: { cartId: cart.id, productId },
+  });
+
   const updatedOrNew = existing
-    ? await prisma.cartItem.update({ where: { id: existing.id }, data: { quantity: existing.quantity + (quantity ?? 1) } })
-    : await prisma.cartItem.create({ data: { cartId: cart.id, productId, quantity: quantity ?? 1 } });
+    ? await prisma.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: existing.quantity + (quantity ?? 1) },
+      })
+    : await prisma.cartItem.create({
+        data: {
+          cartId: cart.id,
+          productId,
+          quantity: quantity ?? 1,
+        },
+      });
 
   res.json(updatedOrNew);
 };
