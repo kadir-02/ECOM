@@ -22,7 +22,7 @@ const router = Router({ mergeParams: true });
 router.get('/', getAllVariants);
 router.get('/:id', getVariantById);
 router.get('/product/:productId', getVariantsByProduct);
-router.use('/:variantId/images', variantImageRoutes);
+router.use('/images/:variantId', variantImageRoutes);
 
 // Admin-only routes
 router.use(authenticate,authorizeAdmin)

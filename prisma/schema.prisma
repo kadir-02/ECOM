@@ -190,7 +190,8 @@ model VariantImage {
   publicId  String?
   createdAt DateTime @default(now())
   variantId Int
-
+  sequence_number Int
+  is_active       Boolean         @default(true)
   variant ProductVariant @relation(fields: [variantId], references: [id])
 }
 
