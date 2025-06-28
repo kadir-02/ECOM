@@ -121,7 +121,30 @@ export const updateVariant = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// src/controllers/ProductAndVariationControllers/productVariant.controller.ts
 
+export const getVariantsByProduct = async (req: Request, res: Response) => {
+  const productId = Number(req.params.productId);
+  if (!productId || isNaN(productId)) {
+     res.status(400).json({
+      success: false,
+      message: 'A valid "productId" path parameter is required.'
+    });
+    return
+  }
+
+  try {
+    const variants = await prisma.productVariant.findMany({
+      where: { productId, isDeleted: false },
+      include: { images: true }
+    });
+
+    res.status(200).json({ success: true, count: variants.length, variants });
+  } catch (error: any) {
+    console.error('Error fetching variants for product:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 export const getAllVariants = async (_req: Request, res: Response) => {
   try {

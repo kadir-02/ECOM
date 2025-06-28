@@ -7,6 +7,7 @@ import {
   deleteVariant,
   restoreVariant,
   softDeleteVariant,
+  getVariantsByProduct,
 } from '../../controllers/ProductAndVariationControllers/variant.controller';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
@@ -20,7 +21,7 @@ const router = Router({ mergeParams: true });
 // Public or authenticated routes
 router.get('/', getAllVariants);
 router.get('/:id', getVariantById);
-
+router.get('/product/:productId', getVariantsByProduct);
 router.use('/:variantId/images', variantImageRoutes);
 
 // Admin-only routes
