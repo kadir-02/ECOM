@@ -11,9 +11,9 @@ import { uploadMemory } from '../../upload/multerCloudinary';
 
 const router = Router();
 
+router.get('/:productId', getProductImages);
 router.use(authenticate, authorizeAdmin);
 
-router.get('/:productId', getProductImages);
 router.post('/', uploadMemory.array('image'), createProductImage);
 router.patch('/:id', uploadMemory.single('image'), updateProductImage);
 router.delete('/:id', deleteProductImage);
