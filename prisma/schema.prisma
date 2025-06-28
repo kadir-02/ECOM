@@ -160,20 +160,27 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id            Int      @id @default(autoincrement())
-  name          String
-  specification Json
-  price         Float
-  oldPrice      Float?
-  stock         Int
-  productId     Int
-  createdAt     DateTime @default(now())
-  isDeleted     Boolean  @default(false)
+  id                   Int             @id @default(autoincrement())
+  productId            Int
+  name                 String
+  description          String
+  specification        Json
+  selling_price        Float           // actual selling price
+  base_and_selling_price_difference_in_percent  Float?  // renamed from oldPrice
+  stock                Int
+  colour_code          String?         // renamed from colourCode
+  is_selected          Boolean         @default(false)
+  is_active            Boolean         @default(true)
+  is_new_arrival       Boolean         @default(false)
+  created_by           Int
+  low_stock_threshold  Int?            // renamed from lowStockThreshold
+  createdAt            DateTime        @default(now())
+  isDeleted            Boolean         @default(false)
 
-  product    Product        @relation(fields: [productId], references: [id])
-  images     VariantImage[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  product              Product         @relation(fields: [productId], references: [id])
+  images               VariantImage[]
+  cartItems            CartItem[]
+  orderItems           OrderItem[]
 }
 
 model VariantImage {
