@@ -3,8 +3,8 @@ import { createProductSpecification, getProductSpecifications, updateProductSpec
 
 const router = Router();
 
-router.post('/', createProductSpecification);
 router.get('/:productId', getProductSpecifications);
+router.post('/', createProductSpecification);
 router.patch('/:id', updateProductSpecification);
 router.delete('/:id', deleteProductSpecification);
 

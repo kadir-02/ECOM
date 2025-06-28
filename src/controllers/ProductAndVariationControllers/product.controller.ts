@@ -109,7 +109,7 @@ export const getProducts = async (req: Request, res: Response) => {
     const { category } = req.query;
 
     const whereClause: any = {
-      isDeleted: false, // only fetch non-deleted products
+      isDeleted: false,
     };
 
     if (category && !isNaN(Number(category))) {
@@ -122,20 +122,25 @@ export const getProducts = async (req: Request, res: Response) => {
         category: true,
         subcategory: true,
         images: true,
-        variants: true,
+        variants: {
+          include: {
+            images: true,
+          },
+        },
         specifications: true,
       },
       orderBy: {
-        sequenceNumber: "asc",
+        sequenceNumber: 'asc',
       },
     });
 
     res.status(200).json({ success: true, count: products.length, products });
   } catch (error: any) {
-    console.error("Get products error:", error);
+    console.error('Get products error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 export const updateProductSequence = async (req: Request, res: Response) => {
   try {
