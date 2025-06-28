@@ -26,7 +26,7 @@ router.use('/:variantId/images', variantImageRoutes);
 // Admin-only routes
 router.use(authenticate,authorizeAdmin)
 
-router.post('/', createVariant);
+router.post('/:productId', createVariant);
 router.patch('/:id', updateVariant);
 router.delete('/:id', deleteVariant);
 router.patch('/deactivate/:id', softDeleteVariant);

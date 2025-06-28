@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 router.get('/', getProducts);
 router.use('/image/',productImageRoutes)
 router.use('/spec/',productSpecRoutes)
-router.use('/variant/:productId', variantRoutes);
+router.use('/variant', variantRoutes);
 // router.get('/info/:slug', getProductBySlug);
 // router.get('/best-selling', getBestSellingProducts);
 
