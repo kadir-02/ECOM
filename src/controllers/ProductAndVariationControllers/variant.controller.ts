@@ -219,3 +219,30 @@ export const restoreVariant = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const getSpecificationsByProductId = async (req: Request, res: Response) => {
+  const productId = Number(req.params.productId);
+
+  if (isNaN(productId)) {
+    res.status(400).json({ success: false, message: 'Invalid productId' });
+    return;
+  }
+
+  try {
+    const specs = await prisma.productSpecification.findMany({
+      where: { productId, isDeleted: false },
+      select: { name: true, value: true },
+    });
+
+    const grouped: Record<string, string[]> = {};
+    for (const { name, value } of specs) {
+      grouped[name] = grouped[name] || [];
+      grouped[name].push(value);
+    }
+
+    res.json({ success: true, specifications: grouped });
+  } catch (err: any) {
+    console.error('Error fetching specifications:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

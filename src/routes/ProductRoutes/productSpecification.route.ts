@@ -3,7 +3,7 @@ import { createProductSpecification, getProductSpecifications, updateProductSpec
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.get('/:productId', getProductSpecifications);
 router.use(authenticate,authorizeAdmin)

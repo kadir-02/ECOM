@@ -9,7 +9,7 @@ import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 import { uploadMemory } from '../../upload/multerCloudinary';
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router.get('/:productId', getProductImages);
 router.use(authenticate, authorizeAdmin);
