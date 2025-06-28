@@ -4,8 +4,6 @@ import prisma from '../../db/prisma';
 export const createVariant = async (req: Request, res: Response) => {
   const {
     SKU,
-    name,
-    description,
     specification,
     selling_price,
     base_and_selling_price_difference_in_percent,
@@ -20,8 +18,6 @@ export const createVariant = async (req: Request, res: Response) => {
   } = req.body;
 
   if (
-    !name ||
-    !description ||
     !specification ||
     selling_price === undefined ||
     stock === undefined ||
@@ -29,7 +25,7 @@ export const createVariant = async (req: Request, res: Response) => {
   ) {
     res.status(400).json({
       success: false,
-      message: 'Required fields: name, description, specification, selling_price, stock, productId',
+      message: 'Required fields: specification, selling_price, stock, productId',
     });
     return;
   }
@@ -38,8 +34,6 @@ export const createVariant = async (req: Request, res: Response) => {
     const variant = await prisma.productVariant.create({
       data: {
         SKU,
-        name,
-        description,
         specification: typeof specification === 'string' ? JSON.parse(specification) : specification,
         selling_price: parseFloat(selling_price),
         base_and_selling_price_difference_in_percent:
@@ -121,7 +115,6 @@ export const updateVariant = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-// src/controllers/ProductAndVariationControllers/productVariant.controller.ts
 
 export const getVariantsByProduct = async (req: Request, res: Response) => {
   const productId = Number(req.params.productId);

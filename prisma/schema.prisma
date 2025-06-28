@@ -162,9 +162,9 @@ model ProductImage {
 model ProductVariant {
   id                   Int             @id @default(autoincrement())
   productId            Int
-  name                 String
+  name                 String?
   SKU                  String 
-  description          String
+  description          String?
   specification        Json
   selling_price        Float           // actual selling price
   base_and_selling_price_difference_in_percent  Float?  // renamed from oldPrice
