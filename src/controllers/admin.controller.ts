@@ -208,163 +208,163 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
   }
 };
 
-export const exportUsersToCsv = async (req: Request, res: Response) => {
-  try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        isDeleted: true,
-      },
-    });
+// export const exportUsersToCsv = async (req: Request, res: Response) => {
+//   try {
+//     const users = await prisma.user.findMany({
+//       select: {
+//         id: true,
+//         email: true,
+//         role: true,
+//         createdAt: true,
+//         isDeleted: true,
+//       },
+//     });
 
-    if (!users || users.length === 0) {
-       res.status(404).json({ message: 'No users found' });
-       return
-    }
+//     if (!users || users.length === 0) {
+//        res.status(404).json({ message: 'No users found' });
+//        return
+//     }
 
-    res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
-    res.setHeader('Content-Type', 'text/csv');
+//     res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
+//     res.setHeader('Content-Type', 'text/csv');
 
-    const csvStream = format({ headers: true });
-    csvStream.pipe(res);
+//     const csvStream = format({ headers: true });
+//     csvStream.pipe(res);
 
-    users.forEach(user => {
-      csvStream.write({
-        ...user,
-        createdAt: user.createdAt.toISOString(),
-      });
-    });
+//     users.forEach(user => {
+//       csvStream.write({
+//         ...user,
+//         createdAt: user.createdAt.toISOString(),
+//       });
+//     });
 
-    csvStream.end();
-  } catch (error) {
-    console.error('Export CSV Error:', error);
-    res.status(500).json({ message: 'Failed to export users to CSV' });
-  }
-};
-
-
-export const exportProductsToCsv = async (req: Request, res: Response) => {
-  try {
-    const products = await prisma.product.findMany({
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        basePrice: true,
-        variants: true,
-        category: true,
-        subcategory: true,
-        slug: true,
-        createdAt: true,
-        isDeleted: true,
-      },
-    });
-
-    if (!products || products.length === 0) {
-       res.status(404).json({ message: 'No products found' });
-       return
-    }
-
-    const flatProducts = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      basePrice: p.basePrice,
-      slug: p.slug,
-      createdAt: p.createdAt.toISOString(),
-      isDeleted: p.isDeleted,
-      variants: JSON.stringify(p.variants),
-      category: JSON.stringify(p.category),
-      subcategory: JSON.stringify(p.subcategory),
-    }));
-
-    res.setHeader('Content-Disposition', 'attachment; filename=products.csv');
-    res.setHeader('Content-Type', 'text/csv');
-
-    const csvStream = format({ headers: true });
-    csvStream.pipe(res);
-
-    flatProducts.forEach(product => csvStream.write(product));
-    csvStream.end();
-  } catch (error) {
-    console.error('Export CSV Error:', error);
-    res.status(500).json({ message: 'Failed to export products to CSV' });
-  }
-};
+//     csvStream.end();
+//   } catch (error) {
+//     console.error('Export CSV Error:', error);
+//     res.status(500).json({ message: 'Failed to export users to CSV' });
+//   }
+// };
 
 
-export const importProductsFromCSV = async (req: Request, res: Response) => {
-  const filePath = req.file?.path;
+// export const exportProductsToCsv = async (req: Request, res: Response) => {
+//   try {
+//     const products = await prisma.product.findMany({
+//       select: {
+//         id: true,
+//         name: true,
+//         description: true,
+//         basePrice: true,
+//         variants: true,
+//         category: true,
+//         subcategory: true,
+//         slug: true,
+//         createdAt: true,
+//         isDeleted: true,
+//       },
+//     });
 
-  if (!filePath) {
-    res.status(400).json({ message: 'CSV file is required' });
-    return;
-  }
+//     if (!products || products.length === 0) {
+//        res.status(404).json({ message: 'No products found' });
+//        return
+//     }
 
-  const results: any[] = [];
+//     const flatProducts = products.map((p) => ({
+//       id: p.id,
+//       name: p.name,
+//       description: p.description,
+//       basePrice: p.basePrice,
+//       slug: p.slug,
+//       createdAt: p.createdAt.toISOString(),
+//       isDeleted: p.isDeleted,
+//       variants: JSON.stringify(p.variants),
+//       category: JSON.stringify(p.category),
+//       subcategory: JSON.stringify(p.subcategory),
+//     }));
 
-  fs.createReadStream(path.resolve(filePath))
-    .pipe(parse({ headers: true }))
-    .on('error', (error) => {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to parse CSV file' });
-    })
-    .on('data', (row) => {
-      results.push(row);
-    })
-    .on('end', async () => {
-      try {
-        for (const row of results) {
-          const { id, name, description, basePrice, variants, category, subcategory } = row;
+//     res.setHeader('Content-Disposition', 'attachment; filename=products.csv');
+//     res.setHeader('Content-Type', 'text/csv');
 
-          if (!name || !basePrice) continue;
+//     const csvStream = format({ headers: true });
+//     csvStream.pipe(res);
 
-          if (id) {
-            const existing = await prisma.product.findUnique({
-              where: { id: Number(id) }, 
-            });
+//     flatProducts.forEach(product => csvStream.write(product));
+//     csvStream.end();
+//   } catch (error) {
+//     console.error('Export CSV Error:', error);
+//     res.status(500).json({ message: 'Failed to export products to CSV' });
+//   }
+// };
 
-            if (existing) {
-              await prisma.product.update({
-                where: { id: Number(id) },
-                data: {
-                  name,
-                  description: description || existing.description,
-                  basePrice: parseFloat(basePrice),
-                  isDeleted: false,
-                  variants: variants ? JSON.parse(variants) : undefined,
-                  category: category ? { connect: { id: Number(category) } } : undefined,
-                  subcategory: subcategory ? { connect: { id: Number(subcategory) } } : undefined,
-                },
-              });
-              continue;
-            }
-          }
 
-          await prisma.product.create({
-            data: {
-              name,
-              description: description || null,
-              basePrice: parseFloat(basePrice),
-              slug: await generateSlug(name,description),
-              isDeleted: false,
-              variants: variants ? { create: JSON.parse(variants) } : undefined,
-              category: category ? { connect: { id: Number(category) } } : undefined,
-              subcategory: subcategory ? { connect: { id: Number(subcategory) } } : undefined,
-            },
-          });
-        }
+// export const importProductsFromCSV = async (req: Request, res: Response) => {
+//   const filePath = req.file?.path;
 
-        res.status(201).json({ message: 'Products imported', count: results.length });
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error saving products' });
-      }
-    });
-};
+//   if (!filePath) {
+//     res.status(400).json({ message: 'CSV file is required' });
+//     return;
+//   }
+
+//   const results: any[] = [];
+
+//   fs.createReadStream(path.resolve(filePath))
+//     .pipe(parse({ headers: true }))
+//     .on('error', (error) => {
+//       console.error(error);
+//       res.status(500).json({ message: 'Failed to parse CSV file' });
+//     })
+//     .on('data', (row) => {
+//       results.push(row);
+//     })
+//     .on('end', async () => {
+//       try {
+//         for (const row of results) {
+//           const { id, name, description, basePrice, variants, category, subcategory } = row;
+
+//           if (!name || !basePrice) continue;
+
+//           if (id) {
+//             const existing = await prisma.product.findUnique({
+//               where: { id: Number(id) }, 
+//             });
+
+//             if (existing) {
+//               await prisma.product.update({
+//                 where: { id: Number(id) },
+//                 data: {
+//                   name,
+//                   description: description || existing.description,
+//                   basePrice: parseFloat(basePrice),
+//                   isDeleted: false,
+//                   variants: variants ? JSON.parse(variants) : undefined,
+//                   category: category ? { connect: { id: Number(category) } } : undefined,
+//                   subcategory: subcategory ? { connect: { id: Number(subcategory) } } : undefined,
+//                 },
+//               });
+//               continue;
+//             }
+//           }
+
+//           await prisma.product.create({
+//             data: {
+//               name,
+//               description: description || null,
+//               basePrice: parseFloat(basePrice),
+//               slug: await generateSlug(name,description),
+//               isDeleted: false,
+//               variants: variants ? { create: JSON.parse(variants) } : undefined,
+//               category: category ? { connect: { id: Number(category) } } : undefined,
+//               subcategory: subcategory ? { connect: { id: Number(subcategory) } } : undefined,
+//             },
+//           });
+//         }
+
+//         res.status(201).json({ message: 'Products imported', count: results.length });
+//       } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Error saving products' });
+//       }
+//     });
+// };
 
 // export const exportVariantsToCSV = async (req: Request, res: Response) => {
 //   try {
