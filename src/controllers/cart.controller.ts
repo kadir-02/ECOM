@@ -1,20 +1,11 @@
 // src/controllers/cart.controller.ts
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
-
-interface JwtPayload {
-  id: number;
-  email: string;
-  role: string;
-}
-
-interface CustomRequest extends Request {
-  user?: JwtPayload;
-}
+import { CustomRequest } from '../middlewares/authenticate';
 
 // GET /cart
 export const getCart = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.userId;
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
     return
@@ -47,7 +38,7 @@ export const getCart = async (req: CustomRequest, res: Response) => {
 
 // POST /cart/add
 export const addToCart = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.userId;
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
     return
@@ -96,7 +87,7 @@ export const addToCart = async (req: CustomRequest, res: Response) => {
 
 // PUT /cart/update/:itemId
 export const updateCartItem = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.userId;
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
     return
@@ -121,7 +112,7 @@ export const updateCartItem = async (req: CustomRequest, res: Response) => {
 
 // DELETE /cart/remove/:itemId
 export const removeCartItem = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.userId;
   if (!userId){
     res.status(401).json({ message: 'Unauthorized' });
     return
@@ -141,7 +132,7 @@ export const removeCartItem = async (req: CustomRequest, res: Response) => {
 
 // DELETE /cart/clear
 export const clearCart = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.id;
+  const userId = req.user?.userId;
   if (!userId) {
      res.status(401).json({ message: 'Unauthorized' });
     return
