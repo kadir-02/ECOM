@@ -7,8 +7,8 @@ import {
   exportUsersToCsv,
   exportProductsToCsv,
   importProductsFromCSV,
-  exportVariantsToCSV,
-  importVariantsFromCSV,
+  // exportVariantsToCSV,
+  // importVariantsFromCSV,
   adminBroadcastNotification,
   getUserNotificationsByAdmin,
   deleteUserNotificationByAdmin,
@@ -31,9 +31,9 @@ router.delete('/delete/:id', deleteUserByAdmin);
 router.get('/userlist', getAllUsers);
 router.get('/export/users', exportUsersToCsv);
 router.get('/export/products', exportProductsToCsv);
-router.get('/export/variants', exportVariantsToCSV);
+// router.get('/export/variants', exportVariantsToCSV);
+// router.post('/import/variants', uploadCsv.single('file'), importVariantsFromCSV);
 router.post('/import/products', uploadCsv.single('file'), importProductsFromCSV);
-router.post('/import/variants', uploadCsv.single('file'), importVariantsFromCSV);
 router.post('/discounts', createDiscountRule);
 router.delete('/discounts/:id', deleteDiscountRule);
 // Admin notification routes

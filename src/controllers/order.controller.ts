@@ -307,7 +307,6 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             variant_id: item.variantId || null,
             name: item.variant?.name || item.product?.name || 'Unnamed Product',
             SKU: `SKU-${item.variantId || item.productId || item.id}`,
-            image: item.variant?.images[0]?.url || item.product?.imageUrl || '',
             unit_price: item.price,
             quantity: item.quantity,
             category: item.product?.category?.name || 'General',

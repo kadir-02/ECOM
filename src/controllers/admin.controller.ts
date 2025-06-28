@@ -253,7 +253,6 @@ export const exportProductsToCsv = async (req: Request, res: Response) => {
         id: true,
         name: true,
         description: true,
-        imageUrl: true,
         basePrice: true,
         variants: true,
         category: true,
@@ -273,7 +272,6 @@ export const exportProductsToCsv = async (req: Request, res: Response) => {
       id: p.id,
       name: p.name,
       description: p.description,
-      imageUrl: p.imageUrl,
       basePrice: p.basePrice,
       slug: p.slug,
       createdAt: p.createdAt.toISOString(),
@@ -294,39 +292,6 @@ export const exportProductsToCsv = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Export CSV Error:', error);
     res.status(500).json({ message: 'Failed to export products to CSV' });
-  }
-};
-
-export const exportVariantsToCSV = async (req: Request, res: Response) => {
-  try {
-    const variants = await prisma.variant.findMany({
-      where: { isDeleted: false },
-      include: { images: true },
-    });
-
-    // Prepare CSV data rows (header + data)
-    const rows = [
-      ['id', 'productId', 'name', 'price', 'stock', 'images'], // header row
-      ...variants.map(v => [
-        v.id.toString(),
-        v.productId.toString(),
-        v.name,
-        v.price.toString(),
-        v.stock.toString(),
-        v.images.map(img => img.url).join(','), // comma separated URLs
-      ]),
-    ];
-
-    res.setHeader('Content-Disposition', 'attachment; filename="variants.csv"');
-    res.setHeader('Content-Type', 'text/csv');
-
-    // Pipe rows to response using fast-csv
-    fastcsv
-      .write(rows, { headers: false })
-      .pipe(res);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error exporting variants' });
   }
 };
 
@@ -384,7 +349,7 @@ export const importProductsFromCSV = async (req: Request, res: Response) => {
               name,
               description: description || null,
               basePrice: parseFloat(basePrice),
-              slug: await generateSlug(name),
+              slug: await generateSlug(name,description),
               isDeleted: false,
               variants: variants ? { create: JSON.parse(variants) } : undefined,
               category: category ? { connect: { id: Number(category) } } : undefined,
@@ -401,133 +366,131 @@ export const importProductsFromCSV = async (req: Request, res: Response) => {
     });
 };
 
+// export const exportVariantsToCSV = async (req: Request, res: Response) => {
+//   try {
+//     const variants = await prisma.productVariant.findMany({
+//       where: { isDeleted: false },
+//       include: { images: true },
+//     });
 
-export const importVariantsFromCSV = async (req: Request, res: Response) => {
-  const filePath = req.file?.path;
+//     const rows = [
+//       ['id', 'productId', 'name', 'price', 'stock', 'images'],
+//       ...variants.map(v => [
+//         v.id.toString(),
+//         v.productId.toString(),
+//         v.name,
+//         v.price.toString(),
+//         v.stock.toString(),
+//         v.images.map(img => img.url).join(','),
+//       ]),
+//     ];
 
-  if (!filePath) {
-     res.status(400).json({ message: 'CSV file is required' });
-     return;
-  }
+//     res.setHeader('Content-Disposition', 'attachment; filename="variants.csv"');
+//     res.setHeader('Content-Type', 'text/csv');
 
-  const variantsToUpsert: any[] = [];
+//     fastcsv.write(rows, { headers: false }).pipe(res);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Error exporting variants' });
+//   }
+// };
 
-  fs.createReadStream(path.resolve(filePath))
-    .pipe(fastcsv.parse({ headers: true }))
-    .on('error', (error) => {
-      console.error('CSV parse error:', error);
-       res.status(500).json({ message: 'Failed to parse CSV file' });
-       return;
-    })
-    .on('data', (row) => {
-      const { variantId, productId, name, price, stock, images } = row;
+// export const importVariantsFromCSV = async (req: Request, res: Response) => {
+//   const filePath = req.file?.path;
 
-      // Validate required fields
-      if (!productId || !name || !price || !stock) {
-        console.warn('Skipping invalid row:', row);
-        return;
-      }
+//   if (!filePath) {
+//     res.status(400).json({ message: 'CSV file is required' });
+//     return;
+//   }
 
-      // Prepare images create array
-      let imagesCreateOrUpdate = undefined;
-      if (images) {
-        const urls = images
-          .split(',')
-          .map((url: string) => url.trim())
-          .filter(Boolean);
+//   const variantsToUpsert: any[] = [];
 
-        if (urls.length) {
-          imagesCreateOrUpdate = {
-            // We'll delete old images when updating (handled in update section)
-            create: urls.map((url: string) => ({ url })),
-          };
-        }
-      }
+//   fs.createReadStream(path.resolve(filePath))
+//     .pipe(fastcsv.parse({ headers: true }))
+//     .on('error', (error) => {
+//       console.error('CSV parse error:', error);
+//       res.status(500).json({ message: 'Failed to parse CSV file' });
+//     })
+//     .on('data', (row) => {
+//       const { variantId, productId, name, price, stock, images } = row;
+//       if (!productId || !name || !price || !stock) return;
 
-      variantsToUpsert.push({
-        id: variantId ? Number(variantId) : undefined,
-        productId: Number(productId),
-        name,
-        price: parseFloat(price),
-        stock: Number(stock),
-        isDeleted: false,
-        images: imagesCreateOrUpdate,
-      });
-    })
-    .on('end', async () => {
-      try {
-        let processedCount = 0;
+//       let imagesCreateOrUpdate = undefined;
+//       if (images) {
+//         const urls = images.split(',').map((url: string) => url.trim()).filter(Boolean);
+//         if (urls.length) {
+//           imagesCreateOrUpdate = { create: urls.map((url: string) => ({ url })) };
+//         }
+//       }
 
-        for (const variant of variantsToUpsert) {
-          // Check product exists
-          const productExists = await prisma.product.findUnique({
-            where: { id: variant.productId },
-          });
+//       variantsToUpsert.push({
+//         id: variantId ? Number(variantId) : undefined,
+//         productId: Number(productId),
+//         name,
+//         price: parseFloat(price),
+//         stock: Number(stock),
+//         isDeleted: false,
+//         images: imagesCreateOrUpdate,
+//       });
+//     })
+//     .on('end', async () => {
+//       try {
+//         let processedCount = 0;
 
-          if (!productExists) {
-            console.warn(`Product ID ${variant.productId} not found, skipping variant: ${variant.name}`);
-            continue;
-          }
+//         for (const variant of variantsToUpsert) {
+//           const productExists = await prisma.product.findUnique({ where: { id: variant.productId } });
+//           if (!productExists) continue;
 
-          // Try to find existing variant by id first (if provided)
-          let existingVariant = null;
-          if (variant.id) {
-            existingVariant = await prisma.variant.findUnique({
-              where: { id: variant.id },
-            });
-          }
+//           let existingVariant = null;
+//           if (variant.id) {
+//             existingVariant = await prisma.productVariant.findUnique({ where: { id: variant.id } });
+//           }
 
-          // If not found by id, try to find by productId + name (to avoid duplicates)
-          if (!existingVariant) {
-            existingVariant = await prisma.variant.findFirst({
-              where: {
-                productId: variant.productId,
-                name: variant.name,
-                isDeleted: false,
-              },
-            });
-          }
+//           if (!existingVariant) {
+//             existingVariant = await prisma.productVariant.findFirst({
+//               where: {
+//                 productId: variant.productId,
+//                 name: variant.name,
+//                 isDeleted: false,
+//               },
+//             });
+//           }
 
-          if (existingVariant) {
-            // Update variant and replace images (delete old + create new)
-            await prisma.variant.update({
-              where: { id: existingVariant.id },
-              data: {
-                price: variant.price,
-                stock: variant.stock,
-                isDeleted: false,
-                images: variant.images
-                  ? {
-                      deleteMany: {}, // delete all old images
-                      create: variant.images.create,
-                    }
-                  : undefined,
-              },
-            });
-          } else {
-            // Create new variant with images (if any)
-            await prisma.variant.create({
-              data: {
-                productId: variant.productId,
-                name: variant.name,
-                price: variant.price,
-                stock: variant.stock,
-                isDeleted: false,
-                images: variant.images,
-              },
-            });
-          }
+//           if (existingVariant) {
+//             await prisma.productVariant.update({
+//               where: { id: existingVariant.id },
+//               data: {
+//                 price: variant.price,
+//                 stock: variant.stock,
+//                 isDeleted: false,
+//                 images: variant.images
+//                   ? { deleteMany: {}, create: variant.images.create }
+//                   : undefined,
+//               },
+//             });
+//           } else {
+//             await prisma.productVariant.create({
+//               data: {
+//                 productId: variant.productId,
+//                 name: variant.name,
+//                 price: variant.price,
+//                 stock: variant.stock,
+//                 isDeleted: false,
+//                 images: variant.images,
+//               },
+//             });
+//           }
 
-          processedCount++;
-        }
+//           processedCount++;
+//         }
 
-        res.status(201).json({ message: 'Variants imported/updated', count: processedCount });
-      } catch (error) {
-        console.error('Error saving variants:', error);
-        res.status(500).json({ message: 'Error saving variants' });
-      }
-    });
-};
+//         res.status(201).json({ message: 'Variants imported/updated', count: processedCount });
+//       } catch (error) {
+//         console.error('Error saving variants:', error);
+//         res.status(500).json({ message: 'Error saving variants' });
+//       }
+//     });
+// };
 
 export const adminBroadcastNotification = async (req: Request, res: Response) => {
   const { message, type = 'SYSTEM' } = req.body;

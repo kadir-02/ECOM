@@ -2,33 +2,30 @@ import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 
 export const createVariant = async (req: Request, res: Response) => {
-  const { name, price, stock, productId } = req.body;
+  const { name, specification, price, stock, productId } = req.body;
 
-  if (!name || !price || !productId) {
+  if (!name || !specification || price === undefined || stock === undefined || !productId) {
      res.status(400).json({ success: false, message: 'All fields are required' });
      return
   }
 
-  try {
-    const variant = await prisma.variant.create({
-      data: {
-        name,
-        price: parseFloat(price),
-        stock: parseInt(stock),
-        productId: parseInt(productId),
-      },
-    });
+  const variant = await prisma.productVariant.create({
+    data: {
+      name,
+      specification,
+      price: parseFloat(price),
+      stock: parseInt(stock),
+      productId: parseInt(productId),
+    },
+  });
 
-    res.status(201).json({ success: true, message: 'Variant created', variant });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Error creating variant' });
-  }
+  res.status(201).json({ success: true, message: 'Variant created', variant });
 };
+
 
 export const getAllVariants = async (_req: Request, res: Response) => {
   try {
-    const variants = await prisma.variant.findMany({
+    const variants = await prisma.productVariant.findMany({
       where: { isDeleted: false },
       include: { product: true },
     });
@@ -42,7 +39,7 @@ export const getAllVariants = async (_req: Request, res: Response) => {
 export const getVariantById = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
   try {
-    const variant = await prisma.variant.findUnique({
+    const variant = await prisma.productVariant.findUnique({
       where: { id },
       include: { product: true },
     });
@@ -60,26 +57,25 @@ export const getVariantById = async (req: Request, res: Response) => {
 
 export const updateVariant = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  const { name, price, stock, productId } = req.body;
+  const { name, specification, price, stock } = req.body;
 
   try {
-    const updated = await prisma.variant.update({
+    const variant = await prisma.productVariant.update({
       where: { id },
       data: {
         name,
-        price: price ? parseFloat(price) : undefined,
-        stock: stock ? parseInt(stock) : undefined,
-        productId: productId ? parseInt(productId) : undefined,
+        specification,
+        price: price !== undefined ? parseFloat(price) : undefined,
+        stock: stock !== undefined ? parseInt(stock) : undefined,
       },
     });
 
-    res.status(200).json({ success: true, message: 'Variant updated', variant: updated });
+    res.status(200).json({ success: true, message: 'Variant updated', variant });
   } catch (error: any) {
     if (error.code === 'P2025') {
        res.status(404).json({ success: false, message: 'Variant not found' });
        return
     }
-
     res.status(500).json({ success: false, message: 'Error updating variant' });
   }
 };
@@ -88,7 +84,7 @@ export const deleteVariant = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
 
   try {
-    await prisma.variant.delete({ where: { id } });
+    await prisma.productVariant.delete({ where: { id } });
     res.status(200).json({ success: true, message: 'Variant permanently deleted' });
   } catch (error: any) {
     if (error.code === 'P2025') {
@@ -104,7 +100,7 @@ export const softDeleteVariant = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
 
   try {
-    const variant = await prisma.variant.update({
+    const variant = await prisma.productVariant.update({
       where: { id },
       data: { isDeleted: true },
     });
@@ -123,7 +119,7 @@ export const restoreVariant = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
 
   try {
-    const variant = await prisma.variant.update({
+    const variant = await prisma.productVariant.update({
       where: { id },
       data: { isDeleted: false },
     });

@@ -198,7 +198,7 @@ export const getAllVariantImagesForProduct = async (req: Request, res: Response)
   }
 
   try {
-    const variant = await prisma.variant.findFirst({
+    const variant = await prisma.productVariant.findFirst({
       where: {
         id: variantId,
         productId,
