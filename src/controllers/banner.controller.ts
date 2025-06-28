@@ -39,6 +39,19 @@ export const createBanner = async (req: Request, res: Response) => {
       return;
     }
 
+    const existing = await prisma.homepageBanner.findFirst({
+      where: {
+        sequence_number: Number(sequence_number),
+      },
+    });
+
+    if (existing) {
+       res.status(400).json({
+        error: `A banner with sequence_number ${sequence_number} already exists.`,
+      });
+      return
+    }
+
     let imageUrl: string | undefined;
     let publicId: string | undefined;
     let mobileBanner: string | undefined;
@@ -144,11 +157,23 @@ export const updateBanner = async (req: Request, res: Response) => {
       return
     }
 
+    const existing = await prisma.homepageBanner.findFirst({
+      where: {
+        sequence_number: Number(sequence_number),
+      },
+    });
+
+    if (existing) {
+       res.status(400).json({
+        error: `A banner with sequence_number ${sequence_number} already exists.`,
+      });
+      return
+    }
+
     let imageUrl: string | undefined;
     let publicId: string | undefined;
     let mobileBanner: string | undefined;
 
-    // Main image (optional on update)
     if (req.files && 'image' in req.files) {
       const mainFile = Array.isArray(req.files['image'])
         ? req.files['image'][0]
@@ -169,7 +194,6 @@ export const updateBanner = async (req: Request, res: Response) => {
       }
     }
 
-    // Mobile image (optional)
     if (req.files && 'mobile_banner' in req.files) {
       const mobileFile = Array.isArray(req.files['mobile_banner'])
         ? req.files['mobile_banner'][0]
@@ -196,16 +220,12 @@ export const updateBanner = async (req: Request, res: Response) => {
       subheading2,
       buttonText,
       buttonLink,
-      isActive
+      isActive: isActive === 'true' || isActive === true,
     };
 
     if (imageUrl) updateData.imageUrl = imageUrl;
     if (publicId) updateData.publicId = publicId;
     if (mobileBanner) updateData.mobile_banner = mobileBanner;
-    if (typeof isActive !== 'undefined') {
-  updateData.isActive = isActive === 'true' || isActive === true;
-}
-
 
     const updated = await prisma.homepageBanner.update({
       where: { id: parseInt(id) },
@@ -233,6 +253,7 @@ export const updateBanner = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 
 export const deleteBanner = async (req: Request, res: Response) => {

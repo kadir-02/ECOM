@@ -203,18 +203,19 @@ export const updateProduct = async (req: Request, res: Response) => {
     seoDescription,
     productDetails,
     is_active,
+    variant_specifications,
   } = req.body;
 
   try {
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await prisma.product.findUnique({ where: { id }, include: { specifications: true } });
     if (!existing) {
-       res.status(404).json({ success: false, message: "Product not found" });
-       return
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
     }
 
     const slug = name ? await generateSlug(name, SKU) : existing.slug;
 
-    const updated = await prisma.product.update({
+    const updatedProduct = await prisma.product.update({
       where: { id },
       data: {
         name: name ?? existing.name,
@@ -241,7 +242,20 @@ export const updateProduct = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(200).json({ success: true, product: updated });
+    if (Array.isArray(variant_specifications)) {
+      await prisma.productSpecification.deleteMany({ where: { productId: id } });
+      await prisma.productSpecification.createMany({
+        data: variant_specifications.map((spec: any) => ({
+          productId: id,
+          name: spec.name,
+          value: spec.value,
+          isActive: true,
+          isDeleted: false,
+        })),
+      });
+    }
+
+    res.status(200).json({ success: true, product: updatedProduct });
   } catch (error: any) {
     console.error("Update product error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -253,8 +267,8 @@ export const deleteProduct = async (req: Request, res: Response) => {
   try {
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) {
-       res.status(404).json({ success: false, message: "Product not found" });
-       return
+      res.status(404).json({ success: false, message: "Product not found" });
+      return;
     }
 
     await prisma.product.update({
@@ -263,6 +277,12 @@ export const deleteProduct = async (req: Request, res: Response) => {
         isDeleted: true,
         deletedById: Number(req.body.deletedById) || existing.deletedById,
       },
+    });
+
+    // Also soft delete specifications
+    await prisma.productSpecification.updateMany({
+      where: { productId: id },
+      data: { isDeleted: true },
     });
 
     res.status(200).json({ success: true, message: "Product soft deleted" });
