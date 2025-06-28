@@ -7,7 +7,7 @@ import authRoutes from './routes/auth.route';
 import adminRoutes from './routes/admin.route';
 import userRoutes from './routes/user.route';
 import passwordResetRoutes from './routes/passwordReset.route';
-import productRoutes from './routes/product.route';
+import productRoutes from './routes/ProductRoutes/product.route';
 import categoryRoutes from './routes/category.route';
 import cartRoutes from './routes/cart.route';
 import addressRoutes from './routes/address.route';

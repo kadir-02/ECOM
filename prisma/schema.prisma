@@ -149,9 +149,9 @@ model ProductSpecification {
 }
 
 model ProductImage {
-  id        Int   @id @default(autoincrement())
-  createdAt DateTime @db.Timestamptz(6)
-  updatedAt DateTime @db.Timestamptz(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
   sequence  Int      @db.SmallInt
   image     String   @db.VarChar(100)
   productId Int
