@@ -5,7 +5,7 @@ const router = Router();
 
 router.post('/', createProductSpecification);
 router.get('/:productId', getProductSpecifications);
-router.put('/:id', updateProductSpecification);
+router.patch('/:id', updateProductSpecification);
 router.delete('/:id', deleteProductSpecification);
 
 export default router;

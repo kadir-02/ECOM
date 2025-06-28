@@ -8,7 +8,7 @@ const router = Router();
 router.get('/:productId', getProductImages);
 router.use(authenticate,authorizeAdmin)
 router.post('/', createProductImage);
-router.put('/:id', updateProductImage);
+router.patch('/:id', updateProductImage);
 router.delete('/:id', deleteProductImage);
 
 export default router;
