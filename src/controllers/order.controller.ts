@@ -544,8 +544,8 @@ export const getOrdersForAdmin = async (req: Request, res: Response) => {
           payment: true,
           items: {
             include: {
-              product: true,
-              variant: true,
+              product: {include:{images:true}},
+              variant: {include:{images:true}},
             },
           },
         },

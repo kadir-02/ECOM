@@ -19,6 +19,7 @@ import { upload } from '../upload/multer';
 import { uploadCsv } from '../upload/multerCsv';
 import { uploadMemory } from '../upload/multerCloudinary';
 import { createDiscountRule, deleteDiscountRule } from '../controllers/discount.controller';
+import { getDashboard } from '../controllers/dashboard.controller';
 
 const router = Router();
 
