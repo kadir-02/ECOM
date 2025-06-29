@@ -499,12 +499,18 @@ export const getOrdersForAdmin = async (req: Request, res: Response) => {
     }
 
     // Filter by date range
-    if (start_date && end_date) {
-      filters.createdAt = {
-        gte: new Date(start_date as string),
-        lte: new Date(end_date as string),
-      };
-    }
+   if (start_date && end_date) {
+  const start = new Date(start_date as string);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(end_date as string);
+  end.setHours(23, 59, 59, 999);
+
+  filters.createdAt = {
+    gte: start,
+    lte: end,
+  };
+}
 
     // Search by order ID or general search term
     if (search) {
