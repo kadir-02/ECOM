@@ -39,7 +39,6 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
-app.use('/', dashboardRoutes);
 app.use('/gallery', galleryRoutes);
 app.use('/banners', bannerRoutes);
 app.use('/why-choose-us', whyChooseUs);
@@ -61,6 +60,7 @@ app.use('/company-settings',companyRoutes)
 app.use('/frontend/testimonial',TestimonialRoutes)
 app.use('/gallerytype',gallerytypeRoutes)
 app.use('/galleryitem',galleryitemRoutes)
+app.use('/', dashboardRoutes);
 
 
 app.use(globalErrorHandler);

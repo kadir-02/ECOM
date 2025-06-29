@@ -38,6 +38,15 @@ export const getDashboard = async (req: Request, res: Response) => {
       },
     });
 
+    const inactiveCustomers = await prisma.user.count({
+      where: {
+        role: 'USER',
+        orders: {
+          none: {}, // No orders
+        },
+      },
+    });
+
     // Average order value
     const orderAgg = await prisma.order.aggregate({
       _avg: { totalAmount: true },
@@ -122,6 +131,51 @@ export const getDashboard = async (req: Request, res: Response) => {
       },
     });
 
+    const outOfStockProducts = await prisma.product.count({
+      where: {
+        isDeleted: false,
+        stock: 0,
+      },
+    });
+    const companySettings = await prisma.companySettings.findFirst();
+    const threshold = companySettings?.product_low_stock_threshold ?? 5;
+
+    const lowStockProducts = await prisma.product.count({
+      where: {
+        isDeleted: false,
+        stock: {
+          lt: threshold,
+          gt: 0,
+        },
+      },
+    });
+
+    const orders = await prisma.order.findMany({
+      where: {
+        createdAt: { gte: start, lte: end },
+        userId: Number(user_id),
+      },
+      include: {
+        payment: true,
+      },
+    });
+    let online_payment_amount = 0;
+    let cash_on_delivery_payment_amount = 0;
+    let payment_not_done_amount = 0;
+
+    for (const order of orders) {
+      if (!order.payment) {
+        payment_not_done_amount += order.totalAmount;
+      } else if (order.payment.status === 'SUCCESS') {
+        const method = order.payment.method.toLowerCase();
+        if (method.includes('online')) {
+          online_payment_amount += order.totalAmount;
+        } else if (method.includes('cash')) {
+          cash_on_delivery_payment_amount += order.totalAmount;
+        }
+      }
+    }
+
     res.json({
       message: '',
       products_sold,
@@ -133,15 +187,15 @@ export const getDashboard = async (req: Request, res: Response) => {
         inactive_staff_users: 0,
         total_customers: custUsers._count.id,
         active_customers: custUsers._count.id,
-        inactive_customers: 0,
+        inactive_customers: inactiveCustomers,
       },
       product_summary: {
         total_products: prodAgg._count.id,
         active_products: prodAgg._count.id,
         inactive_products: 0,
         products_in_stock: stockAgg._sum?.stock ?? 0,
-        products_out_of_stock: 0,
-        products_about_to_go_out_of_stock: 0,
+        products_out_of_stock: outOfStockProducts,
+        products_about_to_go_out_of_stock: lowStockProducts,
       },
       order_summary: orderSummary.reduce((acc, grp) => {
         acc.total_orders = (acc.total_orders || 0) + grp._count;
@@ -156,9 +210,9 @@ export const getDashboard = async (req: Request, res: Response) => {
       },
       order_payment_summary: {
         total_payment_estimate: payments._sum.totalAmount ?? 0,
-        online_payment_amount: 0,
-        cash_on_delivery_payment_amount: 0,
-        payment_not_done_amount: 0,
+        online_payment_amount,
+        cash_on_delivery_payment_amount,
+        payment_not_done_amount,
       },
       top_customers: {
         by_orders: topByOrders,
@@ -178,6 +232,13 @@ export const getDashboard = async (req: Request, res: Response) => {
 export const getUserDashboardSections = async (req: Request, res: Response) => {
   try {
     const { user_id, token } = req.body;
+
+    if (typeof user_id !== "number" ) {
+       res
+        .status(400)
+        .json({ message: "user_id (number) is required." });
+        return
+    }
 
     const sections = [
       "order_data",
