@@ -140,7 +140,6 @@ export const getProducts = async (req: Request, res: Response) => {
   }
 };
 
-
 export const updateProductSequence = async (req: Request, res: Response) => {
   try {
     const updates: Array<{ id: number; sequence_number: number }> =
@@ -178,7 +177,7 @@ export const updateProductSequence = async (req: Request, res: Response) => {
     await prisma.$transaction(
       updates.map((item) =>
         prisma.product.update({
-          where: { id: item.id },
+          where: { id: Number(item.id) },
           data: { sequenceNumber: item.sequence_number },
         })
       )
@@ -198,6 +197,10 @@ export const updateProductSequence = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  if (isNaN(id)) {
+     res.status(400).json({ success: false, message: "Invalid product id" });
+     return
+  }  
   const {
     name,
     description,

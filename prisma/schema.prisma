@@ -37,6 +37,14 @@ enum NotificationType {
   SYSTEM
 }
 
+//model EmailVerify {
+  /id              Int      @id @default(autoincrement())
+  //email           String   @unique
+  //verifyOTP       String?
+  //verifyOTPExpiry DateTime?
+  //isVerified      Boolean  @default(false)
+//}
+
 model User {
   id             Int            @id @default(autoincrement())
   email          String         @unique

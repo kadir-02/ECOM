@@ -157,19 +157,6 @@ export const updateBanner = async (req: Request, res: Response) => {
       return
     }
 
-    const existing = await prisma.homepageBanner.findFirst({
-      where: {
-        sequence_number: Number(sequence_number),
-      },
-    });
-
-    if (existing) {
-       res.status(400).json({
-        error: `A banner with sequence_number ${sequence_number} already exists.`,
-      });
-      return
-    }
-
     let imageUrl: string | undefined;
     let publicId: string | undefined;
     let mobileBanner: string | undefined;
