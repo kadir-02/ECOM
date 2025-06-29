@@ -27,6 +27,7 @@ import galleryitemRoutes from './routes/galleryItem.route';
 import companyRoutes from './routes/ComponySettingsRoutes/companySettings.route';
 import TestimonialRoutes from './routes/TestimonialRoutes/testimonial.route';
 import { globalErrorHandler } from './utils/globalErrorHandler';
+import dashboardRoutes from './routes/dashboard.route';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -38,6 +39,7 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/', dashboardRoutes);
 app.use('/gallery', galleryRoutes);
 app.use('/banners', bannerRoutes);
 app.use('/why-choose-us', whyChooseUs);

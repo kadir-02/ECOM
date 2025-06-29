@@ -174,3 +174,33 @@ export const getDashboard = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const getUserDashboardSections = async (req: Request, res: Response) => {
+  try {
+    const { user_id, token } = req.body;
+
+    const sections = [
+      "order_data",
+      "order_sale_graph",
+      "recent_payment_transactions_data",
+      "least_selling_products_data",
+      "user_data",
+      "product_data",
+      "recent_orders_data",
+      "unsold_products_data",
+      "top_selling_products_data",
+      "top_customers_data",
+      "low_stock_products_data",
+      "order_payment_data",
+      "new_customer_count",
+      "average_order_value",
+      "products_sold",
+      "revenue_data"
+    ];
+
+    res.status(200).json({ succes:true, sections });
+  } catch (error: any) {
+    console.error("Error returning dashboard sections:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
