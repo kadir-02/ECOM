@@ -178,7 +178,7 @@ export const updateProductSequence = async (req: Request, res: Response) => {
       updates.map((item) =>
         prisma.product.update({
           where: { id: Number(item.id) },
-          data: { sequenceNumber: item.sequence_number },
+          data: { sequenceNumber: Number(item.sequence_number) },
         })
       )
     );
