@@ -324,148 +324,157 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
 };
 
 // PDF invoice generator endpoint
-export const generateInvoicePdf = async (orderId: number): Promise<Buffer> => {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: {
-      user: { include: { profile: true } },
-      items: {
-        include: {
-          product: { include: { category: true } },
-          variant: { include: { images: true } },
-        },
-      },
-      address: true,
-      payment: true,
-    },
-  });
+export const generateInvoicePDF = async (req: Request, res: Response) => {
+  try {
+    const orderIdStr = req.query.id as string;
 
-  if (!order) throw new Error('Order not found');
-
-  const doc = new PDFDocument({ margin: 50, size: 'A4' });
-  const buffers: Uint8Array[] = [];
-  doc.on('data', buffers.push.bind(buffers));
-
-  const drawSectionHeader = (label: string) => {
-    const y = doc.y;
-    doc.rect(50, y, 500, 24).fill('#f0f8ff').stroke();
-
-    doc.fillColor('#007ACC').font('Helvetica-Bold').fontSize(13).text(label, 55, y + 6);
-
-    doc.moveDown();
-    doc.fillColor('black');
-  };
-
-  // HEADER
-  doc.fillColor('#333').fontSize(24).font('Helvetica-Bold').text('INVOICE', { align: 'center' });
-
-  doc
-    .fontSize(14)
-    .font('Helvetica')
-    .fillColor('#666')
-    .text('Thank you for your purchase!', { align: 'center' })
-    .moveDown(2);
-
-  // CUSTOMER INFO
-  drawSectionHeader('Customer Details');
-  doc
-    .fontSize(12)
-    .text(`Invoice ID: COM-${order.id}-${order.user.profile?.firstName || ''}`)
-    .text(`Name: ${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`)
-    .text(`Email: ${order.user.email}`)
-    .text(`Phone: ${order.address?.phone || '-'}`)
-    .text(`Address: ${formatAddress(order.address) || '-'}`)
-    .text(`Date: ${new Date(order.createdAt).toLocaleString()}`)
-    .text(`Payment Method: ${order.payment?.method || 'N/A'}`)
-    .text(`Order Status: ${order.status || '-'}`)
-    .moveDown();
-
-  // TABLE HEADER
-  const tableTop = doc.y;
-  const tableLeft = 50;
-  const tableWidth = 500;
-  const rowHeight = 25;
-
-  doc.rect(tableLeft, tableTop, tableWidth, rowHeight).fill('#e9ecef');
-
-  doc
-    .fillColor('#007bff')
-    .font('Helvetica-Bold')
-    .fontSize(12)
-    .text('Item', tableLeft + 10, tableTop + 7)
-    .text('Qty', tableLeft + 210, tableTop + 7, { width: 50, align: 'right' })
-    .text('Unit Price', tableLeft + 270, tableTop + 7, { width: 100, align: 'right' })
-    .text('Total', tableLeft + 380, tableTop + 7, { width: 100, align: 'right' });
-
-  // TABLE ROWS
-  let y = tableTop + rowHeight;
-  doc.font('Helvetica').fontSize(12);
-
-  order.items.forEach((item, index) => {
-    if (index % 2 === 0) {
-      doc.rect(tableLeft, y, tableWidth, rowHeight).fill('#f8f9fa');
+    if (!orderIdStr || !orderIdStr.includes('-')) {
+      res.status(400).send('Invalid invoice ID format');
+      return;
     }
 
-    const name = item.variant?.name || item.product?.name || 'Unnamed Product';
-    const qty = item.quantity;
-    const unitPrice = item.price;
-    const total = qty * unitPrice;
+    const parts = orderIdStr.split('-');
+    const orderId = Number(parts[1]);
 
+    if (isNaN(orderId)) {
+      res.status(400).send('Invalid order ID');
+      return;
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: { include: { profile: true } },
+        items: {
+          include: {
+            product: { include: { category: true } },
+            variant: { include: { images: true } },
+          },
+        },
+        address: true,
+        payment: true,
+      },
+    });
+
+    if (!order) {
+      res.status(404).send('Order not found');
+      return;
+    }
+
+    const subtotal = order.subtotal ?? order.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    const discountAmount = order.discountAmount ?? 0;
+    const finalAmount = subtotal - discountAmount;
+
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
+
+    doc.pipe(res);
+
+    const primaryColor = '#007bff';
+    const headerBgColor = '#e9ecef';
+    const rowAltColor = '#f8f9fa';
+
+    // Header
+    doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(26).text('INVOICE', 50, 140);
+    doc.fillColor('black').font('Helvetica').fontSize(12);
+
+    // Customer Info
+    const infoY = 180;
+    doc.text(`Invoice ID: COM-${order.id}-${order.user.profile?.firstName || ''}`, 50, infoY);
+    doc.text(`Customer: ${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, 50, infoY + 15);
+    doc.text(`Email: ${order.user.email}`, 50, infoY + 30);
+    doc.text(`Phone: ${order.address?.phone || '-'}`, 50, infoY + 45);
+    doc.text(`Address: ${formatAddress(order.address) || '-'}`, 50, infoY + 60, { width: 500 });
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 50, infoY + 90);
+    doc.text(`Payment Method: ${order.payment?.method || 'N/A'}`, 50, infoY + 105);
+    doc.text(`Order Status: ${order.status || '-'}`, 50, infoY + 120);
+
+    // Table Headers
+    const tableTop = infoY + 160;
+    const tableLeft = 50;
+    const tableWidth = 500;
+    const rowHeight = 25;
+
+    doc.rect(tableLeft, tableTop, tableWidth, rowHeight).fill(headerBgColor);
     doc
-      .fillColor('black')
-      .text(name, tableLeft + 10, y + 7)
-      .text(qty.toString(), tableLeft + 210, y + 7, { width: 50, align: 'right' })
-      .text(`₹${unitPrice}`, tableLeft + 270, y + 7, { width: 100, align: 'right' })
-      .text(`₹${total}`, tableLeft + 380, y + 7, { width: 100, align: 'right' });
+      .fillColor(primaryColor)
+      .font('Helvetica-Bold')
+      .fontSize(12)
+      .text('Item', tableLeft + 10, tableTop + 7)
+      .text('Qty', tableLeft + 210, tableTop + 7, { width: 50, align: 'right' })
+      .text('Unit Price', tableLeft + 270, tableTop + 7, { width: 100, align: 'right' })
+      .text('Total', tableLeft + 380, tableTop + 7, { width: 100, align: 'right' });
 
-    y += rowHeight;
-  });
+    // Table Rows
+    let y = tableTop + rowHeight;
+    doc.font('Helvetica').fontSize(12);
+    order.items.forEach((item, index) => {
+      if (index % 2 === 0) {
+        doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
+      }
 
-  // Table Border
-  doc.strokeColor('#007bff').lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
+      const name = item.variant?.name || item.product?.name || 'Unnamed Product';
+      const qty = item.quantity;
+      const unitPrice = item.price;
+      const total = qty * unitPrice;
 
-  // Calculate totals
-  const subtotal = order.subtotal ?? order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount = order.discountAmount ?? 0;
-  const finalAmount = subtotal - discountAmount;
+      doc
+        .fillColor('black')
+        .text(name, tableLeft + 10, y + 7)
+        .text(qty.toString(), tableLeft + 210, y + 7, { width: 50, align: 'right' })
+        .text(`₹${unitPrice.toFixed(2)}`, tableLeft + 270, y + 7, { width: 100, align: 'right' })
+        .text(`₹${total.toFixed(2)}`, tableLeft + 380, y + 7, { width: 100, align: 'right' });
 
-  y += 20;
-  doc
-    .font('Helvetica-Bold')
-    .fillColor('black')
-    .text('Subtotal:', tableLeft + 270, y, { width: 100, align: 'right' })
-    .text(`₹${subtotal.toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
+      y += rowHeight;
+    });
 
-  if (discountAmount > 0) {
+    // Table Border
+    doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
+
+    // Subtotal
     y += 20;
     doc
-      .fillColor('red')
-      .text('Discount:', tableLeft + 270, y, { width: 100, align: 'right' })
-      .text(`₹${Math.abs(discountAmount).toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
+      .font('Helvetica-Bold')
+      .fillColor('black')
+      .text('Subtotal:', tableLeft + 270, y, { width: 100, align: 'right' })
+      .text(`₹${subtotal.toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
+
+    // Discount
+    if (discountAmount > 0) {
+      y += 20;
+      doc
+        .fillColor('red')
+        .text('Discount:', tableLeft + 270, y, { width: 100, align: 'right' })
+        .text(`₹${Math.abs(discountAmount).toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
+    }
+
+    // Grand Total
+    y += 30;
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(14)
+      .fillColor(primaryColor)
+      .text(`Grand Total: ₹${finalAmount.toFixed(2)}`, tableLeft, y, { align: 'right', width: tableWidth });
+
+    // Footer
+    doc
+      .fontSize(10)
+      .fillColor('gray')
+      .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
+
+    doc.end();
+  } catch (error) {
+    console.error('Invoice PDF generation failed:', error);
+    res.status(500).send('Failed to generate invoice PDF');
   }
-
-  y += 30;
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(14)
-    .fillColor('#007bff')
-    .text(`Grand Total: ₹${finalAmount.toFixed(2)}`, tableLeft, y, { align: 'right', width: tableWidth });
-
-  // Footer
-  doc
-    .fontSize(10)
-    .fillColor('gray')
-    .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
-
-  doc.end();
-
-  return new Promise((resolve) => {
-    doc.on('end', () => {
-      const pdfBuffer = Buffer.concat(buffers);
-      resolve(pdfBuffer);
-    });
-  });
 };
+
 
 export const getOrdersForAdmin = async (req: Request, res: Response) => {
   try {
