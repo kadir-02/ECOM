@@ -76,3 +76,12 @@
 //     res.status(500).json({ message: 'Failed to verify OTP' });
 //   }
 // };
+
+
+// model EmailVerify {
+//   id              Int      @id @default(autoincrement())
+//   email           String   @unique
+//   verifyOTP       String?
+//   verifyOTPExpiry DateTime?
+//   isVerified      Boolean  @default(false)
+// }
