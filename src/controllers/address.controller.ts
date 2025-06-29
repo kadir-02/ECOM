@@ -12,7 +12,7 @@ export const createAddress = async (req: CustomRequest, res: Response) => {
         userId,
       },
     });
-    res.status(201).json(address);
+    res.status(201).json({message:"Address Added Successfully",address});
   } catch (error) {
     res.status(500).json({ message: 'Failed to create address', error });
   }
@@ -25,7 +25,7 @@ export const getUserAddresses = async (req: CustomRequest, res: Response) => {
       where: { userId },
       orderBy: { isDefault: 'desc' },
     });
-    res.json(addresses);
+    res.json({address:addresses});
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch addresses', error });
   }
@@ -38,7 +38,7 @@ export const updateAddress = async (req: CustomRequest, res: Response) => {
       where: { id: Number(id) },
       data: req.body,
     });
-    res.json(updated);
+    res.json({message:"Address Updated Successfully",updated});
   } catch (error) {
     res.status(500).json({ message: 'Failed to update address', error });
   }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { CustomRequest } from '../middlewares/authenticate';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 import dayjs from 'dayjs';
 import PDFDocument from 'pdfkit';
 import { sendOrderConfirmationEmail } from '../email/sendOrderConfirmationEmail';
@@ -472,5 +472,96 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Invoice PDF generation failed:', error);
     res.status(500).send('Failed to generate invoice PDF');
+  }
+};
+
+export const getOrdersForAdmin = async (req: Request, res: Response) => {
+  try {
+    const {
+      search,
+      start_date,
+      end_date,
+      page = '1',
+      page_size = '10',
+      order_status,
+      ordering,
+    } = req.query;
+
+    const currentPage = parseInt(page as string, 10);
+    const pageSize = parseInt(page_size as string, 10);
+    const skip = (currentPage - 1) * pageSize;
+
+    const filters: Prisma.OrderWhereInput = {};
+
+    // Filter by order status
+    if (order_status) {
+      filters.status = order_status as any;
+    }
+
+    // Filter by date range
+    if (start_date && end_date) {
+      filters.createdAt = {
+        gte: new Date(start_date as string),
+        lte: new Date(end_date as string),
+      };
+    }
+
+    // Search by order ID or general search term
+    if (search) {
+      const searchStr = search.toString();
+      if (!isNaN(Number(searchStr))) {
+        filters.id = Number(searchStr);
+      } else {
+        filters.OR = [
+          { user: { email: { contains: searchStr, mode: 'insensitive' } } },
+          { address: { fullName: { contains: searchStr, mode: 'insensitive' } } },
+        ];
+      }
+    }
+
+    // Handle ordering (e.g., ordering=-createdAt)
+    let orderBy: Prisma.OrderOrderByWithRelationInput = { createdAt: 'desc' };
+    if (ordering) {
+      const field = ordering.toString().replace('-', '');
+      const direction = ordering.toString().startsWith('-') ? 'desc' : 'asc';
+      if (['createdAt', 'totalAmount', 'status'].includes(field)) {
+        orderBy = { [field]: direction };
+      }
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: filters,
+        include: {
+          user: true,
+          address: true,
+          payment: true,
+          items: {
+            include: {
+              product: true,
+              variant: true,
+            },
+          },
+        },
+        skip,
+        take: pageSize,
+        orderBy,
+      }),
+      prisma.order.count({ where: filters }),
+    ]);
+
+    res.status(200).json({
+      success:true,
+      data: orders,
+      pagination: {
+        total,
+        currentPage,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching orders for admin:', error);
+    res.status(500).json({ message: 'Failed to fetch orders', error });
   }
 };
