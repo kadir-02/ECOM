@@ -24,9 +24,9 @@ router.use(authenticate, authorizeAdmin);
 
 
 router.post('/', createProduct);
+router.patch('/update-sequence', updateProductSequence);
 router.patch('/:id', updateProduct);
 router.delete('/:id', deleteProduct);
-router.patch('/update-sequence', updateProductSequence);
 // router.delete('/:id', deleteProduct);
 // router.patch('/deactivate/:id', softDeleteProduct);
 // router.patch('/restore/:id', restoreProduct);
