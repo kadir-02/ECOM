@@ -178,7 +178,7 @@ export const deleteUserByAdmin = async (req: CustomRequest, res: Response) => {
     await prisma.profile.deleteMany({ where: { user: { id: +id } } });
     await prisma.user.delete({ where: { id: +id } });
 
-    res.status(200).json({ message: 'User deleted successfully' });
+    res.status(200).json({ success: true, message: 'User deleted successfully' });
   } catch (err) {
     console.error('Error deleting user:', err);
     res.status(500).json({ error: 'Server error' });
