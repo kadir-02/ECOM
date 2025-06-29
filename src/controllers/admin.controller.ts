@@ -208,6 +208,88 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
   }
 };
 
+export const getAllAdmins = async (req: CustomRequest, res: Response) => {
+  if (req.user?.role !== 'ADMIN') {
+     res.status(403).json({ message: 'Access denied: Admins only' });
+     return
+  }
+
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const [users, totalCount] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          role: 'ADMIN',
+          isDeleted: false,
+        },
+        include: {
+          profile: true,
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({
+        where: {
+          role: 'ADMIN',
+          isDeleted: false,
+        },
+      }),
+    ]);
+
+    const results = users.map(user => {
+      const createdBy = `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim();
+      return {
+        id: user.id,
+        username: user.email,
+        first_name: user.profile?.firstName || '',
+        last_name: user.profile?.lastName || '',
+        phone_number: null, // Not in schema
+        country_code_for_phone_number: '',
+        email: user.email,
+        profile_picture: user.profile?.imageUrl || '',
+        is_active: true, // Assuming always active
+        category: 1, // Hardcoded since no category model is present
+        last_login: '', // Not tracked in your schema
+        date_joined: formatDate(user.createdAt),
+        created_by: createdBy || null,
+        updated_at: formatDate(user.createdAt), // Using createdAt as fallback
+        updated_by: createdBy || null,
+        category_name: 'Admin',
+      };
+    });
+
+    const totalPages = Math.ceil(totalCount / pageSize);
+
+    res.json({
+      total_pages: totalPages,
+      current_page: page,
+      page_size: pageSize,
+      results,
+    });
+
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Helper to format dates
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date);
+}
+
+
 // export const exportUsersToCsv = async (req: Request, res: Response) => {
 //   try {
 //     const users = await prisma.user.findMany({

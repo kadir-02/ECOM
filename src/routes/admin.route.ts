@@ -12,6 +12,7 @@ import {
   adminBroadcastNotification,
   getUserNotificationsByAdmin,
   deleteUserNotificationByAdmin,
+  getAllAdmins,
 } from '../controllers/admin.controller';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeAdmin } from '../middlewares/authorizaAdmin';
@@ -30,6 +31,7 @@ router.post('/create', uploadMemory.single('image'), createUserByAdmin);
 router.patch('/update/:id', uploadMemory.single('image'), updateUserByAdmin);
 router.delete('/delete/:id', deleteUserByAdmin);
 router.get('/userlist', getAllUsers);
+router.get('/adminlist', getAllAdmins);
 // router.get('/export/users', exportUsersToCsv);
 // router.get('/export/products', exportProductsToCsv);
 // router.get('/export/variants', exportVariantsToCSV);
