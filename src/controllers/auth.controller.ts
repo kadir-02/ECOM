@@ -2,18 +2,30 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../utils/jwt';
 import prisma from '../db/prisma';
-import cloudinary from '../upload/cloudinary';
+import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export const register = async (req: Request, res: Response) => {
-  const { email, password, profile } = req.body;
+  const { email, password, profile, address } = req.body;
 
+  // Parse profile (if sent as string from FormData)
   let profileData = profile;
   if (typeof profile === 'string') {
     try {
       profileData = JSON.parse(profile);
-    } catch (err) {
+    } catch {
        res.status(400).json({ message: 'Invalid profile format' });
-       return;
+       return
+    }
+  }
+
+  // Parse address (if sent as string from FormData)
+  let addressData = address;
+  if (typeof address === 'string') {
+    try {
+      addressData = JSON.parse(address);
+    } catch {
+       res.status(400).json({ message: 'Invalid address format' });
+       return
     }
   }
 
@@ -21,30 +33,22 @@ export const register = async (req: Request, res: Response) => {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
        res.status(400).json({ message: 'User already exists' });
-       return;
+       return
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     let imageUrl: string | null = null;
-    // let publicId: string | null = null;
+    let publicId: string | null = null;
 
-    if (req.file) {
-      const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { folder: 'users' },
-          (error, result) => {
-            if (error || !result) return reject(error);
-            resolve({ secure_url: result.secure_url, public_id: result.public_id });
-          }
-        );
-        uploadStream.end(req.file!.buffer);
-      });
-
-      imageUrl = result.secure_url;
-      // publicId = result.public_id;
+    // Upload image if file exists
+    if (req.file?.buffer) {
+      const uploadResult = await uploadToCloudinary(req.file.buffer, 'users');
+      imageUrl = uploadResult.secure_url;
+      publicId = uploadResult.public_id;
     }
 
+    // Create user with profile and address
     const user = await prisma.user.create({
       data: {
         email,
@@ -54,19 +58,30 @@ export const register = async (req: Request, res: Response) => {
           create: {
             ...profileData,
             imageUrl,
-            // publicId,
+            publicId,
           },
         },
+        addresses: addressData ? {
+          create: Array.isArray(addressData) ? addressData : [addressData],
+        } : undefined,
       },
-      include: { profile: true },
+      include: {
+        profile: true,
+        addresses: true,
+      },
     });
 
-    res.status(201).json({ message: 'User created', userId: user.id });
+    res.status(201).json({
+      message: 'User created successfully',
+      userId: user.id,
+      user,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
