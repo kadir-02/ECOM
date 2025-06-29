@@ -29,5 +29,5 @@ router.get('/details', getMe);
 router.get('/discounts', getDiscountRules);
 
 //admin dashboard
-router.get('/dashboard',authorizeAdmin, getDashboard);
+router.post('/dashboard',authorizeAdmin, getDashboard);
 export default router;
