@@ -5,6 +5,7 @@ import { createProduct, deleteProduct, getProducts, updateProduct, updateProduct
 import productImageRoutes from './productImage.routes'
 import productSpecRoutes from './productSpecification.route'
 import variantRoutes from '../ProductRoutes/variant.route';
+import { getNewArrivalProducts, getProductBySlug } from '../../controllers/ProductAndVariationControllers/productFilters.controller';
 
 const router = Router({ mergeParams: true });
 
@@ -13,11 +14,14 @@ router.get('/', getProducts);
 router.use('/image/',productImageRoutes)
 router.use('/spec/',productSpecRoutes)
 router.use('/variant', variantRoutes);
-// router.get('/info/:slug', getProductBySlug);
+router.get('/info/:slug', getProductBySlug);
 // router.get('/best-selling', getBestSellingProducts);
+router.get('/newarrivals',getNewArrivalProducts)
+
 
 // Admin-only routes
 router.use(authenticate, authorizeAdmin);
+
 
 router.post('/', createProduct);
 router.patch('/:id', updateProduct);
