@@ -145,15 +145,46 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
 // Get orders for logged in user
 export const getUserOrders = async (req: CustomRequest, res: Response) => {
-  const userId = req.user?.userId;
+  const {
+    customer,
+    page = 1,
+    page_size = 10,
+    ordering = 'desc',
+    order_status,
+    start_date,
+    end_date,
+  } = req.query;
+
+  const isAdmin = req.user?.role === 'ADMIN';
+  const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
+
   if (!userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+     res.status(400).json({ message: "Missing or invalid user ID" });
+     return
   }
 
+  const pageNum = parseInt(page as string);
+  const pageSizeNum = parseInt(page_size as string);
+  const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
+
   try {
+    const whereConditions: any = { userId };
+
+    if (order_status) {
+      whereConditions.status = order_status;
+    }
+
+    if (start_date && end_date) {
+      whereConditions.createdAt = {
+        gte: new Date(start_date as string),
+        lte: new Date(end_date as string),
+      };
+    }
+
+    const totalCount = await prisma.order.count({ where: whereConditions });
+
     const orders = await prisma.order.findMany({
-      where: { userId },
+      where: whereConditions,
       include: {
         items: {
           include: {
@@ -164,15 +195,28 @@ export const getUserOrders = async (req: CustomRequest, res: Response) => {
         payment: true,
         address: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: sortOrder },
+      skip: (pageNum - 1) * pageSizeNum,
+      take: pageSizeNum,
     });
 
-    res.json(orders);
+    res.json({
+      success: true,
+      result: orders,
+      pagination: {
+        total: totalCount,
+        current_page: pageNum,
+        page_size: pageSizeNum,
+        total_pages: Math.ceil(totalCount / pageSizeNum),
+      },
+    });
   } catch (error) {
     console.error('Fetch orders failed:', error);
     res.status(500).json({ message: 'Failed to fetch orders', error });
   }
 };
+
+
 
 // Get a specific order by ID for the logged-in user
 export const getOrderById = async (req: CustomRequest, res: Response) => {
