@@ -2,6 +2,11 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 
+type DailySales = {
+  date: string;         // ISO date string
+  total: string | null; // Prisma returns numeric as string (especially with PostgreSQL)
+};
+
 export const getDashboard = async (req: Request, res: Response) => {
   const {
     user_id,
@@ -24,7 +29,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       where: {
         order: {
           createdAt: { gte: start, lte: end },
-          userId: Number(user_id),
+          // userId: Number(user_id),
         },
       },
     });
@@ -52,7 +57,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       _avg: { totalAmount: true },
       where: {
         createdAt: { gte: start, lte: end },
-        userId: Number(user_id),
+        // userId: Number(user_id),
       },
     });
     const avgVal = orderAgg._avg?.totalAmount ?? 0;
@@ -97,7 +102,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       _sum: { totalAmount: true },
       where: {
         createdAt: { gte: start, lte: end },
-        userId: Number(user_id),
+        // userId: Number(user_id),
       },
     });
 
@@ -122,14 +127,16 @@ export const getDashboard = async (req: Request, res: Response) => {
     });
 
     // Order sale graph (daily revenue)
-    const daily = await prisma.order.groupBy({
-      by: ['createdAt'],
-      _sum: { totalAmount: true },
-      where: {
-        createdAt: { gte: start, lte: end },
-        userId: Number(user_id),
-      },
-    });
+    const daily = await prisma.$queryRaw<DailySales[]>`
+      SELECT 
+        DATE("createdAt") as date, 
+        SUM("totalAmount") as total 
+      FROM "Order"
+      WHERE "createdAt" BETWEEN ${start} AND ${end} 
+        AND "userId" = ${Number(user_id)}
+      GROUP BY DATE("createdAt")
+      ORDER BY DATE("createdAt") ASC;
+    `;
 
     const outOfStockProducts = await prisma.product.count({
       where: {
@@ -219,9 +226,9 @@ export const getDashboard = async (req: Request, res: Response) => {
         by_spending: topBySpending,
       },
       order_sale_graph: daily.map(d => ({
-        date: d.createdAt.toISOString().slice(0,10),
-        total: d._sum.totalAmount,
-      })),
+        date: d.date,
+        total: d.total ? parseFloat(d.total) : 0,
+      }))
     });
   } catch (err) {
     console.error(err);
