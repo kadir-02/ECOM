@@ -92,11 +92,17 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     if (settings['average_order_value'] !== undefined) {
-      const agg = await prisma.order.aggregate({
-        _avg: { totalAmount: true },
-        where: { createdAt: { gte: start, lte: end } },
-      });
-      resp.average_order_value = parseFloat(((agg._avg?.totalAmount ?? 0)).toFixed(2));
+      const [aggSum, aggCount] = await Promise.all([
+        prisma.order.aggregate({
+          _sum: { totalAmount: true },
+          where: { createdAt: { gte: start, lte: end } },
+        }),
+        prisma.order.count({
+          where: { createdAt: { gte: start, lte: end } },
+        }),
+      ]);
+      const avg = aggCount > 0 ? (aggSum._sum?.totalAmount ?? 0) / aggCount : 0;
+      resp.average_order_value = parseFloat(avg.toFixed(2));
     }
 
     if (settings['user_data'] !== undefined) {
