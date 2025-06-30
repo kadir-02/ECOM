@@ -77,7 +77,7 @@ export const createUserByAdmin = async (req: CustomRequest, res: Response) => {
 
 export const updateUserByAdmin = async (req: CustomRequest, res: Response) => {
   const { id } = req.params;
-  const { email, role, profile } = req.body;
+  const { email,  profile } = req.body;
 
   let profileData = typeof profile === 'string' ? JSON.parse(profile) : profile;
 
@@ -114,7 +114,6 @@ export const updateUserByAdmin = async (req: CustomRequest, res: Response) => {
       where: { id: +id },
       data: {
         email,
-        role,
         profile: {
           update: {
             ...profileData,
@@ -193,6 +192,7 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
 
   try {
     const users = await prisma.user.findMany({
+      where:{role:"USER"},
       include: {
         profile: true,
       },
