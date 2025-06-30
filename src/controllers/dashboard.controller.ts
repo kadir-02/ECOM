@@ -12,9 +12,8 @@ export const userDashboardSettings: Record<number, Record<string, number>> = {};
 
 export const getDashboard = async (req: Request, res: Response) => {
   const { user_id, start_date, end_date } = req.body;
+  const start = new Date(start_date), end = new Date(end_date);
 
-  const start = new Date(start_date);
-  const end = new Date(end_date);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
      res.status(400).json({ message: 'Invalid date format' });
      return
@@ -22,7 +21,7 @@ export const getDashboard = async (req: Request, res: Response) => {
 
   const settings = userDashboardSettings[user_id] || {};
 
-  // default response object
+  // Default response skeleton
   const resp: any = {
     message: '',
     products_sold: 0,
@@ -78,7 +77,6 @@ export const getDashboard = async (req: Request, res: Response) => {
   };
 
   try {
-    // 1. products_sold
     if (settings['products_sold'] !== undefined) {
       const agg = await prisma.orderItem.aggregate({
         _sum: { quantity: true },
@@ -87,14 +85,12 @@ export const getDashboard = async (req: Request, res: Response) => {
       resp.products_sold = agg._sum?.quantity ?? 0;
     }
 
-    // 2. new_customer_count
     if (settings['new_customer_count'] !== undefined) {
       resp.new_customer_count = await prisma.user.count({
         where: { createdAt: { gte: start, lte: end }, role: 'USER' },
       });
     }
 
-    // 3. average_order_value
     if (settings['average_order_value'] !== undefined) {
       const agg = await prisma.order.aggregate({
         _avg: { totalAmount: true },
@@ -103,12 +99,13 @@ export const getDashboard = async (req: Request, res: Response) => {
       resp.average_order_value = parseFloat(((agg._avg?.totalAmount ?? 0)).toFixed(2));
     }
 
-    // 4. user_summary
     if (settings['user_data'] !== undefined) {
       const [staff, cust, inactiveC] = await Promise.all([
         prisma.user.count({ where: { role: 'ADMIN' } }),
         prisma.user.count({ where: { role: 'USER' } }),
-        prisma.user.count({ where: { role: 'USER', orders: { none: {} } } }),
+        prisma.user.count({
+          where: { role: 'USER', orders: { none: {} } },
+        }),
       ]);
       resp.user_summary = {
         total_staff_users: staff,
@@ -120,7 +117,6 @@ export const getDashboard = async (req: Request, res: Response) => {
       };
     }
 
-    // 5. product_summary
     if (settings['product_data'] !== undefined) {
       const [total, sumStock] = await Promise.all([
         prisma.product.count({ where: { isDeleted: false } }),
@@ -137,7 +133,6 @@ export const getDashboard = async (req: Request, res: Response) => {
       const lowStock = await prisma.product.count({
         where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
       });
-
       resp.product_summary = {
         total_products: total,
         active_products: total,
@@ -148,7 +143,6 @@ export const getDashboard = async (req: Request, res: Response) => {
       };
     }
 
-    // 6. order_summary
     if (settings['order_data'] !== undefined) {
       const groups = await prisma.order.groupBy({
         by: ['status'],
@@ -156,13 +150,12 @@ export const getDashboard = async (req: Request, res: Response) => {
         where: { createdAt: { gte: start, lte: end }, userId: user_id },
       });
       groups.forEach(g => {
-        const key = g.status.toLowerCase() + '_orders';
+        const key = `${g.status.toLowerCase()}_orders`;
         resp.order_summary[key] = g._count;
         resp.order_summary.total_orders += g._count;
       });
     }
 
-    // 7. revenue_summary & order_payment_summary
     if (settings['revenue_data'] !== undefined || settings['order_payment_data'] !== undefined) {
       const agg = await prisma.order.aggregate({
         _sum: { totalAmount: true },
@@ -189,7 +182,6 @@ export const getDashboard = async (req: Request, res: Response) => {
       resp.order_payment_summary.payment_not_done_amount = notdone;
     }
 
-    // 8. top_customers
     if (settings['top_customers_data'] !== undefined) {
       resp.top_customers.by_orders = await prisma.order.groupBy({
         by: ['userId'],
@@ -207,13 +199,13 @@ export const getDashboard = async (req: Request, res: Response) => {
       });
     }
 
-    // 9. order_sale_graph
     if (settings['order_sale_graph'] !== undefined) {
-      const daily: DailySales[] = await prisma.$queryRaw`
+      const daily = await prisma.$queryRaw<DailySales[]>`
         SELECT DATE("createdAt") AS date, SUM("totalAmount") AS total
         FROM "Order"
         WHERE "createdAt" BETWEEN ${start} AND ${end} AND "userId" = ${user_id}
-        GROUP BY DATE("createdAt") ORDER BY DATE("createdAt")
+        GROUP BY DATE("createdAt")
+        ORDER BY DATE("createdAt")
       `;
       resp.order_sale_graph = daily.map(d => ({
         date: d.date,
@@ -221,16 +213,16 @@ export const getDashboard = async (req: Request, res: Response) => {
       }));
     }
 
-    // 10. unsold_products, least_selling, top_selling, recent_orders, recent_payment_transactions, low_stock_products
     if (settings['unsold_products_data'] !== undefined) {
       const soldProds = await prisma.orderItem.findMany({
         select: { productId: true },
         distinct: ['productId'],
       });
+      const soldIds = soldProds.map(p => p.productId).filter((x): x is number => x != null);
       resp.unsold_products = await prisma.product.findMany({
         where: {
           isDeleted: false,
-          id: { notIn: soldProds.map(p => p.productId).filter((id): id is number => id !== null) },
+          id: { notIn: soldIds },
         },
       });
     }
@@ -241,8 +233,8 @@ export const getDashboard = async (req: Request, res: Response) => {
         _sum: { quantity: true },
       });
       items.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
-      resp.top_selling_products = settings['top_selling_products_data'] !== undefined ? items.slice(0,5) : [];
-      resp.least_selling_products = settings['least_selling_products_data'] !== undefined ? items.slice(-5) : [];
+      if (settings['top_selling_products_data'] !== undefined) resp.top_selling_products = items.slice(0, 5);
+      if (settings['least_selling_products_data'] !== undefined) resp.least_selling_products = items.slice(-5);
     }
 
     if (settings['recent_orders_data'] !== undefined) {
@@ -252,6 +244,7 @@ export const getDashboard = async (req: Request, res: Response) => {
         take: 5,
       });
     }
+
     if (settings['recent_payment_transactions_data'] !== undefined) {
       resp.recent_payment_transactions = await prisma.order.findMany({
         where: { userId: user_id, payment: { isNot: null } },
@@ -270,11 +263,12 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
      res.json(resp);
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
      res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 export const getUserDashboardSections = async (req: Request, res: Response) => {
