@@ -16,8 +16,18 @@ export const getCart = async (req: CustomRequest, res: Response) => {
     include: {
       items: {
         include: {
-          product: {include:{images:true}},
-          variant: { include: { images: true } },
+          product: { include: { images: true } },
+          variant: {
+            include: {
+              images: true,
+              product: {
+                select: {
+                  name: true,
+                  description: true,
+                },
+              },
+            },
+          },
         },
       },
     },
