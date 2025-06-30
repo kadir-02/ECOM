@@ -107,13 +107,14 @@ export const updateHeaderData = async (req: Request, res: Response) => {
         sequence_number,
       },
     });
-    if (checkSequence) {
+    if (checkSequence && Number(header_id) !== checkSequence.id) {
       res
         .status(400)
         .json({
           success: false,
           message: "This sequence number already exists",
         });
+        return;
     }
     const header = await prisma.header.update({
       where: {
