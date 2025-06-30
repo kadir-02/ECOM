@@ -31,8 +31,8 @@ export function buildProductQuery(query: any) {
 
   if (!isNaN(minPrice) || !isNaN(maxPrice)) {
     where.sellingPrice  = {};
-    if (!isNaN(minPrice)) where.sellingPrice .gte = minPrice;
-    if (!isNaN(maxPrice)) where.sellingPrice .lte = maxPrice;
+    if (!isNaN(minPrice)) where.sellingPrice.gte = minPrice;
+    if (!isNaN(maxPrice)) where.sellingPrice.lte = maxPrice;
   }
 
   let orderBy: OrderType = { createdAt: 'desc' };
