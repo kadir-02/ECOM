@@ -7,7 +7,7 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 export const register = async (req: Request, res: Response) => {
   const { email, password, profile, address } = req.body;
 
-  // Parse profile (required)
+  // Parse profile (if sent as string from FormData)
   let profileData = profile;
   if (typeof profile === 'string') {
     try {
@@ -18,18 +18,14 @@ export const register = async (req: Request, res: Response) => {
     }
   }
 
-  // Parse address (optional)
-  let addressData = undefined;
-  if (address) {
-    if (typeof address === 'string') {
-      try {
-        addressData = JSON.parse(address);
-      } catch {
-         res.status(400).json({ message: 'Invalid address format' });
-         return
-      }
-    } else {
-      addressData = address;
+  // Parse address (if sent as string from FormData)
+  let addressData = address;
+  if (typeof address === 'string') {
+    try {
+      addressData = JSON.parse(address);
+    } catch {
+       res.status(400).json({ message: 'Invalid address format' });
+       return
     }
   }
 
@@ -52,7 +48,7 @@ export const register = async (req: Request, res: Response) => {
       publicId = uploadResult.public_id;
     }
 
-    // Create user with profile and (optional) address
+    // Create user with profile and address
     const user = await prisma.user.create({
       data: {
         email,

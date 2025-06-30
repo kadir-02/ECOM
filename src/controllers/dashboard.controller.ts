@@ -3,238 +3,279 @@ import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 
 type DailySales = {
-  date: string;         // ISO date string
-  total: string | null; // Prisma returns numeric as string (especially with PostgreSQL)
+  date: string;
+  total: string | null;
 };
 
+// Temporary in-memory store for per-user dashboard settings
+export const userDashboardSettings: Record<number, Record<string, number>> = {};
+
 export const getDashboard = async (req: Request, res: Response) => {
-  const {
-    user_id,
-    start_date,
-    end_date,
-    token /* ignore or validate as needed */,
-  } = req.body;
+  const { user_id, start_date, end_date } = req.body;
 
   const start = new Date(start_date);
   const end = new Date(end_date);
-  if (isNaN(start as any) || isNaN(end as any)) {
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
      res.status(400).json({ message: 'Invalid date format' });
      return
   }
 
+  const settings = userDashboardSettings[user_id] || {};
+
+  // default response object
+  const resp: any = {
+    message: '',
+    products_sold: 0,
+    new_customer_count: 0,
+    average_order_value: 0,
+    user_summary: {
+      total_staff_users: 0,
+      active_staff_users: 0,
+      inactive_staff_users: 0,
+      total_customers: 0,
+      active_customers: 0,
+      inactive_customers: 0,
+    },
+    product_summary: {
+      total_products: 0,
+      active_products: 0,
+      inactive_products: 0,
+      products_in_stock: 0,
+      products_out_of_stock: 0,
+      products_about_to_go_out_of_stock: 0,
+    },
+    order_summary: {
+      total_orders: 0,
+      pending_orders: 0,
+      confirmed_orders: 0,
+      shipped_orders: 0,
+      delivered_orders: 0,
+      cancelled_orders: 0,
+    },
+    revenue_summary: {
+      total_revenue: 0,
+      total_tax_collected: 0,
+      total_delivery_charge_collected: 0,
+      total_discount_given: 0,
+    },
+    order_payment_summary: {
+      total_payment_estimate: 0,
+      online_payment_amount: 0,
+      cash_on_delivery_payment_amount: 0,
+      payment_not_done_amount: 0,
+    },
+    top_customers: {
+      by_orders: [],
+      by_spending: [],
+    },
+    recent_payment_transactions: [],
+    recent_orders: [],
+    top_selling_products: [],
+    least_selling_products: [],
+    unsold_products: [],
+    low_stock_products: [],
+    order_sale_graph: [],
+  };
+
   try {
-    // Products sold count in timeframe (total quantity in orders)
-    const productsSoldRes = await prisma.orderItem.aggregate({
-      _sum: { quantity: true },
-      where: {
-        order: {
-          createdAt: { gte: start, lte: end },
-          // userId: Number(user_id),
-        },
-      },
-    });
-    const products_sold = productsSoldRes._sum?.quantity ?? 0;
-
-    // New customers count in timeframe
-    const new_customer_count = await prisma.user.count({
-      where: {
-        createdAt: { gte: start, lte: end },
-        role: 'USER',
-      },
-    });
-
-    const inactiveCustomers = await prisma.user.count({
-      where: {
-        role: 'USER',
-        orders: {
-          none: {}, // No orders
-        },
-      },
-    });
-
-    // Average order value
-    const orderAgg = await prisma.order.aggregate({
-      _avg: { totalAmount: true },
-      where: {
-        createdAt: { gte: start, lte: end },
-        // userId: Number(user_id),
-      },
-    });
-    const avgVal = orderAgg._avg?.totalAmount ?? 0;
-
-    // User summary
-    const [staffUsers, custUsers] = await Promise.all([
-      prisma.user.aggregate({
-        _count: { id: true },
-        where: { role: 'ADMIN' },
-      }),
-      prisma.user.aggregate({
-        _count: { id: true },
-        where: { role: 'USER' },
-      }),
-    ]);
-
-    // Product summary
-    const [prodAgg, stockAgg] = await Promise.all([
-      prisma.product.aggregate({
-        _count: { id: true },
-        where: { isDeleted: false },
-      }),
-      prisma.product.aggregate({
-        _count: { id: true },
-        _sum: { stock: true },
-        where: { isDeleted: false },
-      }),
-    ]);
-
-    // Order summary
-    const orderSummary = await prisma.order.groupBy({
-      by: ['status'],
-      _count: true,
-      where: {
-        createdAt: { gte: start, lte: end },
-        userId: Number(user_id),
-      },
-    });
-
-    // Revenue & payment breakdown
-    const payments = await prisma.order.aggregate({
-      _sum: { totalAmount: true },
-      where: {
-        createdAt: { gte: start, lte: end },
-        // userId: Number(user_id),
-      },
-    });
-
-    // Top customers
-    const topByOrders = await prisma.order.groupBy({
-      by: ['userId'],
-      _count: { id: true },
-      where: {
-        createdAt: { gte: start, lte: end },
-      },
-      orderBy: { _count: { id: 'desc' } },
-      take: 5,
-    });
-    const topBySpending = await prisma.order.groupBy({
-      by: ['userId'],
-      _sum: { totalAmount: true },
-      where: {
-        createdAt: { gte: start, lte: end },
-      },
-      orderBy: { _sum: { totalAmount: 'desc' } },
-      take: 5,
-    });
-
-    // Order sale graph (daily revenue)
-    const daily = await prisma.$queryRaw<DailySales[]>`
-      SELECT 
-        DATE("createdAt") as date, 
-        SUM("totalAmount") as total 
-      FROM "Order"
-      WHERE "createdAt" BETWEEN ${start} AND ${end} 
-        AND "userId" = ${Number(user_id)}
-      GROUP BY DATE("createdAt")
-      ORDER BY DATE("createdAt") ASC;
-    `;
-
-    const outOfStockProducts = await prisma.product.count({
-      where: {
-        isDeleted: false,
-        stock: 0,
-      },
-    });
-    const companySettings = await prisma.companySettings.findFirst();
-    const threshold = companySettings?.product_low_stock_threshold ?? 5;
-
-    const lowStockProducts = await prisma.product.count({
-      where: {
-        isDeleted: false,
-        stock: {
-          lt: threshold,
-          gt: 0,
-        },
-      },
-    });
-
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: { gte: start, lte: end },
-        userId: Number(user_id),
-      },
-      include: {
-        payment: true,
-      },
-    });
-    let online_payment_amount = 0;
-    let cash_on_delivery_payment_amount = 0;
-    let payment_not_done_amount = 0;
-
-    for (const order of orders) {
-      if (!order.payment) {
-        payment_not_done_amount += order.totalAmount;
-      } else if (order.payment.status === 'SUCCESS') {
-        const method = order.payment.method.toLowerCase();
-        if (method.includes('online')) {
-          online_payment_amount += order.totalAmount;
-        } else if (method.includes('cash')) {
-          cash_on_delivery_payment_amount += order.totalAmount;
-        }
-      }
+    // 1. products_sold
+    if (settings['products_sold'] !== undefined) {
+      const agg = await prisma.orderItem.aggregate({
+        _sum: { quantity: true },
+        where: { order: { createdAt: { gte: start, lte: end } } },
+      });
+      resp.products_sold = agg._sum?.quantity ?? 0;
     }
 
-    res.json({
-      message: '',
-      products_sold,
-      new_customer_count,
-      average_order_value: parseFloat(avgVal.toFixed(2)),
-      user_summary: {
-        total_staff_users: staffUsers._count.id,
-        active_staff_users: staffUsers._count.id, // adapt if status exists
+    // 2. new_customer_count
+    if (settings['new_customer_count'] !== undefined) {
+      resp.new_customer_count = await prisma.user.count({
+        where: { createdAt: { gte: start, lte: end }, role: 'USER' },
+      });
+    }
+
+    // 3. average_order_value
+    if (settings['average_order_value'] !== undefined) {
+      const agg = await prisma.order.aggregate({
+        _avg: { totalAmount: true },
+        where: { createdAt: { gte: start, lte: end } },
+      });
+      resp.average_order_value = parseFloat(((agg._avg?.totalAmount ?? 0)).toFixed(2));
+    }
+
+    // 4. user_summary
+    if (settings['user_data'] !== undefined) {
+      const [staff, cust, inactiveC] = await Promise.all([
+        prisma.user.count({ where: { role: 'ADMIN' } }),
+        prisma.user.count({ where: { role: 'USER' } }),
+        prisma.user.count({ where: { role: 'USER', orders: { none: {} } } }),
+      ]);
+      resp.user_summary = {
+        total_staff_users: staff,
+        active_staff_users: staff,
         inactive_staff_users: 0,
-        total_customers: custUsers._count.id,
-        active_customers: custUsers._count.id,
-        inactive_customers: inactiveCustomers,
-      },
-      product_summary: {
-        total_products: prodAgg._count.id,
-        active_products: prodAgg._count.id,
+        total_customers: cust,
+        active_customers: cust,
+        inactive_customers: inactiveC,
+      };
+    }
+
+    // 5. product_summary
+    if (settings['product_data'] !== undefined) {
+      const [total, sumStock] = await Promise.all([
+        prisma.product.count({ where: { isDeleted: false } }),
+        prisma.product.aggregate({
+          _sum: { stock: true },
+          where: { isDeleted: false },
+        }),
+      ]);
+      const company = await prisma.companySettings.findFirst();
+      const threshold = company?.product_low_stock_threshold ?? 5;
+      const outOfStock = await prisma.product.count({
+        where: { isDeleted: false, stock: 0 },
+      });
+      const lowStock = await prisma.product.count({
+        where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
+      });
+
+      resp.product_summary = {
+        total_products: total,
+        active_products: total,
         inactive_products: 0,
-        products_in_stock: stockAgg._sum?.stock ?? 0,
-        products_out_of_stock: outOfStockProducts,
-        products_about_to_go_out_of_stock: lowStockProducts,
-      },
-      order_summary: orderSummary.reduce((acc, grp) => {
-        acc.total_orders = (acc.total_orders || 0) + grp._count;
-        acc[grp.status.toLowerCase() + '_orders'] = grp._count;
-        return acc;
-      }, {} as any),
-      revenue_summary: {
-        total_revenue: payments._sum.totalAmount ?? 0,
-        total_tax_collected: 0,
-        total_delivery_charge_collected: 0,
-        total_discount_given: 0,
-      },
-      order_payment_summary: {
-        total_payment_estimate: payments._sum.totalAmount ?? 0,
-        online_payment_amount,
-        cash_on_delivery_payment_amount,
-        payment_not_done_amount,
-      },
-      top_customers: {
-        by_orders: topByOrders,
-        by_spending: topBySpending,
-      },
-      order_sale_graph: daily.map(d => ({
+        products_in_stock: sumStock._sum?.stock ?? 0,
+        products_out_of_stock: outOfStock,
+        products_about_to_go_out_of_stock: lowStock,
+      };
+    }
+
+    // 6. order_summary
+    if (settings['order_data'] !== undefined) {
+      const groups = await prisma.order.groupBy({
+        by: ['status'],
+        _count: { id: true },
+        where: { createdAt: { gte: start, lte: end }, userId: user_id },
+      });
+      groups.forEach(g => {
+        const key = g.status.toLowerCase() + '_orders';
+        resp.order_summary[key] = g._count;
+        resp.order_summary.total_orders += g._count;
+      });
+    }
+
+    // 7. revenue_summary & order_payment_summary
+    if (settings['revenue_data'] !== undefined || settings['order_payment_data'] !== undefined) {
+      const agg = await prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { createdAt: { gte: start, lte: end }, userId: user_id },
+      });
+      resp.revenue_summary.total_revenue = agg._sum?.totalAmount ?? 0;
+      resp.order_payment_summary.total_payment_estimate = resp.revenue_summary.total_revenue;
+
+      const orders = await prisma.order.findMany({
+        where: { createdAt: { gte: start, lte: end }, userId: user_id },
+        include: { payment: true },
+      });
+      let online = 0, cod = 0, notdone = 0;
+      orders.forEach(o => {
+        if (!o.payment) notdone += o.totalAmount;
+        else if (o.payment.status === 'SUCCESS') {
+          const m = o.payment.method.toLowerCase();
+          if (m.includes('online')) online += o.totalAmount;
+          else if (m.includes('cash')) cod += o.totalAmount;
+        }
+      });
+      resp.order_payment_summary.online_payment_amount = online;
+      resp.order_payment_summary.cash_on_delivery_payment_amount = cod;
+      resp.order_payment_summary.payment_not_done_amount = notdone;
+    }
+
+    // 8. top_customers
+    if (settings['top_customers_data'] !== undefined) {
+      resp.top_customers.by_orders = await prisma.order.groupBy({
+        by: ['userId'],
+        _count: { id: true },
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
+      });
+      resp.top_customers.by_spending = await prisma.order.groupBy({
+        by: ['userId'],
+        _sum: { totalAmount: true },
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { _sum: { totalAmount: 'desc' } },
+        take: 5,
+      });
+    }
+
+    // 9. order_sale_graph
+    if (settings['order_sale_graph'] !== undefined) {
+      const daily: DailySales[] = await prisma.$queryRaw`
+        SELECT DATE("createdAt") AS date, SUM("totalAmount") AS total
+        FROM "Order"
+        WHERE "createdAt" BETWEEN ${start} AND ${end} AND "userId" = ${user_id}
+        GROUP BY DATE("createdAt") ORDER BY DATE("createdAt")
+      `;
+      resp.order_sale_graph = daily.map(d => ({
         date: d.date,
-        total: d.total ? parseFloat(d.total) : 0,
-      }))
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+        total: parseFloat(d.total ?? '0'),
+      }));
+    }
+
+    // 10. unsold_products, least_selling, top_selling, recent_orders, recent_payment_transactions, low_stock_products
+    if (settings['unsold_products_data'] !== undefined) {
+      const soldProds = await prisma.orderItem.findMany({
+        select: { productId: true },
+        distinct: ['productId'],
+      });
+      resp.unsold_products = await prisma.product.findMany({
+        where: {
+          isDeleted: false,
+          id: { notIn: soldProds.map(p => p.productId).filter((id): id is number => id !== null) },
+        },
+      });
+    }
+
+    if (settings['least_selling_products_data'] !== undefined || settings['top_selling_products_data'] !== undefined) {
+      const items = await prisma.orderItem.groupBy({
+        by: ['productId'],
+        _sum: { quantity: true },
+      });
+      items.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
+      resp.top_selling_products = settings['top_selling_products_data'] !== undefined ? items.slice(0,5) : [];
+      resp.least_selling_products = settings['least_selling_products_data'] !== undefined ? items.slice(-5) : [];
+    }
+
+    if (settings['recent_orders_data'] !== undefined) {
+      resp.recent_orders = await prisma.order.findMany({
+        where: { userId: user_id },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+    }
+    if (settings['recent_payment_transactions_data'] !== undefined) {
+      resp.recent_payment_transactions = await prisma.order.findMany({
+        where: { userId: user_id, payment: { isNot: null } },
+        include: { payment: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+      }).then(list => list.map(o => o.payment));
+    }
+
+    if (settings['low_stock_products_data'] !== undefined) {
+      const company = await prisma.companySettings.findFirst();
+      const threshold = company?.product_low_stock_threshold ?? 5;
+      resp.low_stock_products = await prisma.product.findMany({
+        where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
+      });
+    }
+
+     res.json(resp);
+  } catch (error) {
+    console.error(error);
+     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 export const getUserDashboardSections = async (req: Request, res: Response) => {
   try {
@@ -271,4 +312,21 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
     console.error("Error returning dashboard sections:", error);
     res.status(500).json({ message: "Internal server error" });
   }
+};
+
+export const upsertDashboardSetting = (req: Request, res: Response) => {
+  const { user_id, components } = req.body;
+
+  if (typeof user_id !== 'number' || typeof components !== 'object') {
+     res.status(400).json({ message: 'Invalid input' });
+     return
+  }
+
+  userDashboardSettings[user_id] = components;
+
+   res.status(200).json({
+    success: true,
+    message: 'Dashboard settings saved',
+    settings: components,
+  });
 };
