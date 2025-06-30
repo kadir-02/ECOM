@@ -1,5 +1,5 @@
 type OrderType = 
-  | { basePrice: 'asc' | 'desc' }
+  | { sellingPrice : 'asc' | 'desc' }
   | { createdAt: 'asc' | 'desc' };
 
 export function buildProductQuery(query: any) {
@@ -30,14 +30,14 @@ export function buildProductQuery(query: any) {
   if (!isNaN(subcategoryId)) where.subcategoryId = subcategoryId;
 
   if (!isNaN(minPrice) || !isNaN(maxPrice)) {
-    where.basePrice = {};
-    if (!isNaN(minPrice)) where.basePrice.gte = minPrice;
-    if (!isNaN(maxPrice)) where.basePrice.lte = maxPrice;
+    where.sellingPrice  = {};
+    if (!isNaN(minPrice)) where.sellingPrice .gte = minPrice;
+    if (!isNaN(maxPrice)) where.sellingPrice .lte = maxPrice;
   }
 
   let orderBy: OrderType = { createdAt: 'desc' };
-  if (sort === 'price_asc') orderBy = { basePrice: 'asc' };
-  if (sort === 'price_desc') orderBy = { basePrice: 'desc' };
+  if (sort === 'price_asc') orderBy = { sellingPrice : 'asc' };
+  if (sort === 'price_desc') orderBy = { sellingPrice : 'desc' };
 
   return { where, orderBy, skip, limit, page };
 }

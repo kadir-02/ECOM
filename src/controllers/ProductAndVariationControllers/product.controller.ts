@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../db/prisma";
 import { generateSlug } from "../../utils/slugify";
+import { buildProductQuery } from '../../utils/productFilters';
 
 // CREATE PRODUCT
 export const createProduct = async (req: Request, res: Response) => {
@@ -102,24 +103,24 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const { category } = req.query;
+    const { where, orderBy, skip, limit, page } = buildProductQuery(req.query);
 
-    const whereClause: any = { isDeleted: false };
-    if (category && !isNaN(Number(category))) {
-      whereClause.categoryId = Number(category);
-    }
-
-    const products = await prisma.product.findMany({
-      where: whereClause,
-      include: {
-        category: true,
-        subcategory: true,
-        images: true,
-        variants: { include: { images: true } },
-        specifications: true,
-      },
-      orderBy: { sequenceNumber: 'asc' },
-    });
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          subcategory: true,
+          images: true,
+          variants: { include: { images: true } },
+          specifications: true,
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
 
     const transformed = products.map((p) => {
       const specsObj: Record<string, string[]> = {};
@@ -133,7 +134,14 @@ export const getProducts = async (req: Request, res: Response) => {
       };
     });
 
-    res.status(200).json({ success: true, count: transformed.length, products: transformed });
+    res.status(200).json({
+      success: true,
+      count: transformed.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      products: transformed,
+    });
   } catch (error: any) {
     console.error('Get products error:', error);
     res.status(500).json({ success: false, message: error.message });
