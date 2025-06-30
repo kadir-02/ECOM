@@ -144,77 +144,77 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 };
 
 // Get orders for logged in user
-export const getUserOrders = async (req: CustomRequest, res: Response) => {
-  const {
-    customer,
-    page = 1,
-    page_size = 10,
-    ordering = 'desc',
-    order_status,
-    start_date,
-    end_date,
-  } = req.query;
+// export const getUserOrders = async (req: CustomRequest, res: Response) => {
+//   const {
+//     customer,
+//     page = 1,
+//     page_size = 10,
+//     ordering = 'desc',
+//     order_status,
+//     start_date,
+//     end_date,
+//   } = req.query;
 
-  const isAdmin = req.user?.role === 'ADMIN';
-  const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
+//   const isAdmin = req.user?.role === 'ADMIN';
+//   const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
 
-  if (!userId) {
-     res.status(400).json({ message: "Missing or invalid user ID" });
-     return
-  }
+//   if (!userId) {
+//      res.status(400).json({ message: "Missing or invalid user ID" });
+//      return
+//   }
 
-  const pageNum = parseInt(page as string);
-  const pageSizeNum = parseInt(page_size as string);
-  const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
+//   const pageNum = parseInt(page as string);
+//   const pageSizeNum = parseInt(page_size as string);
+//   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
 
-  try {
-    const whereConditions: any = { userId };
+//   try {
+//     const whereConditions: any = { userId };
 
-    if (order_status) {
-      whereConditions.status = order_status;
-    }
+//     if (order_status) {
+//       whereConditions.status = order_status;
+//     }
 
-    if (start_date && end_date) {
-      whereConditions.createdAt = {
-        gte: new Date(start_date as string),
-        lte: new Date(end_date as string),
-      };
-    }
+//     if (start_date && end_date) {
+//       whereConditions.createdAt = {
+//         gte: new Date(start_date as string),
+//         lte: new Date(end_date as string),
+//       };
+//     }
 
-    const totalCount = await prisma.order.count({ where: whereConditions });
+//     const totalCount = await prisma.order.count({ where: whereConditions });
 
-    const orders = await prisma.order.findMany({
-      where: whereConditions,
-      include: {
-        items: {
-          include: {
-            product: true,
-            variant: true,
-          },
-        },
-        payment: true,
-        address: true,
-      },
-      orderBy: { createdAt: sortOrder },
-      skip: (pageNum - 1) * pageSizeNum,
-      take: pageSizeNum,
-    });
+//     const orders = await prisma.order.findMany({
+//       where: whereConditions,
+//       include: {
+//         items: {
+//           include: {
+//             product: true,
+//             variant: true,
+//           },
+//         },
+//         payment: true,
+//         address: true,
+//       },
+//       orderBy: { createdAt: sortOrder },
+//       skip: (pageNum - 1) * pageSizeNum,
+//       take: pageSizeNum,
+//     });
 
-    res.json({
-      success: true,
-      result: orders,
-      pagination: {
-        total: totalCount,
-        current_page: pageNum,
-        page_size: pageSizeNum,
-        total_pages: Math.ceil(totalCount / pageSizeNum),
-      },
-    });
-  } catch (error) {
-    console.error('Fetch orders failed:', error);
-    res.status(500).json({ message: 'Failed to fetch orders', error });
-  }
-};
+//     res.json({
+//       success: true,
+//       result: orders,
+//       pagination: {
+//         total: totalCount,
+//         current_page: pageNum,
+//         page_size: pageSizeNum,
+//         total_pages: Math.ceil(totalCount / pageSizeNum),
+//       },
+//     });
+//   } catch (error) {
+//     console.error('Fetch orders failed:', error);
+//     res.status(500).json({ message: 'Failed to fetch orders', error });
+//   }
+// };
 
 
 
@@ -520,99 +520,74 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
 };
 
 
-export const getOrdersForAdmin = async (req: Request, res: Response) => {
+export const getOrdersForAdmin = async (req: CustomRequest, res: Response) => {
+  const {
+    customer,
+    page = 1,
+    page_size = 10,
+    ordering = 'desc',
+    order_status,
+    start_date,
+    end_date,
+  } = req.query;
+
+  const isAdmin = req.user?.role === 'ADMIN';
+  const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
+
+  if (!userId) {
+     res.status(400).json({ message: "Missing or invalid user ID" });
+     return
+  }
+
+  const pageNum = parseInt(page as string);
+  const pageSizeNum = parseInt(page_size as string);
+  const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
+
   try {
-    const {
-      search,
-      start_date,
-      end_date,
-      page = '1',
-      page_size = '10',
-      order_status,
-      ordering,
-    } = req.query;
+    const whereConditions: any = { userId };
 
-    const currentPage = parseInt(page as string, 10);
-    const pageSize = parseInt(page_size as string, 10);
-    const skip = (currentPage - 1) * pageSize;
-
-    const filters: Prisma.OrderWhereInput = {};
-
-    // Filter by order status
     if (order_status) {
-      filters.status = order_status as any;
+      whereConditions.status = order_status;
     }
 
-    // Filter by date range
-   if (start_date && end_date) {
-  const start = new Date(start_date as string);
-  start.setHours(0, 0, 0, 0);
-
-  const end = new Date(end_date as string);
-  end.setHours(23, 59, 59, 999);
-
-  filters.createdAt = {
-    gte: start,
-    lte: end,
-  };
-}
-
-    // Search by order ID or general search term
-    if (search) {
-      const searchStr = search.toString();
-      if (!isNaN(Number(searchStr))) {
-        filters.id = Number(searchStr);
-      } else {
-        filters.OR = [
-          { user: { email: { contains: searchStr, mode: 'insensitive' } } },
-          { address: { fullName: { contains: searchStr, mode: 'insensitive' } } },
-        ];
-      }
+    if (start_date && end_date) {
+      whereConditions.createdAt = {
+        gte: new Date(start_date as string),
+        lte: new Date(end_date as string),
+      };
     }
 
-    // Handle ordering (e.g., ordering=-createdAt)
-    let orderBy: Prisma.OrderOrderByWithRelationInput = { createdAt: 'desc' };
-    if (ordering) {
-      const field = ordering.toString().replace('-', '');
-      const direction = ordering.toString().startsWith('-') ? 'desc' : 'asc';
-      if (['createdAt', 'totalAmount', 'status'].includes(field)) {
-        orderBy = { [field]: direction };
-      }
-    }
+    const totalCount = await prisma.order.count({ where: whereConditions });
 
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where: filters,
-        include: {
-          user: true,
-          address: true,
-          payment: true,
-          items: {
-            include: {
-              product: {include:{images:true}},
-              variant: {include:{images:true}},
-            },
+    const orders = await prisma.order.findMany({
+      where: whereConditions,
+      include: {
+        items: {
+          include: {
+            product: true,
+            variant: true,
           },
         },
-        skip,
-        take: pageSize,
-        orderBy,
-      }),
-      prisma.order.count({ where: filters }),
-    ]);
+        payment: true,
+        address: true,
+      },
+      orderBy: { createdAt: sortOrder },
+      skip: (pageNum - 1) * pageSizeNum,
+      take: pageSizeNum,
+    });
 
-    res.status(200).json({
-      success:true,
-      data: orders,
+    res.json({
+      success: true,
+      result: orders,
       pagination: {
-        total,
-        currentPage,
-        pageSize,
-        totalPages: Math.ceil(total / pageSize),
+        total: totalCount,
+        current_page: pageNum,
+        page_size: pageSizeNum,
+        total_pages: Math.ceil(totalCount / pageSizeNum),
       },
     });
   } catch (error) {
-    console.error('Error fetching orders for admin:', error);
+    console.error('Fetch orders failed:', error);
     res.status(500).json({ message: 'Failed to fetch orders', error });
   }
 };
