@@ -144,9 +144,9 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 };
 
 // Get orders for logged in user
-export const getUserOrders = async (req: CustomRequest, res: Response) => {
+export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const {
-    customer,
+    search,
     page = 1,
     page_size = 10,
     ordering = 'desc',
@@ -156,10 +156,9 @@ export const getUserOrders = async (req: CustomRequest, res: Response) => {
   } = req.query;
 
   const isAdmin = req.user?.role === 'ADMIN';
-  const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
 
-  if (!userId) {
-     res.status(400).json({ message: "Missing or invalid user ID" });
+  if (!isAdmin) {
+     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
      return
   }
 
@@ -168,7 +167,22 @@ export const getUserOrders = async (req: CustomRequest, res: Response) => {
   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
 
   try {
-    const whereConditions: any = { userId };
+    const whereConditions: any = {};
+
+    if (search) {
+      whereConditions.OR = [
+        { orderId: { contains: search as string } },
+        { status: { contains: search as string } },
+        {
+          user: {
+            OR: [
+              { email: { contains: search as string } },
+              { name: { contains: search as string } },
+            ],
+          },
+        },
+      ];
+    }
 
     if (order_status) {
       whereConditions.status = order_status;
@@ -194,6 +208,7 @@ export const getUserOrders = async (req: CustomRequest, res: Response) => {
         },
         payment: true,
         address: true,
+        user: true, // include user details (optional, for admin view)
       },
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
@@ -211,8 +226,8 @@ export const getUserOrders = async (req: CustomRequest, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Fetch orders failed:', error);
-    res.status(500).json({ message: 'Failed to fetch orders', error });
+    console.error('Admin fetch orders failed:', error);
+    res.status(500).json({ message: 'Failed to fetch admin orders', error });
   }
 };
 
