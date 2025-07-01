@@ -170,18 +170,29 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     const whereConditions: any = {};
 
     if (search) {
-      whereConditions.OR = [
-        { orderId: { contains: search as string } },
-        { status: { contains: search as string } },
-        {
-          user: {
-            OR: [
-              { email: { contains: search as string } },
-              { name: { contains: search as string } },
-            ],
-          },
+      const searchStr = search.toString();
+      const orConditions: any[] = [];
+
+      if (!isNaN(Number(searchStr))) {
+        orConditions.push({ id: Number(searchStr) });
+      }
+
+        // Match status exactly if it's a valid enum value
+      const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+      if (validStatuses.includes(searchStr)) {
+        orConditions.push({ status: searchStr });
+      }
+
+      orConditions.push({
+        user: {
+          OR: [
+            { email: { contains: searchStr, mode: 'insensitive' } },
+            { name: { contains: searchStr, mode: 'insensitive' } },
+          ],
         },
-      ];
+      });
+
+      whereConditions.OR = orConditions;
     }
 
     if (order_status) {
