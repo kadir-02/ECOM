@@ -78,3 +78,27 @@ export const setDefaultAddress = async (req: CustomRequest, res: Response) => {
     res.status(500).json({ message: 'Failed to set default address', error });
   }
 };
+
+export const getUserAddressesForAdmin = async (req: CustomRequest, res: Response) => {
+  const paramUserId = parseInt(req.params.userId); // e.g. /addresses/6
+  const loggedInUserId = req.user?.userId;
+  const isAdmin = req.user?.role === 'ADMIN';
+
+  // Only admins can fetch addresses for other users
+  if (!isAdmin && paramUserId !== loggedInUserId) {
+     res.status(403).json({ message: 'Forbidden: You can only access your own addresses' });
+     return
+  }
+
+  try {
+    const addresses = await prisma.address.findMany({
+      where: { userId: paramUserId },
+      orderBy: { isDefault: 'desc' },
+    });
+
+    res.json({ address: addresses });
+  } catch (error:any) {
+    console.error('Error fetching addresses:', error);
+    res.status(500).json({ message: 'Failed to fetch addresses', error: error.message });
+  }
+};

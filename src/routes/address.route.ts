@@ -4,7 +4,8 @@ import {
   getUserAddresses,
   updateAddress,
   deleteAddress,
-  setDefaultAddress
+  setDefaultAddress,
+  getUserAddressesForAdmin
 } from '../controllers/address.controller';
 import { authenticate } from '../middlewares/authenticate';
 
@@ -14,6 +15,7 @@ router.use(authenticate);
 
 router.get('/', getUserAddresses);
 router.post('/', createAddress);
+router.patch('/:userId', getUserAddressesForAdmin);
 router.patch('/:id', updateAddress);
 router.delete('/:id', deleteAddress);
 router.patch('/:id/default', setDefaultAddress);
