@@ -24,30 +24,113 @@ const deleteCloudinaryImage = async (imageUrl: string) => {
 export const deleteOwnAccount = async (req: CustomRequest, res: Response) => {
   const userId = req.user?.userId;
   if (!userId) {
-     res.status(401).json({ message: 'Unauthorized' });
-     return
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
   }
 
   try {
+    // 1. Get orders for user
+    const orders = await prisma.order.findMany({
+      where: { userId },
+      select: { id: true, paymentId: true },
+    });
+
+    if (orders.length === 0) {
+      console.log(`No orders found for userId ${userId}`);
+    } else {
+      console.log(`Found ${orders.length} orders for userId ${userId}`);
+    }
+
+    const orderIds = orders.map(o => o.id);
+    const paymentIds = orders.map(o => o.paymentId).filter((id): id is number => id !== null);
+
+    if (orderIds.length > 0) {
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+      console.log(`Deleted order items for orders: ${orderIds.join(', ')}`);
+    } else {
+      console.log('No order items to delete');
+    }
+
+    if (paymentIds.length > 0) {
+      await prisma.payment.deleteMany({ where: { id: { in: paymentIds } } });
+      console.log(`Deleted payments: ${paymentIds.join(', ')}`);
+    } else {
+      console.log('No payments to delete');
+    }
+
+    if (orderIds.length > 0) {
+      await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
+      console.log(`Deleted orders: ${orderIds.join(', ')}`);
+    } else {
+      console.log('No orders to delete');
+    }
+
+    // 2. Delete addresses
+    const addressesDeleted = await prisma.address.deleteMany({ where: { userId } });
+    console.log(`Deleted ${addressesDeleted.count} addresses`);
+
+    // 3. Delete cart and cart items
+    const cart = await prisma.cart.findUnique({ where: { userId } });
+    if (cart) {
+      console.log(`Found cart with id ${cart.id} for userId ${userId}`);
+
+      const cartItemsDeleted = await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+      console.log(`Deleted ${cartItemsDeleted.count} cart items`);
+
+      await prisma.cart.delete({ where: { id: cart.id } });
+      console.log(`Deleted cart with id ${cart.id}`);
+    } else {
+      console.log(`No cart found for userId ${userId}`);
+    }
+
+    // 4. Delete discount codes and notifications
+    const discountCodesDeleted = await prisma.discountCode.deleteMany({ where: { userId } });
+    console.log(`Deleted ${discountCodesDeleted.count} discount codes`);
+
+    const notificationsDeleted = await prisma.notification.deleteMany({ where: { userId } });
+    console.log(`Deleted ${notificationsDeleted.count} notifications`);
+
+    // 5. Delete profile image if any
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
     });
 
-    if (user?.profile?.imageUrl) {
+    if (!user) {
+      console.log(`User with id ${userId} not found`);
+       res.status(404).json({ message: "User not found" });
+       return
+    }
+
+    if (user.profile?.imageUrl) {
+      console.log(`Deleting cloudinary image at url: ${user.profile.imageUrl}`);
       await deleteCloudinaryImage(user.profile.imageUrl);
+    } else {
+      console.log('No profile image to delete');
     }
 
-    if (user?.profileId) {
+    // 6. Delete profile if exists
+    if (user.profileId) {
       await prisma.profile.delete({ where: { id: user.profileId } });
+      console.log(`Deleted profile with id ${user.profileId}`);
+    } else {
+      console.log('No profile to delete');
     }
-    await prisma.cart.deleteMany({ where: { userId: userId } });
-    await prisma.user.delete({ where: { id: userId } });
 
-    res.json({ message: 'Your account has been deleted' });
-  } catch (error) {
-    console.error('Error deleting account:', error);
-    res.status(500).json({ message: 'Failed to delete account' });
+    // 7. Delete user
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      console.log(`User with id ${userId} no longer exists before delete.`);
+       res.status(404).json({ message: "User already deleted" });
+       return
+    }
+    await prisma.user.delete({ where: { id: userId } });
+    console.log(`Deleted user with id ${userId}`);
+
+    res.json({ message: "Your account has been deleted" });
+  } catch (error: any) {
+    console.error("Error deleting account:", error);
+    res.status(500).json({ message: "Failed to delete account", error: error.message });
   }
 };
 
