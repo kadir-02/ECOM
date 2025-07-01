@@ -143,7 +143,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   res.json(order);
 };
 
-// Get orders for logged in user
+// Get orders for admin
 export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const {
     search,

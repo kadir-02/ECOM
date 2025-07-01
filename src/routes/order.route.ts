@@ -6,9 +6,9 @@ import { authorizeAdmin } from '../middlewares/authorizaAdmin';
 const router = express.Router();
 
 router.get('/invoice', generateInvoicePDF);
-router.patch('/:orderId/status', authenticate, authorizeAdmin, updateOrderStatus);
 router.get('/get-orders',authenticate,authorizeAdmin,getOrdersForAdmin)
 router.get('/user-order',authenticate,authorizeAdmin,getAllUserOrdersForAdmin)
+router.patch('/:orderId/status', authenticate, authorizeAdmin, updateOrderStatus);
 router.post('/', authenticate, createOrder);
 // router.get('/', authenticate, getUserOrders);
 router.get('/:id', authenticate, getOrderById);
