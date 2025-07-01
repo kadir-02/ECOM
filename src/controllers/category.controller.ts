@@ -80,7 +80,19 @@ export const getCategoryById = async (req: Request, res: Response) => {
   try {
     const category = await prisma.category.findUnique({
       where: { id: Number(id) },
-      include: { subcategories: true },
+      include: {
+        subcategories: true,
+        products: {
+          include: {
+            variants: {
+              include: {
+                images: true,
+              },
+            },
+            images: true,
+          },
+        },
+      },
     });
 
     if (!category || category.isDeleted) {
@@ -96,6 +108,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
       .json({ success: false, message: "Error retrieving category" });
   }
 };
+
 
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
