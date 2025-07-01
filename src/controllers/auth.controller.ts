@@ -7,7 +7,7 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 export const register = async (req: Request, res: Response) => {
   const { email, password, profile, address } = req.body;
 
-  // Parse profile (if sent as string from FormData)
+  // Parse profile from FormData string if needed
   let profileData = profile;
   if (typeof profile === 'string') {
     try {
@@ -18,7 +18,7 @@ export const register = async (req: Request, res: Response) => {
     }
   }
 
-  // Parse address (if sent as string from FormData)
+  // Parse address from FormData string if needed
   let addressData = address;
   if (typeof address === 'string') {
     try {
@@ -41,14 +41,20 @@ export const register = async (req: Request, res: Response) => {
     let imageUrl: string | null = null;
     let publicId: string | null = null;
 
-    // Upload image if file exists
+    // Upload image to Cloudinary if file exists
     if (req.file?.buffer) {
       const uploadResult = await uploadToCloudinary(req.file.buffer, 'users');
       imageUrl = uploadResult.secure_url;
-      publicId = uploadResult.public_id;
+      // publicId = uploadResult.public_id;
     }
 
-    // Create user with profile and address
+    // Prepare address creation data
+    const formattedAddresses = addressData
+      ? Array.isArray(addressData)
+        ? addressData
+        : [addressData]
+      : [];
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -58,12 +64,22 @@ export const register = async (req: Request, res: Response) => {
           create: {
             ...profileData,
             imageUrl,
-            publicId,
+            // publicId,
           },
         },
-        addresses: addressData ? {
-          create: Array.isArray(addressData) ? addressData : [addressData],
-        } : undefined,
+        addresses: {
+          create: formattedAddresses.map((addr) => ({
+            fullName: addr.fullName,
+            phone: addr.phone,
+            pincode: addr.pincode,
+            state: addr.state,
+            city: addr.city,
+            addressLine: addr.addressLine,
+            landmark: addr.landmark ?? '',
+            type: addr.type ?? 'SHIPPING',
+            isDefault: addr.isDefault ?? true,
+          })),
+        },
       },
       include: {
         profile: true,
