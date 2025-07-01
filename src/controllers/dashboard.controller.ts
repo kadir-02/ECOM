@@ -7,9 +7,6 @@ type DailySales = {
   total: string | null;
 };
 
-// Temporary in-memory store for per-user dashboard settings
-export const userDashboardSettings: Record<number, Record<string, number>> = {};
-
 export const getDashboard = async (req: Request, res: Response) => {
   const { user_id, start_date, end_date } = req.body;
   const start = new Date(start_date), end = new Date(end_date);
@@ -19,7 +16,10 @@ export const getDashboard = async (req: Request, res: Response) => {
      return
   }
 
-  const settings = userDashboardSettings[user_id] || {};
+  const dbSettings = await prisma.dashboardSetting.findMany({
+    where: { userId: user_id },
+  });
+  const settings = Object.fromEntries(dbSettings.map((s) => [s.key, s.value ? 1 : 0]));
 
   // Default response skeleton
   const resp: any = {
@@ -275,17 +275,13 @@ export const getDashboard = async (req: Request, res: Response) => {
   }
 };
 
-
-
 export const getUserDashboardSections = async (req: Request, res: Response) => {
   try {
-    const { user_id, token } = req.body;
+    const { user_id } = req.body;
 
-    if (typeof user_id !== "number" ) {
-       res
-        .status(400)
-        .json({ message: "user_id (number) is required." });
-        return
+    if (typeof user_id !== "number") {
+       res.status(400).json({ message: "user_id (number) is required." });
+       return
     }
 
     const sections = [
@@ -304,17 +300,17 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
       "new_customer_count",
       "average_order_value",
       "products_sold",
-      "revenue_data"
+      "revenue_data",
     ];
 
-    res.status(200).json({ succes:true, sections });
+     res.status(200).json({ succes: true, sections });
   } catch (error: any) {
     console.error("Error returning dashboard sections:", error);
-    res.status(500).json({ message: "Internal server error" });
+     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const upsertDashboardSetting = (req: Request, res: Response) => {
+export const upsertDashboardSetting = async (req: Request, res: Response) => {
   const { user_id, components } = req.body;
 
   if (typeof user_id !== 'number' || typeof components !== 'object') {
@@ -322,11 +318,24 @@ export const upsertDashboardSetting = (req: Request, res: Response) => {
      return
   }
 
-  userDashboardSettings[user_id] = components;
+  try {
+    const operations = Object.entries(components).map(([key, value]) =>
+      prisma.dashboardSetting.upsert({
+        where: { userId_key: { userId: user_id, key } },
+        update: { value: Boolean(value) },
+        create: { userId: user_id, key, value: Boolean(value) },
+      })
+    );
 
-   res.status(200).json({
-    success: true,
-    message: 'Dashboard settings saved',
-    settings: components,
-  });
+    await prisma.$transaction(operations);
+
+     res.status(200).json({
+      success: true,
+      message: 'Dashboard settings saved',
+      settings: components,
+    });
+  } catch (error) {
+    console.error("Upsert dashboard settings error:", error);
+     res.status(500).json({ message: 'Internal server error' });
+  }
 };

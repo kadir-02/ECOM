@@ -415,3 +415,14 @@ model NewsLetter {
   email           String       @unique
   createdAt       DateTime     @default(now())
 }
+
+model DashboardSetting {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  key       String
+  value     Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+}
