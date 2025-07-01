@@ -66,7 +66,7 @@ export const createProduct = async (req: Request, res: Response) => {
         sellingPrice: parseFloat(sellingPrice),
         priceDifferencePercent: parseFloat(priceDifferencePercent),
         stock: parseInt(stock),
-        isNewArrival: isNewArrival === "true",
+        isNewArrival: isNewArrival === "true" || isNewArrival === true,
         isActive: is_active === "true" || is_active === true,
         isDeleted: false,
         createdById: Number(createdById),
@@ -102,6 +102,46 @@ export const createProduct = async (req: Request, res: Response) => {
 };
 
 export const getProducts = async (req: Request, res: Response) => {
+  try {
+    const { category } = req.query;
+
+    const whereClause: any = { isDeleted: false };
+    if (category && !isNaN(Number(category))) {
+      whereClause.categoryId = Number(category);
+    }
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        category: true,
+        subcategory: true,
+        images: true,
+        variants: { include: { images: true } },
+        specifications: true,
+      },
+      orderBy: { sequenceNumber: 'asc' },
+    });
+
+    const transformed = products.map((p) => {
+      const specsObj: Record<string, string[]> = {};
+      p.specifications.forEach((s) => {
+        if (!specsObj[s.name]) specsObj[s.name] = [];
+        if (!specsObj[s.name].includes(s.value)) specsObj[s.name].push(s.value);
+      });
+      return {
+        ...p,
+        specifications: specsObj,
+      };
+    });
+
+    res.status(200).json({ success: true, count: transformed.length, products: transformed });
+  } catch (error: any) {
+    console.error('Get products error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getProductsFilter = async (req: Request, res: Response) => {
   try {
     const { where, orderBy, skip, limit, page } = buildProductQuery(req.query);
 
@@ -316,5 +356,59 @@ export const deleteProduct = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Delete product error:", error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const toggleProductStatus = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  let { isNewArrival, isActive } = req.body;
+
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, message: 'Invalid product ID' });
+    return;
+  }
+
+  if (isNewArrival === undefined && isActive === undefined) {
+    res.status(400).json({
+      success: false,
+      message: 'At least one of isNewArrival or isActive must be provided',
+    });
+    return;
+  }
+
+  // Convert "true" / "false" strings to boolean
+  if (typeof isNewArrival === 'string') {
+    isNewArrival = isNewArrival.toLowerCase() === 'true';
+  }
+  if (typeof isActive === 'string') {
+    isActive = isActive.toLowerCase() === 'true';
+  }
+
+  try {
+    const product = await prisma.product.findUnique({ where: { id } });
+
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        ...(isNewArrival !== undefined && { isNewArrival }),
+        ...(isActive !== undefined && { isActive }),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Product status updated successfully',
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('Toggle product status error:', error);
+    res
+      .status(500)
+      .json({ success: false, message: 'Failed to update product status' });
   }
 };

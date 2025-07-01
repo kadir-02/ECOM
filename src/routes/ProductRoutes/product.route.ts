@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
-import { createProduct, deleteProduct, getProducts, updateProduct, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
+import { createProduct, deleteProduct, getProducts, getProductsFilter, toggleProductStatus, updateProduct, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
 import productImageRoutes from './productImage.routes'
 import productSpecRoutes from './productSpecification.route'
 import variantRoutes from '../ProductRoutes/variant.route';
@@ -11,6 +11,7 @@ const router = Router({ mergeParams: true });
 
 // Public routes
 router.get('/', getProducts);
+router.get('/filter', getProductsFilter);
 router.use('/image/',productImageRoutes)
 router.use('/spec/',productSpecRoutes)
 router.use('/variant', variantRoutes);
@@ -22,7 +23,7 @@ router.get('/newarrivals',getNewArrivalProducts)
 // Admin-only routes
 router.use(authenticate, authorizeAdmin);
 
-
+router.patch('/toggle/:id', toggleProductStatus);
 router.post('/', createProduct);
 router.patch('/update-sequence', updateProductSequence);
 router.patch('/:id', updateProduct);

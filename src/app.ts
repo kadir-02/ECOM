@@ -28,6 +28,7 @@ import companyRoutes from './routes/ComponySettingsRoutes/companySettings.route'
 import TestimonialRoutes from './routes/TestimonialRoutes/testimonial.route';
 import { globalErrorHandler } from './utils/globalErrorHandler';
 import dashboardRoutes from './routes/dashboard.route';
+import newsLetterRoutes from './routes/HomePageRoutes/newsletter.router';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -39,6 +40,7 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/newsletter', newsLetterRoutes);
 app.use('/gallery', galleryRoutes);
 app.use('/banners', bannerRoutes);
 app.use('/why-choose-us', whyChooseUs);
