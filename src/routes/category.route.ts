@@ -7,7 +7,7 @@ import {
   softDeleteCategory,
   restoreCategory,
   getCategoryById,
-} from '../controllers/category.controller';
+} from '../controllers/CategoryControllers/category.controller';
 
 import subcategoryRoutes from './subcategory.route';
 import { authenticate } from '../middlewares/authenticate';
@@ -18,9 +18,9 @@ const router = Router();
 
 // Public routes
 router.get('/', getAllCategories);
+router.use('/subcategory', subcategoryRoutes);
 router.get('/:id', getCategoryById);
 // Nested subcategory routes
-router.use('/subcategory', subcategoryRoutes);
 
 // Admin-only routes
 router.use(authenticate, authorizeAdmin);
