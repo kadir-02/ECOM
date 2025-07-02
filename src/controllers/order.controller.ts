@@ -170,30 +170,37 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     const whereConditions: any = {};
 
     if (search) {
-      const searchStr = search.toString();
-      const orConditions: any[] = [];
+  const searchStr = search.toString();
+  const orConditions: any[] = [];
 
-      if (!isNaN(Number(searchStr))) {
-        orConditions.push({ id: Number(searchStr) });
-      }
+  if (!isNaN(Number(searchStr))) {
+    orConditions.push({ id: Number(searchStr) });
+  }
 
-        // Match status exactly if it's a valid enum value
-      const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-      if (validStatuses.includes(searchStr)) {
-        orConditions.push({ status: searchStr });
-      }
+  const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+  if (validStatuses.includes(searchStr)) {
+    orConditions.push({ status: searchStr });
+  }
 
-      orConditions.push({
-        user: {
-          OR: [
-            { email: { contains: searchStr, mode: 'insensitive' } },
-            { name: { contains: searchStr, mode: 'insensitive' } },
-          ],
+  orConditions.push({
+    user: {
+      OR: [
+        { email: { contains: searchStr, mode: 'insensitive' } },
+        {
+          profile: {
+            OR: [
+              { firstName: { contains: searchStr, mode: 'insensitive' } },
+              { lastName: { contains: searchStr, mode: 'insensitive' } },
+            ],
+          },
         },
-      });
+      ],
+    },
+  });
 
-      whereConditions.OR = orConditions;
-    }
+  whereConditions.OR = orConditions;
+}
+
 
     if (order_status) {
       whereConditions.status = order_status;
