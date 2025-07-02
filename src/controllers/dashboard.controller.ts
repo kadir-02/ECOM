@@ -158,11 +158,26 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     if (settings['order_data'] !== undefined) {
+      resp.order_summary.total_orders = 0; // initialize total_orders
+
       const groups = await prisma.order.groupBy({
         by: ['status'],
         _count: { id: true },
-        where: { createdAt: { gte: start, lte: end }, userId: user_id },
+        where: {
+          createdAt: {
+            gte: start,
+            lt: new Date(end.getTime() + 24 * 60 * 60 * 1000), // include entire end date
+          },
+          // no userId filter here to get all users' orders
+        },
       });
+
+      // Initialize each order status count to 0 (optional, but safer)
+      const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+      statuses.forEach(s => {
+        resp.order_summary[`${s}_orders`] = 0;
+      });
+
       groups.forEach(g => {
         const key = `${g.status.toLowerCase()}_orders`;
         resp.order_summary[key] = g._count.id;

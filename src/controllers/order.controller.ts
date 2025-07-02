@@ -220,9 +220,15 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     }
 
     if (start_date && end_date) {
+      const startDate = new Date(start_date as string);
+      const endDate = new Date(end_date as string);
+      
+      // Increment endDate by 1 day for exclusive upper bound
+      endDate.setDate(endDate.getDate() + 1);
+
       whereConditions.createdAt = {
-        gte: new Date(start_date as string),
-        lte: new Date(end_date as string),
+        gte: startDate,
+        lt: endDate,
       };
     }
 
