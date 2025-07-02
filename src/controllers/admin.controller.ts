@@ -19,26 +19,27 @@ interface CloudinaryUploadResult {
 }
 
 export const createUserByAdmin = async (req: CustomRequest, res: Response) => {
-  const { email, password, profile, role = 'USER' } = req.body;
-
+  const { email, password, role = 'USER' } = req.body;
+  const{firstName,lastName}= req.body
+ 
   if (req.user?.role !== 'ADMIN') {
      res.status(403).json({ message: 'Only admins can create users' });
      return
   }
-
-  let profileData = typeof profile === 'string' ? JSON.parse(profile) : profile;
-
+ 
+  // let profileData = typeof profile === 'string' ? JSON.parse(profile) : profile;
+ 
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
        res.status(400).json({ message: 'User already exists' });
        return
     }
-
+ 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+ 
     let imageUrl: string | null = null;
-
+ 
     if (req.file) {
       const result = await new Promise<CloudinaryUploadResult>((resolve, reject) => {
         cloudinary.uploader.upload_stream(
@@ -49,10 +50,10 @@ export const createUserByAdmin = async (req: CustomRequest, res: Response) => {
           }
         ).end(req.file!.buffer);
       });
-
+ 
       imageUrl = result.secure_url;
     }
-
+ 
     const user = await prisma.user.create({
       data: {
         email,
@@ -60,20 +61,22 @@ export const createUserByAdmin = async (req: CustomRequest, res: Response) => {
         role,
         profile: {
           create: {
-            ...profileData,
+            firstName,
+            lastName,
             imageUrl,
           },
         },
       },
       include: { profile: true },
     });
-
+ 
     res.status(201).json({ message: 'User created by admin', userId: user.id });
   } catch (err) {
     console.error('Create user error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
+ 
 
 export const updateUserByAdmin = async (req: CustomRequest, res: Response) => {
   const { id } = req.params;
