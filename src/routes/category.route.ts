@@ -7,6 +7,7 @@ import {
   softDeleteCategory,
   restoreCategory,
   getCategoryById,
+  getFrontendCategories,
 } from '../controllers/CategoryControllers/category.controller';
 
 import subcategoryRoutes from './subcategory.route';
@@ -18,6 +19,7 @@ const router = Router();
 
 // Public routes
 router.get('/', getAllCategories);
+router.get('/frontend', getFrontendCategories);
 router.use('/subcategory', subcategoryRoutes);
 router.get('/:id', getCategoryById);
 // Nested subcategory routes

@@ -73,6 +73,22 @@ export const getAllCategories = async (_req: Request, res: Response) => {
   }
 };
 
+export const getFrontendCategories = async (_req: Request, res: Response) => {
+  try {
+    const categories = await prisma.category.findMany({
+      where: { isDeleted: false },
+      include: { subcategories: true },
+      orderBy: { sequence_number: "asc" },
+    });
+    res.status(200).json({ success: true, categories });
+  } catch (error) {
+    console.error("Get categories error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error retrieving categories" });
+  }
+};
+
 // GET CATEGORY BY ID
 export const getCategoryById = async (req: Request, res: Response) => {
   const { id } = req.params;
