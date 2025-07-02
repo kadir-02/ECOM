@@ -426,3 +426,21 @@ model DashboardSetting {
 
   @@unique([userId, key])
 }
+
+model ContactRequest {
+  id                     Int      @id @default(autoincrement())
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+  name                   String
+  email                  String
+  phone_number           String
+  city                   String?
+  state                  String?
+  country                String?
+  own_retail_space       Boolean?
+  subject                String?
+  message                String?
+  contacted_the_customer Boolean   @default(false)
+  reply_given            String?
+  updated_by             String?
+}
