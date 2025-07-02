@@ -16,7 +16,7 @@ router.use(authenticate);
 
 router.get('/', getUserAddresses);
 router.post('/', createAddress);
-router.get('/:userId',authenticate,authorizeAdmin, getUserAddressesForAdmin);
+router.get('/user/:userId',authenticate,authorizeAdmin, getUserAddressesForAdmin);
 router.patch('/:id', updateAddress);
 router.delete('/:id', deleteAddress);
 router.patch('/:id/default', setDefaultAddress);
