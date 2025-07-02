@@ -8,6 +8,7 @@ import {
   getUserAddressesForAdmin
 } from '../controllers/address.controller';
 import { authenticate } from '../middlewares/authenticate';
+import { authorizeAdmin } from '../middlewares/authorizaAdmin';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.use(authenticate);
 
 router.get('/', getUserAddresses);
 router.post('/', createAddress);
-router.patch('/:userId', getUserAddressesForAdmin);
+router.get('/:userId',authenticate,authorizeAdmin, getUserAddressesForAdmin);
 router.patch('/:id', updateAddress);
 router.delete('/:id', deleteAddress);
 router.patch('/:id/default', setDefaultAddress);
