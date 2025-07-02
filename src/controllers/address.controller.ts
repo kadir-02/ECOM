@@ -91,6 +91,12 @@ export const getUserAddressesForAdmin = async (req: CustomRequest, res: Response
   }
 
   try {
+    const user = await prisma.user.findUnique({ where: { id: paramUserId } });
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
     const addresses = await prisma.address.findMany({
       where: { userId: paramUserId },
       orderBy: { isDefault: 'desc' },
