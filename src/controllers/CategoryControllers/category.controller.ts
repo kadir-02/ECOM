@@ -171,11 +171,11 @@ export const deleteCategory = async (req: Request, res: Response) => {
   try {
     await prisma.category.delete({ where: { id: Number(id) } });
     res.status(200).json({ success: true, message: "Category deleted" });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Delete category error:", error);
     res
       .status(500)
-      .json({ success: false, message: "Error deleting category" });
+      .json({ success: false, message: "Error deleting category", error:error.message });
   }
 };
 

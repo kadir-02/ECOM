@@ -86,3 +86,62 @@ export const getProductBySlug = async (req: Request, res: Response) => {
     return
   }
 };
+
+
+export const getBestSellingProducts = async (req: Request, res: Response) => {
+  try {
+    // Step 1: Aggregate sales count grouped by productId
+    const bestSellers = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        productId: {
+          not: null,
+        },
+        order: {
+          status: {
+            not: 'CANCELLED',
+          },
+        },
+      },
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc',
+        },
+      },
+      take: 10, // get top 10
+    });
+
+    // Step 2: Extract only non-null productIds
+    const productIds = bestSellers
+      .map((item) => item.productId)
+      .filter((id): id is number => id !== null && id !== undefined);
+
+    // Step 3: Fetch product details
+    const products = await prisma.product.findMany({
+      where: {
+        id: {
+          in: productIds,
+        },
+        isActive: true,
+        isDeleted: false,
+      },
+      include: {
+        images: true,
+        category: true,
+        subcategory: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      count: products.length,
+      result: products,
+    });
+  } catch (error) {
+    console.error('Best selling products error:', error);
+    res.status(500).json({ success: false, message: 'Server Error', error });
+  }
+};
