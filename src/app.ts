@@ -44,7 +44,7 @@ app.use(express.json());
 // app.use('/verify-email', emailRoutes);
 app.use('/coupon', couponRoutes);
 app.use('/frontend/testimonial',TestimonialRoutes)
-app.use('/frontend', contactRoutes);
+app.use('/connect/', contactRoutes);
 app.use('/newsletter', newsLetterRoutes);
 app.use('/gallery', galleryRoutes);
 app.use('/banners', bannerRoutes);
