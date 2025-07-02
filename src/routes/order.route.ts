@@ -12,5 +12,5 @@ router.patch('/:orderId/status', authenticate, authorizeAdmin, updateOrderStatus
 router.post('/', authenticate, createOrder);
 router.get('/history', authenticate, userOrderHistory);
 router.get('/:id', authenticate, getOrderById);
-router.get('/detail/:id', getSingleOrder);
+router.get('/detail/:id',authenticate, getSingleOrder);
 export default router;

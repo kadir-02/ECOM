@@ -463,7 +463,8 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
 
     // Customer Info
     const infoY = 180;
-    doc.text(`Invoice ID: COM-${order.id}-${order.user.profile?.firstName || ''}`, 50, infoY);
+    const customerName = order.user.profile?.firstName?.trim() || 'USER';
+    doc.text(`Invoice ID: COM-${order.id}-${customerName}`, 50, infoY);
     doc.text(`Customer: ${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, 50, infoY + 15);
     doc.text(`Email: ${order.user.email}`, 50, infoY + 30);
     doc.text(`Phone: ${order.address?.phone || '-'}`, 50, infoY + 45);
@@ -496,7 +497,7 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
         doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
       }
 
-      const name = item.variant?.name || item.product?.name || 'Unnamed Product';
+      const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
       const qty = item.quantity;
       const unitPrice = item.price;
       const total = qty * unitPrice;

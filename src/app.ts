@@ -29,6 +29,7 @@ import TestimonialRoutes from './routes/TestimonialRoutes/testimonial.route';
 import { globalErrorHandler } from './utils/globalErrorHandler';
 import dashboardRoutes from './routes/dashboard.route';
 import contactRoutes from './routes/contact.route';
+import couponRoutes from './routes/coupon.route';
 import newsLetterRoutes from './routes/HomePageRoutes/newsletter.router';
 // import emailRoutes from './routes/email.route';
 
@@ -41,6 +42,7 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/coupon', couponRoutes);
 app.use('/frontend', contactRoutes);
 app.use('/newsletter', newsLetterRoutes);
 app.use('/gallery', galleryRoutes);

@@ -1,27 +1,29 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
 import { Prisma } from '@prisma/client';
+import { sendNewsletterWelcomeEmail } from '../../email/sendNewsletterWelcomeEmail';
 
 // Subscribe a new email
 export const subscribeNewsletter = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   if (!email) {
-     res.status(400).json({ success: false, message: 'Email is required' });
-     return
+    res.status(400).json({ success: false, message: 'Email is required' });
+    return;
   }
 
   try {
     const existing = await prisma.newsLetter.findUnique({ where: { email } });
 
     if (existing) {
-       res.status(200).json({ success: true, message: 'Already subscribed' });
-       return
+      res.status(200).json({ success: true, message: 'Already subscribed' });
+      return;
     }
 
-    const newSubscription = await prisma.newsLetter.create({
-      data: { email },
-    });
+    const newSubscription = await prisma.newsLetter.create({ data: { email } });
+
+    // ✅ Send welcome email
+    await sendNewsletterWelcomeEmail(email);
 
     res.status(201).json({ success: true, message: 'Subscribed successfully', data: newSubscription });
   } catch (error: any) {
