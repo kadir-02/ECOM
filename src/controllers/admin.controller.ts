@@ -77,9 +77,16 @@ export const createUserByAdmin = async (req: CustomRequest, res: Response) => {
 
 export const updateUserByAdmin = async (req: CustomRequest, res: Response) => {
   const { id } = req.params;
-  const { email,  profile } = req.body;
+  const {
+    email,
+    firstName,
+    lastName,
+    is_active,
+    role,
+  } = req.body;
 
-  let profileData = typeof profile === 'string' ? JSON.parse(profile) : profile;
+
+  // let profileData = typeof profile === 'string' ? JSON.parse(profile) : profile;
 
   try {
     const existingUser = await prisma.user.findUnique({
@@ -114,10 +121,13 @@ export const updateUserByAdmin = async (req: CustomRequest, res: Response) => {
       where: { id: +id },
       data: {
         email,
+        role,
+         isDeleted: is_active === 'true' || is_active === true ? false : true,
         profile: {
           update: {
-            ...profileData,
-            imageUrl,
+            firstName,
+            lastName,
+            imageUrl
           },
         },
       },
