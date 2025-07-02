@@ -157,8 +157,8 @@ export const getDashboard = async (req: Request, res: Response) => {
       });
       groups.forEach(g => {
         const key = `${g.status.toLowerCase()}_orders`;
-        resp.order_summary[key] = g._count;
-        resp.order_summary.total_orders += g._count;
+        resp.order_summary[key] = g._count.id;
+        resp.order_summary.total_orders += g._count.id;
       });
     }
 
