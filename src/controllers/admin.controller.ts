@@ -234,8 +234,8 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
         where: {
-          role: 'ADMIN',
-          isDeleted: false,
+          role: 'ADMIN'
+          // isDeleted: false,
         },
         include: {
           profile: true,
@@ -263,7 +263,7 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
         country_code_for_phone_number: '',
         email: user.email,
         profile_picture: user.profile?.imageUrl || '',
-        is_active: true, // Assuming always active
+        is_active:  !user.isDeleted, // Assuming always active
         category: 1, // Hardcoded since no category model is present
         last_login: '', // Not tracked in your schema
         date_joined: formatDate(user.createdAt),
