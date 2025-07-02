@@ -83,8 +83,10 @@ export const getCategoryById = async (req: Request, res: Response) => {
       include: {
         subcategories: true,
         products: {
+          where: { isDeleted: false },
           include: {
             variants: {
+              where: { isDeleted: false },
               include: {
                 images: true,
               },

@@ -19,7 +19,7 @@ export const getDashboard = async (req: Request, res: Response) => {
   const dbSettings = await prisma.dashboardSetting.findMany({
     where: { userId: user_id },
   });
-  const settings = Object.fromEntries(dbSettings.map((s) => [s.key, s.value ? 1 : 0]));
+  const settings = Object.fromEntries(dbSettings.map((s:any) => [s.key, s.value ? 1 : 0]));
 
   // Default response skeleton
   const resp: any = {

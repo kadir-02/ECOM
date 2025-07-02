@@ -119,34 +119,33 @@ export const updateSubCategory = async (req: Request, res: Response) => {
   const { name, sequence_number, isDeleted } = req.body;
   const { id } = req.params;
 
-  console.log("req.body;", req.body);
   if (!name || !sequence_number) {
-    res.status(400).json({
+     res.status(400).json({
       success: false,
-      message: "Name, parent_category, and sequence_number are required",
+      message: "Name and sequence_number are required",
     });
-    return;
+    return
   }
 
   try {
-    const categoryId = Number(id);
+    const subcategoryId = Number(id);
 
-    // 1. Check if category exists
-    const existingCategory = await prisma.category.findUnique({
-      where: { id: categoryId },
+    // 1. Check if subcategory exists
+    const existingSubcategory = await prisma.subcategory.findUnique({
+      where: { id: subcategoryId },
     });
 
-    if (!existingCategory) {
-      res.status(404).json({
+    if (!existingSubcategory) {
+       res.status(404).json({
         success: false,
-        message: "Category not found",
+        message: "Subcategory not found",
       });
-      return;
+      return
     }
 
-    let imageUrl = existingCategory.imageUrl;
-    let banner = existingCategory.banner;
-    let publicId = existingCategory.publicId;
+    let imageUrl = existingSubcategory.imageUrl;
+    let banner = existingSubcategory.banner;
+    let publicId = existingSubcategory.publicId;
 
     // 2. Handle image update
     if (req.files && "image" in req.files) {
@@ -155,7 +154,7 @@ export const updateSubCategory = async (req: Request, res: Response) => {
         : req.files["image"];
       const result = await uploadToCloudinary(
         imageFile.buffer,
-        "categories/image"
+        "subcategories/image"
       );
       imageUrl = result.secure_url;
       publicId = result.public_id;
@@ -168,41 +167,80 @@ export const updateSubCategory = async (req: Request, res: Response) => {
         : req.files["banner"];
       const result = await uploadToCloudinary(
         bannerFile.buffer,
-        "categories/banner"
+        "subcategories/banner"
       );
       banner = result.secure_url;
     }
 
     // 4. Perform update
-    const updatedCategory = await prisma.category.update({
-      where: { id: categoryId },
+    const updatedSubcategory = await prisma.subcategory.update({
+      where: { id: subcategoryId },
       data: {
-        name: name || existingCategory.name,
-        sequence_number: sequence_number
-          ? Number(sequence_number)
-          : existingCategory.sequence_number,
+        name,
+        sequence_number: Number(sequence_number),
         isDeleted:
           typeof isDeleted !== "undefined"
             ? isDeleted === "true" || isDeleted === true
-            : existingCategory.isDeleted,
+            : existingSubcategory.isDeleted,
         imageUrl,
         banner,
         publicId,
       },
     });
 
+     res.status(200).json({
+      success: true,
+      message: "Subcategory updated",
+      subcategory: updatedSubcategory,
+    });
+  } catch (error: any) {
+    console.error("Update subcategory error:", error);
+     res.status(500).json({
+      success: false,
+      message: error.message || "Error updating subcategory",
+    });
+  }
+};
+
+export const deleteSubcategory = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const subcategoryId = Number(id);
+
+    // Check if subcategory exists
+    const existingSubcategory = await prisma.subcategory.findUnique({
+      where: { id: subcategoryId },
+    });
+
+    if (!existingSubcategory) {
+      res.status(404).json({
+        success: false,
+        message: "Subcategory not found",
+      });
+      return;
+    }
+
+    // Option 1: Soft delete (mark as deleted)
+    // await prisma.subcategory.update({
+    //   where: { id: subcategoryId },
+    //   data: { isDeleted: true },
+    // });
+
+    // Option 2: Hard delete (remove from DB)
+    await prisma.subcategory.delete({
+      where: { id: subcategoryId },
+    });
+
     res.status(200).json({
       success: true,
-      message: "Category updated",
-      category: updatedCategory,
+      message: "Subcategory deleted successfully",
     });
-    return;
   } catch (error: any) {
-    console.error("Update category error:", error);
+    console.error("Delete subcategory error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Error updating category",
+      message: error.message || "Error deleting subcategory",
     });
-    return;
   }
 };

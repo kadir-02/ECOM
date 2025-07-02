@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middlewares/authenticate';
 import { authorizeAdmin } from '../middlewares/authorizaAdmin';
 import { uploadMemory } from '../upload/multerCloudinary';
-import { createSubcategory, getSubcategoryByCategoryId, updateSubCategory } from '../controllers/CategoryControllers/SubCategories.controller';
+import { createSubcategory, deleteSubcategory, getSubcategoryByCategoryId, updateSubCategory } from '../controllers/CategoryControllers/SubCategories.controller';
 
 const router = Router();
 
@@ -20,6 +20,7 @@ const fileUploadMiddleware = uploadMemory.fields([
 ]);
 
 router.post('/', fileUploadMiddleware, createSubcategory);
+router.delete("/:id", deleteSubcategory)
 // router.patch('/:id', fileUploadMiddleware, updateSubcategory);
 // router.delete('/:id', deleteSubcategory);
 // router.patch('/deactivate/:id', softDeleteSubcategory);
