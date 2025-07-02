@@ -30,6 +30,7 @@ import { globalErrorHandler } from './utils/globalErrorHandler';
 import dashboardRoutes from './routes/dashboard.route';
 import contactRoutes from './routes/contact.route';
 import couponRoutes from './routes/coupon.route';
+import pincodeRoutes from './routes/pincode.route';
 import newsLetterRoutes from './routes/HomePageRoutes/newsletter.router';
 // import emailRoutes from './routes/email.route';
 
@@ -42,6 +43,7 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/pincode', pincodeRoutes);
 app.use('/coupon', couponRoutes);
 app.use('/frontend/testimonial',TestimonialRoutes)
 app.use('/connect/', contactRoutes);

@@ -461,3 +461,16 @@ model CouponCode {
   user        User?      @relation(fields: [userId], references: [id])
   cart        Cart?     @relation(fields: [cartId], references: [id])
 }
+
+model Pincode {
+  id                    Int      @id @default(autoincrement())
+  city                  String
+  state                 String
+  zipcode               Int      @unique
+  estimatedDeliveryDays Int
+  isActive              Boolean  @default(true)
+  createdBy             String?
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
