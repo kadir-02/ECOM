@@ -43,6 +43,7 @@ app.use(express.json());
 
 // app.use('/verify-email', emailRoutes);
 app.use('/coupon', couponRoutes);
+app.use('/frontend/testimonial',TestimonialRoutes)
 app.use('/frontend', contactRoutes);
 app.use('/newsletter', newsLetterRoutes);
 app.use('/gallery', galleryRoutes);
@@ -63,7 +64,6 @@ app.use('/payment', paymentRoutes);
 app.use('/discount-codes', discountCodeRoutes);
 app.use('/header', headerRoutes);
 app.use('/company-settings',companyRoutes)
-app.use('/frontend/testimonial',TestimonialRoutes)
 app.use('/gallerytype',gallerytypeRoutes)
 app.use('/galleryitem',galleryitemRoutes)
 app.use('/', dashboardRoutes);
