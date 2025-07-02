@@ -8,7 +8,7 @@ const router = Router();
 
 // // Public routes
 router.get('/', getSubcategoryByCategoryId); 
-router.patch('/:id', updateSubCategory);
+// router.patch('/:id', updateSubCategory);
 
 // // Admin-only routes
 router.use(authenticate, authorizeAdmin);
@@ -18,6 +18,8 @@ const fileUploadMiddleware = uploadMemory.fields([
   { name: 'image', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
 ]);
+router.patch('/:id', fileUploadMiddleware,updateSubCategory);
+
 
 router.post('/', fileUploadMiddleware, createSubcategory);
 router.delete("/:id", deleteSubcategory)
