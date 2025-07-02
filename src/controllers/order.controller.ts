@@ -183,19 +183,32 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
   }
 
   orConditions.push({
-    user: {
-      OR: [
-        { email: { contains: searchStr, mode: 'insensitive' } },
-        {
-          profile: {
-            OR: [
-              { firstName: { contains: searchStr, mode: 'insensitive' } },
-              { lastName: { contains: searchStr, mode: 'insensitive' } },
-            ],
-          },
+    OR: [
+      {
+        user: {
+          OR: [
+            { email: { contains: searchStr, mode: 'insensitive' } },
+            {
+              profile: {
+                OR: [
+                  { firstName: { contains: searchStr, mode: 'insensitive' } },
+                  { lastName: { contains: searchStr, mode: 'insensitive' } },
+                ],
+              },
+            },
+          ],
         },
-      ],
-    },
+      },
+      {
+        // guest orders: search by address fullName or phone (replace with your fields)
+        address: {
+          OR: [
+            { fullName: { contains: searchStr, mode: 'insensitive' } },
+            { phone: { contains: searchStr, mode: 'insensitive' } },
+          ],
+        },
+      },
+    ],
   });
 
   whereConditions.OR = orConditions;
