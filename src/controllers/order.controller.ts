@@ -342,7 +342,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       include: {
         items: {
           include: {
-            product: { include: { category: true } },
+            product: { include: { category: true, images: true, } },
             variant: { include: { images: true } },
           },
         },
