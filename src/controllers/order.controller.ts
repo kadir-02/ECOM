@@ -329,23 +329,16 @@ function formatAddress(address: any): string {
 // GET single order info as JSON invoice response
 export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   try {
-    const userId = req.user?.userId;
     const orderIdStr = req.params.id;
 
-    if (!userId) {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-
-    // Validate orderId param as number
     const orderId = Number(orderIdStr);
     if (!orderIdStr || isNaN(orderId)) {
-      res.status(400).json({ message: 'Invalid or missing order ID' });
-      return;
+       res.status(400).json({ message: 'Invalid or missing order ID' });
+       return
     }
 
     const order = await prisma.order.findFirst({
-      where: { id: orderId, userId },
+      where: { id: orderId },
       include: {
         items: {
           include: {
@@ -360,10 +353,13 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
     });
 
     if (!order) {
-      res.status(404).json({ message: 'Order not found' });
-      return;
+       res.status(404).json({ message: 'Order not found' });
+       return
     }
+
     const finalAmount = order.totalAmount - (order.discountAmount || 0);
+    const customerFirstName = order.user.profile?.firstName || 'Guest';
+    const customerLastName = order.user.profile?.lastName || '';
 
     const invoiceResponse = {
       message: '',
@@ -372,11 +368,11 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       page_size: 20,
       results: [
         {
-          id: `COM-${order.id}-${order.user.profile?.firstName || 'USER'}`,
+          id: `COM-${order.id}-${customerFirstName}`,
           purchased_item_count: order.items.length,
           customer_info: {
-            first_name: order.user.profile?.firstName || '',
-            last_name: order.user.profile?.lastName || '',
+            first_name: customerFirstName,
+            last_name: customerLastName,
             country_code_for_phone_number: null,
             phone_number: order.address.phone,
             email: order.user.email,
@@ -389,7 +385,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             discount_coupon_code: order.discountCode || '',
             final_total: finalAmount,
             order_status: order.status,
-            invoice_url: `/order/invoice?id=COM-${order.id}-${order.user.profile?.firstName}`,
+            invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
             created_at_formatted: dayjs(order.createdAt).format('DD/MM/YYYY, hh:mmA'),
             created_at: dayjs(order.createdAt).format('DD MMMM YYYY, hh:mmA'),
           },
@@ -412,13 +408,12 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       ],
     };
 
-    res.status(200).json(invoiceResponse);
+     res.status(200).json(invoiceResponse);
   } catch (error) {
     console.error('Error fetching order:', error);
-    res.status(500).json({ message: 'Internal server error' });
+     res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 // PDF invoice generator endpoint
 export const generateInvoicePDF = async (req: Request, res: Response) => {
   try {
