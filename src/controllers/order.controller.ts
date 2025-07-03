@@ -394,16 +394,22 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             payment_transaction_id: order.payment?.transactionId || '',
             payment_type: order.payment?.method || 'N/A',
           },
-          items: order.items.map((item) => ({
-            id: item.id,
-            variant_id: item.variantId || null,
-            name: item.variant?.name || item.product?.name || 'Unnamed Product',
-            SKU: `SKU-${item.variantId || item.productId || item.id}`,
-            unit_price: item.price,
-            quantity: item.quantity,
-            category: item.product?.category?.name || 'General',
-            specification: item.variant?.name || '',
-          })),
+          items: order.items.map((item) => {
+            const productImage = item.product?.images?.[0]?.image || null;
+            const variantImage = item.variant?.images?.[0]?.url || null;
+
+            return {
+              id: item.id,
+              variant_id: item.variantId || null,
+              name: item.variant?.name || item.product?.name || 'Unnamed Product',
+              SKU: `SKU-${item.variantId || item.productId || item.id}`,
+              unit_price: item.price,
+              quantity: item.quantity,
+              category: item.product?.category?.name || 'General',
+              specification: item.variant?.name || '',
+              image: variantImage || productImage || null, // ✅ Added image
+            };
+          }),
         },
       ],
     };
