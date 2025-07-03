@@ -8,7 +8,7 @@ import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
 
 const router = express.Router();
 
-router.post('/subscribe',authenticate, subscribeNewsletter);
+router.post('/subscribe', subscribeNewsletter);
 router.get('/',authenticate,authorizeAdmin, getAllSubscribers);
 
 export default router;
