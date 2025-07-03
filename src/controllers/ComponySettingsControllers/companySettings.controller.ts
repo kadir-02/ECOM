@@ -139,31 +139,49 @@ export const upsertCompanySettings = async (req: Request, res: Response) => {
       phone,
       email,
       description,
-      facebook_icon,
       facebook_link,
-      instagram_icon,
       instagram_link,
-      twitter_icon,
       twitter_link,
-      linkedin_icon,
       linkedin_link,
       product_low_stock_threshold,
       minimum_order_quantity,
     } = req.body;
 
-    let logoUrl: string | undefined;
+    const files = req.files as {
+      [fieldname: string]: Express.Multer.File[];
+    };
 
-    if (req.file && req.file.buffer) {
-      try {
-        const result = await uploadToCloudinary(req.file.buffer, 'company/logos');
-        logoUrl = result.secure_url;
-      } catch (err) {
-         res.status(500).json({
-          message: 'Failed to upload logo image',
-          details: (err as Error).message,
-        });
-        return
-      }
+    let logoUrl: string | undefined;
+    let facebookIconUrl: string | undefined;
+    let instagramIconUrl: string | undefined;
+    let twitterIconUrl: string | undefined;
+    let linkedinIconUrl: string | undefined;
+
+    // Upload logo if present
+    if (files?.logo?.[0]) {
+      const result = await uploadToCloudinary(files.logo[0].buffer, 'company/logos');
+      logoUrl = result.secure_url;
+    }
+
+    // Upload other icons if present
+    if (files?.facebook_icon?.[0]) {
+      const result = await uploadToCloudinary(files.facebook_icon[0].buffer, 'company/social-icons');
+      facebookIconUrl = result.secure_url;
+    }
+
+    if (files?.instagram_icon?.[0]) {
+      const result = await uploadToCloudinary(files.instagram_icon[0].buffer, 'company/social-icons');
+      instagramIconUrl = result.secure_url;
+    }
+
+    if (files?.twitter_icon?.[0]) {
+      const result = await uploadToCloudinary(files.twitter_icon[0].buffer, 'company/social-icons');
+      twitterIconUrl = result.secure_url;
+    }
+
+    if (files?.linkedin_icon?.[0]) {
+      const result = await uploadToCloudinary(files.linkedin_icon[0].buffer, 'company/social-icons');
+      linkedinIconUrl = result.secure_url;
     }
 
     const data = {
@@ -174,30 +192,24 @@ export const upsertCompanySettings = async (req: Request, res: Response) => {
       phone,
       email,
       description,
-      facebook_icon,
       facebook_link,
-      instagram_icon,
       instagram_link,
-      twitter_icon,
       twitter_link,
-      linkedin_icon,
       linkedin_link,
       product_low_stock_threshold: isNaN(Number(product_low_stock_threshold)) ? null : Number(product_low_stock_threshold),
       minimum_order_quantity: isNaN(Number(minimum_order_quantity)) ? null : Number(minimum_order_quantity),
-      ...(logoUrl ? { logo: logoUrl } : {}),
+      ...(logoUrl && { logo: logoUrl }),
+      ...(facebookIconUrl && { facebook_icon: facebookIconUrl }),
+      ...(instagramIconUrl && { instagram_icon: instagramIconUrl }),
+      ...(twitterIconUrl && { twitter_icon: twitterIconUrl }),
+      ...(linkedinIconUrl && { linkedin_icon: linkedinIconUrl }),
     };
 
     const existing = await prisma.companySettings.findFirst();
 
-    let result;
-    if (existing) {
-      result = await prisma.companySettings.update({
-        where: { id: existing.id },
-        data,
-      });
-    } else {
-      result = await prisma.companySettings.create({ data });
-    }
+    const result = existing
+      ? await prisma.companySettings.update({ where: { id: existing.id }, data })
+      : await prisma.companySettings.create({ data });
 
     res.status(200).json({
       success: true,
