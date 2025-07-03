@@ -4,7 +4,8 @@ import {
   getAllCompanySettings,
   getCompanySettingsById,
   updateCompanySettings,
-  deleteCompanySettings
+  deleteCompanySettings,
+  upsertCompanySettings
 } from '../../controllers/ComponySettingsControllers/companySettings.controller';
 
 import { authenticate } from '../../middlewares/authenticate';
@@ -23,8 +24,14 @@ router.post(
   '/',
   authenticate,
   authorizeAdmin,
-  uploadMemory.single('logo'), // accept one logo file
-  createCompanySettings
+  uploadMemory.fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'facebook_icon', maxCount: 1 },
+    { name: 'instagram_icon', maxCount: 1 },
+    { name: 'twitter_icon', maxCount: 1 },
+    { name: 'linkedin_icon', maxCount: 1 },
+  ]),
+  upsertCompanySettings
 );
 
 router.patch(
