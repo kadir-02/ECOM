@@ -102,12 +102,32 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
 };
 
 // 🔸 Get all
-export const getAllWhyChooseUsItems = async (_req: Request, res: Response) => {
+export const getAllWhyChooseUsItems = async (req: Request, res: Response) => {
   try {
+    const { ordering } = req.query;
+
+    // Default order
+    let orderBy: Record<string, 'asc' | 'desc'> = { sequence_number: 'asc' };
+
+    if (ordering && typeof ordering === 'string') {
+      const isDesc = ordering.startsWith('-');
+      const field = isDesc ? ordering.slice(1) : ordering;
+
+      // Whitelist allowed fields to prevent injection
+      const allowedFields = ['sequence_number', 'heading', 'isActive'];
+      if (allowedFields.includes(field)) {
+        orderBy = { [field]: isDesc ? 'desc' : 'asc' };
+      } else {
+        res.status(400).json({ success: false, message: `Invalid ordering field: ${field}` });
+        return;
+      }
+    }
+
     const items = await prisma.whyChooseUsItem.findMany({
-      orderBy: { sequence_number: 'asc' },
+      orderBy,
     });
-    res.json({success:true,items});
+
+    res.json({ success: true, items });
   } catch (error) {
     console.error('Get all WhyChooseUs items error:', error);
     res.status(500).json({ message: 'Error fetching items' });

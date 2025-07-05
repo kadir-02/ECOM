@@ -101,13 +101,92 @@ export const createProduct = async (req: Request, res: Response) => {
   }
 };
 
+// export const getProducts = async (req: Request, res: Response) => {
+//   try {
+//     const { category } = req.query;
+
+//     const whereClause: any = { isDeleted: false };
+//     if (category && !isNaN(Number(category))) {
+//       whereClause.categoryId = Number(category);
+//     }
+
+//     const products = await prisma.product.findMany({
+//       where: whereClause,
+//       include: {
+//         category: true,
+//         subcategory: true,
+//         images: true,
+//         variants: { include: { images: true } },
+//         specifications: true,
+//       },
+//       orderBy: { sequenceNumber: 'asc' },
+//     });
+
+//     const transformed = products.map((p) => {
+//       const specsObj: Record<string, string[]> = {};
+//       p.specifications.forEach((s) => {
+//         if (!specsObj[s.name]) specsObj[s.name] = [];
+//         if (!specsObj[s.name].includes(s.value)) specsObj[s.name].push(s.value);
+//       });
+//       return {
+//         ...p,
+//         specifications: specsObj,
+//       };
+//     });
+
+//     res.status(200).json({ success: true, count: transformed.length, products: transformed });
+//   } catch (error: any) {
+//     console.error('Get products error:', error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const { category } = req.query;
+    const { category, parent, ordering, is_active } = req.query;
 
     const whereClause: any = { isDeleted: false };
+
     if (category && !isNaN(Number(category))) {
       whereClause.categoryId = Number(category);
+    }
+
+    if (parent === "true") {
+      whereClause.subcategoryId = null;
+    }
+
+    if (is_active !== undefined) {
+      // Convert "true" / "false" string to boolean
+      whereClause.isActive = is_active === "true";
+    }
+
+    // Map snake_case query fields to DB camelCase fields
+    const orderFieldMap: Record<string, string> = {
+      selling_price: "sellingPrice",
+      base_price: "basePrice",
+      price_difference_percent: "priceDifferencePercent",
+      stock: "stock",
+      name: "name",
+      sequence_number: "sequenceNumber",
+    };
+
+    // Default ordering by sequenceNumber ascending
+    let orderBy: any = { sequenceNumber: "asc" };
+
+    if (ordering && typeof ordering === "string") {
+      const isDesc = ordering.startsWith("-");
+      const rawField = isDesc ? ordering.slice(1) : ordering;
+      const mappedField = orderFieldMap[rawField];
+
+      if (mappedField) {
+        orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
+      } else {
+        res.status(400).json({
+          success: false,
+          message: `Invalid ordering field: ${rawField}`,
+        });
+        return;
+      }
     }
 
     const products = await prisma.product.findMany({
@@ -119,7 +198,7 @@ export const getProducts = async (req: Request, res: Response) => {
         variants: { include: { images: true } },
         specifications: true,
       },
-      orderBy: { sequenceNumber: 'asc' },
+      orderBy,
     });
 
     const transformed = products.map((p) => {
@@ -134,12 +213,18 @@ export const getProducts = async (req: Request, res: Response) => {
       };
     });
 
-    res.status(200).json({ success: true, count: transformed.length, products: transformed });
+    res.status(200).json({
+      success: true,
+      count: transformed.length,
+      products: transformed,
+    });
   } catch (error: any) {
-    console.error('Get products error:', error);
+    console.error("Get products error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 export const getProductsFilter = async (req: Request, res: Response) => {
   try {

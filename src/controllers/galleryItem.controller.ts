@@ -52,12 +52,51 @@ export const createGalleryItem = async (req: Request, res: Response) => {
 };
 
 // Get all gallery items
-export const getAllGalleryItems = async (_req: Request, res: Response) => {
+export const getAllGalleryItems = async (req: Request, res: Response) => {
   try {
-    const items = await prisma.galleryItem.findMany({
-      include: { type: true },
-      orderBy: { sequence_number: 'asc' },
-    });
+    const { ordering, page = '1', page_size = '10' } = req.query;
+
+    // Parse pagination params
+    const pageNumber = parseInt(page as string, 10);
+    const pageSize = parseInt(page_size as string, 10);
+
+    if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
+       res.status(400).json({
+        success: false,
+        message: 'Invalid page or page_size. Both must be positive integers.',
+      });
+      return
+    }
+
+    // Ordering
+    let orderBy: Record<string, 'asc' | 'desc'> = { sequence_number: 'asc' };
+    if (ordering && typeof ordering === 'string') {
+      const isDesc = ordering.startsWith('-');
+      const field = isDesc ? ordering.slice(1) : ordering;
+
+      const allowedFields = ['sequence_number', 'createdAt', 'updatedAt', 'section'];
+      if (!allowedFields.includes(field)) {
+         res.status(400).json({
+          success: false,
+          message: `Invalid ordering field: ${field}`,
+        });
+        return
+      }
+
+      orderBy = { [field]: isDesc ? 'desc' : 'asc' };
+    }
+
+    const skip = (pageNumber - 1) * pageSize;
+
+    const [items, totalCount] = await Promise.all([
+      prisma.galleryItem.findMany({
+        include: { type: true },
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      prisma.galleryItem.count(),
+    ]);
 
     const formatted = items.map(item => ({
       id: item.id,
@@ -72,6 +111,10 @@ export const getAllGalleryItems = async (_req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       result: formatted,
+      total: totalCount,
+      page: pageNumber,
+      page_size: pageSize,
+      total_pages: Math.ceil(totalCount / pageSize),
     });
   } catch (error) {
     console.error('Fetch error:', error);

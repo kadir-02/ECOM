@@ -8,13 +8,40 @@ import { uploadToCloudinary } from '../utils/uploadToCloudinary';
 
 export const getBanners = async (req: Request, res: Response) => {
   try {
+    const { ordering } = req.query;
+
+    // Mapping query field names to DB fields if needed
+    const orderFieldMap: Record<string, string> = {
+      sequence_number: "sequence_number",
+      createdAt: "createdAt",
+      heading: "heading",
+      // add more fields if needed
+    };
+
+    // Default ordering fallback
+    let orderBy: any = { createdAt: "desc" };
+
+    if (ordering && typeof ordering === "string") {
+      const isDesc = ordering.startsWith("-");
+      const rawField = isDesc ? ordering.slice(1) : ordering;
+      const mappedField = orderFieldMap[rawField];
+
+      if (mappedField) {
+        orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
+      } else {
+        return res.status(400).json({
+          error: `Invalid ordering field: ${rawField}`,
+        });
+      }
+    }
+
     const banners = await prisma.homepageBanner.findMany({
-      // where: { isActive: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     });
+
     res.json(banners);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch banners' });
+    res.status(500).json({ error: "Failed to fetch banners" });
   }
 };
 
