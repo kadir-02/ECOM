@@ -92,33 +92,79 @@ export const getFrontendCategories = async (_req: Request, res: Response) => {
 // GET CATEGORY BY ID
 export const getCategoryById = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { page = "1" } = req.query;
+
+  const pageNumber = parseInt(page as string) || 1;
+  const take = 8;
+  const skip = (pageNumber - 1) * take;
 
   try {
-    const category = await prisma.category.findUnique({
+    // Check if category exists
+    const categoryCheck = await prisma.category.findUnique({
       where: { id: Number(id) },
-      include: {
-        subcategories: true,
-        products: {
-          where: { isDeleted: false },
-          include: {
-            variants: {
-              where: { isDeleted: false },
-              include: {
-                images: true,
-              },
-            },
-            images: true,
-          },
-        },
-      },
+      select: { id: true, isDeleted: true },
     });
 
-    if (!category || category.isDeleted) {
-      res.status(404).json({ success: false, message: "Category not found" });
-      return;
+    if (!categoryCheck || categoryCheck.isDeleted) {
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    res.status(200).json({ success: true, category });
+    // Fetch paginated products
+    const [products, totalProducts, minMax] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          categoryId: Number(id),
+          isDeleted: false,
+        },
+        include: {
+          variants: {
+            where: { isDeleted: false },
+            include: { images: true },
+          },
+          images: true,
+        },
+        skip,
+        take,
+      }),
+
+      prisma.product.count({
+        where: {
+          categoryId: Number(id),
+          isDeleted: false,
+        },
+      }),
+
+      prisma.product.aggregate({
+        where: {
+          categoryId: Number(id),
+          isDeleted: false,
+        },
+        _min: {
+          sellingPrice: true,
+        },
+        _max: {
+          sellingPrice: true,
+        },
+      }),
+    ]);
+
+    // Fetch subcategories
+    const subcategories = await prisma.subcategory.findMany({
+      where: { categoryId: Number(id) },
+    });
+
+    const categoryData = {
+      id: categoryCheck.id,
+      subcategories,
+      products,
+      page: pageNumber,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / take),
+      minSellingPrice: minMax._min.sellingPrice,
+      maxSellingPrice: minMax._max.sellingPrice,
+    };
+
+    res.status(200).json({ success: true, category: categoryData });
   } catch (error) {
     console.error("Get category by ID error:", error);
     res
@@ -126,7 +172,6 @@ export const getCategoryById = async (req: Request, res: Response) => {
       .json({ success: false, message: "Error retrieving category" });
   }
 };
-
 
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
