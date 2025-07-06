@@ -23,9 +23,22 @@ export const getPaginatedPincodes = async (req: Request, res: Response) => {
     const pageSize = parseInt(req.query.page_size as string) || 10;
     const skip = (page - 1) * pageSize;
 
+    const isActiveParam = req.query.is_active;
+    const isActive =
+      typeof isActiveParam === 'string'
+        ? isActiveParam.toLowerCase() === 'true'
+          ? true
+          : isActiveParam.toLowerCase() === 'false'
+          ? false
+          : undefined
+        : undefined;
+
+    const whereClause = isActive !== undefined ? { isActive } : {};
+
     const [totalCount, pincodes] = await Promise.all([
-      prisma.pincode.count(),
+      prisma.pincode.count({ where: whereClause }),
       prisma.pincode.findMany({
+        where: whereClause,
         skip,
         take: pageSize,
         orderBy: { id: 'desc' },
