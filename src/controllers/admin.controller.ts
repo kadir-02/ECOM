@@ -204,22 +204,96 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
   }
 
   try {
-    const users = await prisma.user.findMany({
-      where:{role:"USER"},
-      include: {
-        profile: true,
-      },
+    const {
+      page = '1',
+      page_size = '10',
+      ordering,
+      start_date,
+      end_date,
+    } = req.query;
+
+    const pageNumber = parseInt(page as string, 10);
+    const pageSize = parseInt(page_size as string, 10);
+
+    if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid page or page_size. Both must be positive integers.',
+      });
+      return;
+    }
+
+    const skip = (pageNumber - 1) * pageSize;
+
+    const orderFieldMap: Record<string, any> = {
+      email: { email: undefined },
+      created_at: { createdAt: undefined },
+      first_name: { profile: { firstName: undefined } },
+      last_name: { profile: { lastName: undefined } },
+    };
+
+    let orderBy: any = { createdAt: 'desc' };
+
+    if (ordering && typeof ordering === 'string') {
+      const isDesc = ordering.startsWith('-');
+      const rawField = isDesc ? ordering.slice(1) : ordering;
+      const mappedField = orderFieldMap[rawField];
+
+      if (!mappedField) {
+        res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
+        return;
+      }
+
+      if (typeof Object.values(mappedField)[0] === 'object') {
+        // Nested relation ordering (e.g., profile.firstName)
+        const nestedKey = Object.keys(mappedField)[0];
+        const nestedField = Object.keys(mappedField[nestedKey])[0];
+        orderBy = {
+          [nestedKey]: {
+            [nestedField]: isDesc ? 'desc' : 'asc',
+          },
+        };
+      } else {
+        const key = Object.keys(mappedField)[0];
+        orderBy = { [key]: isDesc ? 'desc' : 'asc' };
+      }
+    }
+
+    const where: any = { role: 'USER' };
+
+    if (start_date || end_date) {
+      where.createdAt = {};
+      if (start_date) where.createdAt.gte = new Date(`${start_date}T00:00:00.000Z`);
+      if (end_date) where.createdAt.lte = new Date(`${end_date}T23:59:59.999Z`);
+    }
+
+    const [users, totalCount] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        include: { profile: true },
+        orderBy,
+        skip,
+        take: pageSize,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    const sanitized = users.map(({ password, ...u }) => u);
+
+    res.status(200).json({
+      success: true,
+      users: sanitized,
+      total: totalCount,
+      page: pageNumber,
+      page_size: pageSize,
+      total_pages: Math.ceil(totalCount / pageSize),
     });
-
-    // Remove password field from each user object
-    const sanitizedUsers = users.map(({ password, ...userWithoutPassword }) => userWithoutPassword);
-
-    res.json(sanitizedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   if (req.user?.role !== 'ADMIN') {
@@ -289,7 +363,6 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   }
 };
 
-// Helper to format dates
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
     weekday: 'long',

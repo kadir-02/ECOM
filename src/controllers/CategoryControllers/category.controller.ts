@@ -106,7 +106,8 @@ export const getCategoryById = async (req: Request, res: Response) => {
     });
 
     if (!categoryCheck || categoryCheck.isDeleted) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+       res.status(404).json({ success: false, message: "Category not found" });
+       return
     }
 
     // Fetch paginated products
