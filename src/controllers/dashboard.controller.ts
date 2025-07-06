@@ -256,15 +256,70 @@ export const getDashboard = async (req: Request, res: Response) => {
       });
     }
 
-    if (settings['least_selling_products_data'] !== undefined || settings['top_selling_products_data'] !== undefined) {
-      const items = await prisma.orderItem.groupBy({
-        by: ['productId'],
-        _sum: { quantity: true },
-      });
-      items.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
-      if (settings['top_selling_products_data'] !== undefined) resp.top_selling_products = items.slice(0, 5);
-      if (settings['least_selling_products_data'] !== undefined) resp.least_selling_products = items.slice(-5);
-    }
+   if (
+  settings['least_selling_products_data'] !== undefined ||
+  settings['top_selling_products_data'] !== undefined
+) {
+  const groupedItems = await prisma.orderItem.groupBy({
+    by: ['productId'],
+    _sum: { quantity: true },
+  });
+
+  // Sort products by quantity sold
+  groupedItems.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
+
+  const topIds = groupedItems
+  .slice(0, 5)
+  .map((item) => item.productId)
+  .filter((id): id is number => id !== null); // ✅ removes nulls
+
+const leastIds = groupedItems
+  .slice(-5)
+  .map((item) => item.productId)
+  .filter((id): id is number => id !== null); // ✅ removes nulls
+
+const allIds = [...new Set([...topIds, ...leastIds])]; // ✅ all numbers only
+  const products = await prisma.product.findMany({
+    where: {
+      id: { in: allIds },
+    },
+    include: {
+      category: true,
+      orderItems: true,
+    },
+  });
+
+  const formatProduct = (product: any) => {
+    const totalQty = product.OrderItem.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    const totalRevenue = product.OrderItem.reduce(
+      (sum: number, item: any) => sum + item.quantity * item.unit_price,
+      0
+    );
+
+    return {
+      id: product.id,
+      name: product.name,
+      image: product.image,
+      category: product.category?.name ?? 'Uncategorized',
+      unit_price: product.price,
+      total_quantity_sold: totalQty,
+      revenue_generated: totalRevenue,
+    };
+  };
+
+  if (settings['top_selling_products_data'] !== undefined) {
+    resp.top_selling_products = products
+      .filter((p) => topIds.includes(p.id))
+      .map(formatProduct);
+  }
+
+  if (settings['least_selling_products_data'] !== undefined) {
+    resp.least_selling_products = products
+      .filter((p) => leastIds.includes(p.id))
+      .map(formatProduct);
+  }
+}
+
 
     if (settings['recent_orders_data'] !== undefined) {
       resp.recent_orders = await prisma.order.findMany({
@@ -309,7 +364,6 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
 
     const sections = [
       "order_data",
-      "order_sale_graph",
       "recent_payment_transactions_data",
       "least_selling_products_data",
       "user_data",
