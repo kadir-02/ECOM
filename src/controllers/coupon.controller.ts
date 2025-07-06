@@ -135,17 +135,19 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
        return
     }
 
-    // Check if cart already has a used coupon
-    const alreadyApplied = await prisma.couponCode.findFirst({
+    // Check if cart already has a used coupon applied
+    const existingCouponForCart = await prisma.couponCode.findFirst({
       where: { cartId, used: true },
     });
 
-    if (alreadyApplied) {
-       res.status(400).json({ message: 'A discount code has already been applied to this cart.' });
-       return
+    if (existingCouponForCart) {
+       res.status(400).json({
+        message: `A coupon code "${existingCouponForCart.code}" has already been applied to this cart.`,
+      });
+      return
     }
 
-    // Find valid coupon
+    // Find valid coupon matching code, unused, not expired, global or user-specific
     const coupon = await prisma.couponCode.findFirst({
       where: {
         code,
@@ -163,7 +165,7 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
        return
     }
 
-    // Update coupon: mark as used and assign cartId and userId if global
+    // Mark coupon as used and assign cartId and userId if global
     const updatedCoupon = await prisma.couponCode.update({
       where: { id: coupon.id },
       data: {
@@ -173,13 +175,13 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
       },
     });
 
-    res.status(200).json({
+     res.status(200).json({
       success: true,
       message: 'Coupon code applied successfully.',
       data: updatedCoupon,
     });
   } catch (error) {
     console.error('Redeem coupon error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+     res.status(500).json({ message: 'Internal server error' });
   }
 };
