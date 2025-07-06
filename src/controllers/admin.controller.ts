@@ -297,47 +297,33 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
 
 export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   if (req.user?.role !== 'ADMIN') {
-    res.status(403).json({ message: 'Access denied: Admins only' });
-    return;
+     res.status(403).json({ message: 'Access denied: Admins only' });
+     return
   }
 
   try {
     const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.page_size as string) || 10;
-
-    // 🔹 Handle is_active filter
-    const isActiveParam = req.query.is_active as string;
-    const isActive = isActiveParam?.toLowerCase() === 'true'
-      ? false // isDeleted: false → active
-      : isActiveParam?.toLowerCase() === 'false'
-      ? true  // isDeleted: true → inactive
-      : undefined;
-
-    const whereClause = {
-      role: 'ADMIN' as const,
-      ...(isActive !== undefined ? { isDeleted: isActive } : {}),
-    };
-
-    // 🔹 Handle ordering (default by createdAt desc)
-    const ordering = (req.query.ordering as string) || '-createdAt';
-    let orderBy: any;
-
-    if (ordering.startsWith('-')) {
-      const field = ordering.slice(1);
-      orderBy = { [field]: 'desc' };
-    } else {
-      orderBy = { [ordering]: 'asc' };
-    }
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
 
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
-        where: whereClause,
-        include: { profile: true },
+        where: {
+          role: 'ADMIN'
+          // isDeleted: false,
+        },
+        include: {
+          profile: true,
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy,
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where: whereClause }),
+      prisma.user.count({
+        where: {
+          role: 'ADMIN',
+          isDeleted: false,
+        },
+      }),
     ]);
 
     const results = users.map(user => {
@@ -347,23 +333,25 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
         username: user.email,
         first_name: user.profile?.firstName || '',
         last_name: user.profile?.lastName || '',
-        phone_number: null,
+        phone_number: null, // Not in schema
         country_code_for_phone_number: '',
         email: user.email,
         profile_picture: user.profile?.imageUrl || '',
-        is_active: !user.isDeleted,
-        category: 1,
-        last_login: '',
+        is_active:  !user.isDeleted, // Assuming always active
+        category: 1, // Hardcoded since no category model is present
+        last_login: '', // Not tracked in your schema
         date_joined: formatDate(user.createdAt),
         created_by: createdBy || null,
-        updated_at: formatDate(user.createdAt),
+        updated_at: formatDate(user.createdAt), // Using createdAt as fallback
         updated_by: createdBy || null,
         category_name: 'Admin',
       };
     });
 
+    const totalPages = Math.ceil(totalCount / pageSize);
+
     res.json({
-      total_pages: Math.ceil(totalCount / pageSize),
+      total_pages: totalPages,
       current_page: page,
       page_size: pageSize,
       results,
