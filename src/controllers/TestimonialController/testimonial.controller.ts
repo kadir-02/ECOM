@@ -47,19 +47,38 @@ export const createTestimonial = async (req: Request, res: Response) => {
 };
 
 // 🔹 Get All Testimonials
-export const getAllTestimonials = async (_req: Request, res: Response) => {
+export const getAllTestimonials = async (req: Request, res: Response) => {
   try {
+    const { ordering } = req.query;
+
+    // Default ordering
+    let orderBy: any = { createdAt: 'desc' };
+
+    if (typeof ordering === 'string') {
+      const isDescending = ordering.startsWith('-');
+      const field = isDescending ? ordering.slice(1) : ordering;
+
+      // Ensure only valid fields are allowed
+      const allowedFields = ['name', 'createdAt']; // update based on your model
+
+      if (allowedFields.includes(field)) {
+        orderBy = {
+          [field]: isDescending ? 'desc' : 'asc',
+        };
+      }
+    }
+
     const testimonials = await prisma.testimonial.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy,
     });
 
-     res.status(200).json({
+    res.status(200).json({
       success: true,
       testimonials,
     });
   } catch (error) {
     console.error('Fetch error:', error);
-     res.status(500).json({
+    res.status(500).json({
       success: false,
       message: 'Internal server error',
     });

@@ -54,18 +54,20 @@ export const guestCheckout = async (req: Request, res: Response) => {
 
     // Find or create guest user
     let guestUser = await prisma.user.findFirst({
-      where: {
-        email,
-        isGuest: true,
-      },
+      where: { email },
     });
 
     if (!guestUser) {
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+         res.status(400).json({
+          message: "Email already registered. Please log in to place an order.",
+        });
+        return
+      }
+
       guestUser = await prisma.user.create({
-        data: {
-          email,
-          isGuest: true,
-        },
+        data: { email, isGuest: true },
       });
     }
 
