@@ -21,7 +21,7 @@ const router = Router();
 router.get('/', getAllCategories);
 router.get('/frontend', getFrontendCategories);
 router.use('/subcategory', subcategoryRoutes);
-router.get('/:id', getCategoryById);
+router.get('/id', getCategoryById);
 // Nested subcategory routes
 
 // Admin-only routes

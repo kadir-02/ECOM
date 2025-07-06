@@ -91,30 +91,39 @@ export const getFrontendCategories = async (_req: Request, res: Response) => {
 
 // GET CATEGORY BY ID
 export const getCategoryById = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { page = "1" } = req.query;
+  const { category, page = "1" } = req.query;
 
   const pageNumber = parseInt(page as string) || 1;
   const take = 8;
   const skip = (pageNumber - 1) * take;
 
+  // Convert query param to array of numbers
+  const categoryIds = Array.isArray(category)
+    ? category.map(Number)
+    : [Number(category)];
+
   try {
-    // Check if category exists
-    const categoryCheck = await prisma.category.findUnique({
-      where: { id: Number(id) },
-      select: { id: true, isDeleted: true },
+    // Validate category IDs
+    const validCategories = await prisma.category.findMany({
+      where: {
+        id: { in: categoryIds },
+        isDeleted: false,
+      },
+      select: { id: true },
     });
 
-    if (!categoryCheck || categoryCheck.isDeleted) {
-       res.status(404).json({ success: false, message: "Category not found" });
+    const validCategoryIds = validCategories.map((c) => c.id);
+
+    if (validCategoryIds.length === 0) {
+       res.status(404).json({ success: false, message: "No valid categories found" });
        return
     }
 
-    // Fetch paginated products
+    // Fetch products, total count and price range
     const [products, totalProducts, minMax] = await Promise.all([
       prisma.product.findMany({
         where: {
-          categoryId: Number(id),
+          categoryId: { in: validCategoryIds },
           isDeleted: false,
         },
         include: {
@@ -130,47 +139,42 @@ export const getCategoryById = async (req: Request, res: Response) => {
 
       prisma.product.count({
         where: {
-          categoryId: Number(id),
+          categoryId: { in: validCategoryIds },
           isDeleted: false,
         },
       }),
 
       prisma.product.aggregate({
         where: {
-          categoryId: Number(id),
+          categoryId: { in: validCategoryIds },
           isDeleted: false,
         },
-        _min: {
-          sellingPrice: true,
-        },
-        _max: {
-          sellingPrice: true,
-        },
+        _min: { sellingPrice: true },
+        _max: { sellingPrice: true },
       }),
     ]);
 
-    // Fetch subcategories
+    // Get subcategories
     const subcategories = await prisma.subcategory.findMany({
-      where: { categoryId: Number(id) },
+      where: { categoryId: { in: validCategoryIds } },
     });
 
-    const categoryData = {
-      id: categoryCheck.id,
-      subcategories,
-      products,
-      page: pageNumber,
-      totalProducts,
-      totalPages: Math.ceil(totalProducts / take),
-      minSellingPrice: minMax._min.sellingPrice,
-      maxSellingPrice: minMax._max.sellingPrice,
-    };
-
-    res.status(200).json({ success: true, category: categoryData });
+    res.status(200).json({
+      success: true,
+      data: {
+        categoryIds: validCategoryIds,
+        subcategories,
+        products,
+        page: pageNumber,
+        totalProducts,
+        totalPages: Math.ceil(totalProducts / take),
+        minSellingPrice: minMax._min.sellingPrice,
+        maxSellingPrice: minMax._max.sellingPrice,
+      },
+    });
   } catch (error) {
-    console.error("Get category by ID error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error retrieving category" });
+    console.error("Error in getCategoryById:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
