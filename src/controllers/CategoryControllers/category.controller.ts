@@ -102,7 +102,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
   const take = 8;
   const skip = (pageNumber - 1) * take;
 
-  // Normalize category param to array of numbers
+  // Normalize category query to array of numbers
   const categoryIds = Array.isArray(category)
     ? category.map(id => Number(id)).filter(id => !isNaN(id))
     : String(category).split(',').map(id => Number(id)).filter(id => !isNaN(id));
@@ -113,22 +113,25 @@ export const getCategoryById = async (req: Request, res: Response) => {
   }
 
   try {
+    // Fetch full category details (including banner, imageUrl)
     const validCategories = await prisma.category.findMany({
       where: {
         id: { in: categoryIds },
         isDeleted: false,
       },
-      select: { id: true },
+      include: {
+        subcategories: true,
+      },
     });
 
-    const validCategoryIds = validCategories.map((c) => c.id);
+    const validCategoryIds = validCategories.map(c => c.id);
 
     if (validCategoryIds.length === 0) {
-        res.status(404).json({ success: false, message: "No valid categories found" });
-        return
+       res.status(404).json({ success: false, message: "No valid categories found" });
+       return
     }
 
-    // Fetch products, count, and price range
+    // Fetch products, total count, and price range in parallel
     const [products, totalProducts, minMax] = await Promise.all([
       prisma.product.findMany({
         where: {
@@ -145,12 +148,14 @@ export const getCategoryById = async (req: Request, res: Response) => {
         skip,
         take,
       }),
+
       prisma.product.count({
         where: {
           categoryId: { in: validCategoryIds },
           isDeleted: false,
         },
       }),
+
       prisma.product.aggregate({
         where: {
           categoryId: { in: validCategoryIds },
@@ -161,15 +166,10 @@ export const getCategoryById = async (req: Request, res: Response) => {
       }),
     ]);
 
-    const subcategories = await prisma.subcategory.findMany({
-      where: { categoryId: { in: validCategoryIds } },
-    });
-
     res.status(200).json({
       success: true,
       data: {
-        categoryIds: validCategoryIds,
-        subcategories,
+        categories: validCategories, // includes banner, imageUrl, etc.
         products,
         page: pageNumber,
         totalProducts,
@@ -183,6 +183,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 
 
 // UPDATE CATEGORY
