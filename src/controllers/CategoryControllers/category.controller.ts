@@ -57,14 +57,45 @@ export const createCategory = async (req: Request, res: Response) => {
 };
 
 // GET ALL CATEGORIES
-export const getAllCategories = async (_req: Request, res: Response) => {
+export const getAllCategories = async (req: Request, res: Response) => {
   try {
-    const categories = await prisma.category.findMany({
-      // where: { isDeleted: false },
-      include: { subcategories: true },
-      orderBy: { sequence_number: "asc" },
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.page_size as string) || 10;
+    const skip = (page - 1) * pageSize;
+
+    // Total count for pagination
+    const totalCount = await prisma.category.count({
+      where: { isDeleted: false },
     });
-    res.status(200).json({ success: true, categories });
+
+    // const categories = await prisma.category.findMany({
+    //   where: { isDeleted: false },
+    //   include: { subcategories: true },
+    //   orderBy: { sequence_number: "asc" },
+    //   skip,
+    //   take: pageSize,
+    // });
+
+    const categories = await prisma.category.findMany({
+      where: { isDeleted: false },
+      include: {
+        subcategories: {
+          // Include all subcategories, even soft-deleted ones
+        },
+      },
+      orderBy: { sequence_number: "asc" },
+      skip,
+      take: pageSize,
+    });
+
+    res.status(200).json({
+      success: true,
+      total_pages: Math.ceil(totalCount / pageSize),
+      current_page: page,
+      page_size: pageSize,
+      total_count: totalCount,
+      categories,
+    });
   } catch (error) {
     console.error("Get categories error:", error);
     res

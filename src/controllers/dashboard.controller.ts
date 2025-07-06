@@ -186,29 +186,47 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     if (settings['revenue_data'] !== undefined || settings['order_payment_data'] !== undefined) {
-      const agg = await prisma.order.aggregate({
-        _sum: { totalAmount: true },
-        where: { createdAt: { gte: start, lte: end }, userId: user_id },
-      });
-      resp.revenue_summary.total_revenue = agg._sum?.totalAmount ?? 0;
-      resp.order_payment_summary.total_payment_estimate = resp.revenue_summary.total_revenue;
-
+      // Fetch all orders within date range (not user-specific)
       const orders = await prisma.order.findMany({
-        where: { createdAt: { gte: start, lte: end }, userId: user_id },
+        where: {
+          createdAt: { gte: start, lte: end },
+        },
         include: { payment: true },
       });
-      let online = 0, cod = 0, notdone = 0;
-      orders.forEach(o => {
-        if (!o.payment) notdone += o.totalAmount;
-        else if (o.payment.status === 'SUCCESS') {
-          const m = o.payment.method.toLowerCase();
-          if (m.includes('online')) online += o.totalAmount;
-          else if (m.includes('cash')) cod += o.totalAmount;
+
+      let total = 0;
+      let online = 0;
+      let cod = 0;
+      let notdone = 0;
+
+      for (const o of orders) {
+        const amount = o.totalAmount ?? 0;
+        total += amount;
+
+        const payment = o.payment;
+        if (!payment || payment.status.toLowerCase() !== 'success') {
+          notdone += amount;
+          continue;
         }
-      });
-      resp.order_payment_summary.online_payment_amount = online;
-      resp.order_payment_summary.cash_on_delivery_payment_amount = cod;
-      resp.order_payment_summary.payment_not_done_amount = notdone;
+
+        const method = payment.method.toLowerCase();
+
+        if (method.includes('razor') || method.includes('online')) {
+          online += amount;
+        } else if (method.includes('COD') || method.includes('cash')) {
+          cod += amount;
+        } else {
+          notdone += amount;
+        }
+      }
+
+      resp.revenue_summary.total_revenue = total;
+      resp.order_payment_summary = {
+        total_payment_estimate: total,
+        online_payment_amount: online,
+        cash_on_delivery_payment_amount: cod,
+        payment_not_done_amount: notdone,
+      };
     }
 
     if (settings['top_customers_data'] !== undefined) {
@@ -307,7 +325,10 @@ export const getDashboard = async (req: Request, res: Response) => {
     id: product.id,
     name: product.name,
     image: product.images?.[0]?.image ?? null,
-    category: product.category?.name ?? 'Uncategorized'
+    category: product.category?.name ?? 'Uncategorized',
+    stock: product.stock,
+    selling_price: product.sellingPrice,
+    cost_price: product.basePrice,
   }));
 }
 
@@ -385,13 +406,28 @@ export const getDashboard = async (req: Request, res: Response) => {
   }
 }
 
-    if (settings['recent_orders_data'] !== undefined) {
-      resp.recent_orders = await prisma.order.findMany({
-        where: { userId: user_id },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      });
-    }
+  if (settings['recent_orders_data'] !== undefined) {
+    const recentOrders = await prisma.order.findMany({
+      where: { userId: user_id },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: {
+        user: {
+          include: { profile: true }
+        },
+        items: true
+      }
+    });
+
+    resp.recent_orders = recentOrders.map(order => ({
+      id: order.id,
+      total_amount: order.totalAmount,
+      status: order.status,
+      created_at: order.createdAt,
+      customer_name: `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim(),
+      item_count: order.items.reduce((sum, item) => sum + item.quantity, 0)
+    }));
+  }
 
     if (settings['recent_payment_transactions_data'] !== undefined) {
       resp.recent_payment_transactions = await prisma.order.findMany({

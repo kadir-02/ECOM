@@ -96,7 +96,7 @@ export const getSubcategoryByCategoryId = async (
 
   try {
     const subcategory = await prisma.subcategory.findMany({
-      where: { categoryId: Number(parent_category), isDeleted: true },
+      where: { categoryId: Number(parent_category) },
       orderBy: {
         sequence_number: "asc",
       },
