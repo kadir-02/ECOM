@@ -29,9 +29,10 @@ export const getBanners = async (req: Request, res: Response) => {
       if (mappedField) {
         orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
       } else {
-        return res.status(400).json({
+         res.status(400).json({
           error: `Invalid ordering field: ${rawField}`,
         });
+        return
       }
     }
 
