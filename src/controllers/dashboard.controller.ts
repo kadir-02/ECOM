@@ -212,20 +212,60 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     if (settings['top_customers_data'] !== undefined) {
-      resp.top_customers.by_orders = await prisma.order.groupBy({
+      // 🔹 Top by orders
+      const topByOrders = await prisma.order.groupBy({
         by: ['userId'],
         _count: { id: true },
         where: { createdAt: { gte: start, lte: end } },
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       });
-      resp.top_customers.by_spending = await prisma.order.groupBy({
+
+      // 🔹 Top by spending
+      const topBySpending = await prisma.order.groupBy({
         by: ['userId'],
         _sum: { totalAmount: true },
         where: { createdAt: { gte: start, lte: end } },
         orderBy: { _sum: { totalAmount: 'desc' } },
         take: 5,
       });
+
+      // Combine all unique userIds
+      const userIds = Array.from(
+        new Set([
+          ...topByOrders.map(o => o.userId),
+          ...topBySpending.map(o => o.userId),
+        ])
+      );
+
+      // Fetch users
+      const users = await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        include: { profile: true },
+      });
+
+      const userMap = new Map(
+        users.map(u => [
+          u.id,
+          {
+            id: u.id,
+            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
+            email: u.email,
+            profile_picture: u.profile?.imageUrl || '',
+          },
+        ])
+      );
+
+      // Enrich results
+      resp.top_customers.by_orders = topByOrders.map(o => ({
+        ...userMap.get(o.userId),
+        total_orders: o._count.id,
+      }));
+
+      resp.top_customers.by_spending = topBySpending.map(o => ({
+        ...userMap.get(o.userId),
+        total_spent: o._sum.totalAmount ?? 0,
+      }));
     }
 
     if (settings['order_sale_graph'] !== undefined) {
