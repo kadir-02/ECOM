@@ -104,18 +104,18 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     });
 
     // Send order confirmation email
-    await sendOrderConfirmationEmail(
-      order.user.email,
-      order.user.profile?.firstName || 'Customer',
-      `COM-${order.id}`,
-      order.items.map((i) => ({
-        name: i.variant?.name || i.product?.name || 'Product',
-        quantity: i.quantity,
-        price: i.price,
-      })),
-      finalAmount,
-      order.payment?.method || 'N/A'
-    );
+    // await sendOrderConfirmationEmail(
+    //   order.user.email,
+    //   order.user.profile?.firstName || 'Customer',
+    //   `COM-${order.id}`,
+    //   order.items.map((i) => ({
+    //     name: i.variant?.name || i.product?.name || 'Product',
+    //     quantity: i.quantity,
+    //     price: i.price,
+    //   })),
+    //   finalAmount,
+    //   order.payment?.method || 'N/A'
+    // );
 
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${finalAmount}`, 'ORDER');
 
