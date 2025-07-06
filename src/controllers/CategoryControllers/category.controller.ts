@@ -93,17 +93,26 @@ export const getFrontendCategories = async (_req: Request, res: Response) => {
 export const getCategoryById = async (req: Request, res: Response) => {
   const { category, page = "1" } = req.query;
 
+  if (!category) {
+     res.status(400).json({ success: false, message: "Category parameter is required" });
+     return
+  }
+
   const pageNumber = parseInt(page as string) || 1;
   const take = 8;
   const skip = (pageNumber - 1) * take;
 
-  // Convert query param to array of numbers
+  // Normalize category param to array of numbers
   const categoryIds = Array.isArray(category)
-    ? category.map(Number)
-    : [Number(category)];
+    ? category.map(id => Number(id)).filter(id => !isNaN(id))
+    : String(category).split(',').map(id => Number(id)).filter(id => !isNaN(id));
+
+  if (categoryIds.length === 0) {
+     res.status(400).json({ success: false, message: "Invalid category IDs" });
+     return
+  }
 
   try {
-    // Validate category IDs
     const validCategories = await prisma.category.findMany({
       where: {
         id: { in: categoryIds },
@@ -115,11 +124,11 @@ export const getCategoryById = async (req: Request, res: Response) => {
     const validCategoryIds = validCategories.map((c) => c.id);
 
     if (validCategoryIds.length === 0) {
-       res.status(404).json({ success: false, message: "No valid categories found" });
-       return
+        res.status(404).json({ success: false, message: "No valid categories found" });
+        return
     }
 
-    // Fetch products, total count and price range
+    // Fetch products, count, and price range
     const [products, totalProducts, minMax] = await Promise.all([
       prisma.product.findMany({
         where: {
@@ -136,14 +145,12 @@ export const getCategoryById = async (req: Request, res: Response) => {
         skip,
         take,
       }),
-
       prisma.product.count({
         where: {
           categoryId: { in: validCategoryIds },
           isDeleted: false,
         },
       }),
-
       prisma.product.aggregate({
         where: {
           categoryId: { in: validCategoryIds },
@@ -154,7 +161,6 @@ export const getCategoryById = async (req: Request, res: Response) => {
       }),
     ]);
 
-    // Get subcategories
     const subcategories = await prisma.subcategory.findMany({
       where: { categoryId: { in: validCategoryIds } },
     });
@@ -177,6 +183,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
