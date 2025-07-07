@@ -31,8 +31,8 @@ export const createProduct = async (req: Request, res: Response) => {
 
     // Basic validation (add more checks as needed)
     if (!name || !SKU || !basePrice || !sellingPrice) {
-       res.status(400).json({ message: "Required fields missing" });
-       return
+      res.status(400).json({ message: "Required fields missing" });
+      return
     }
 
     const slug = await generateSlug(name, SKU);
@@ -143,12 +143,16 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const { category, parent, ordering, is_active } = req.query;
+    const { category, parent, ordering, is_active, id } = req.query;
 
     const whereClause: any = { isDeleted: false };
 
     if (category && !isNaN(Number(category))) {
       whereClause.categoryId = Number(category);
+    }
+
+    if (id && !isNaN(Number(id))) {
+      whereClause.id = Number(id);
     }
 
     if (parent === "true") {
@@ -331,9 +335,9 @@ export const updateProductSequence = async (req: Request, res: Response) => {
 export const updateProduct = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   if (isNaN(id)) {
-     res.status(400).json({ success: false, message: "Invalid product id" });
-     return
-  }  
+    res.status(400).json({ success: false, message: "Invalid product id" });
+    return
+  }
   const {
     name,
     description,
