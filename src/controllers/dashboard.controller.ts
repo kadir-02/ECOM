@@ -488,7 +488,6 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
       "top_selling_products_data",
       "top_customers_data",
       "low_stock_products_data",
-      "order_payment_data",
       "new_customer_count",
       "average_order_value",
       "products_sold",
