@@ -62,30 +62,39 @@ export const addHeaderData = async (req: Request, res: Response) => {
 };
 
 export const getHeaders = async (req: Request, res: Response) => {
-  const { ordering } = req.query;
+  const { ordering, is_active } = req.query;
+
+  // Convert "true"/"false" strings to boolean
+  const isActiveParsed =
+    typeof is_active === "string"
+      ? is_active.toLowerCase() === "true"
+        ? true
+        : is_active.toLowerCase() === "false"
+        ? false
+        : undefined
+      : undefined;
 
   try {
-    if (ordering === "-sequence_number") {
-      const navlinks = await prisma.header.findMany({
-        orderBy: {
-          sequence_number: "desc",
-        },
-      });
-      res.status(200).json({ success: true, result: navlinks });
-      return;
-    } else {
-      const navlinks = await prisma.header.findMany({
-        orderBy: {
-          sequence_number: "asc",
-        },
-      });
-      res.status(200).json({ success: true, result: navlinks });
-      return;
+    const baseQuery: any = {
+      orderBy: {
+        sequence_number: ordering === "-sequence_number" ? "desc" : "asc",
+      },
+    };
+
+    // Only apply filter if is_active is explicitly true/false
+    if (typeof isActiveParsed === "boolean") {
+      baseQuery.where = {
+        is_active: isActiveParsed,
+      };
     }
+
+    const navlinks = await prisma.header.findMany(baseQuery);
+    res.status(200).json({ success: true, result: navlinks });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 export const updateHeaderData = async (req: Request, res: Response) => {
   const { sequence_number, name, link, is_active } = req.body;
