@@ -67,7 +67,7 @@ export const getDashboard = async (req: Request, res: Response) => {
       by_orders: [],
       by_spending: [],
     },
-    recent_payment_transactions: [],
+    // recent_payment_transactions: [],
     recent_orders: [],
     top_selling_products: [],
     least_selling_products: [],
