@@ -100,7 +100,7 @@ export const register = async (req: Request, res: Response) => {
 
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, admin } = req.body;
 
   try {
     const user = await prisma.user.findUnique({
@@ -111,6 +111,13 @@ export const login = async (req: Request, res: Response) => {
     if (!user || !user.password) {
        res.status(400).json({ message: 'Invalid credentials' });
        return
+    }
+
+    if(admin==='ADMIN'){
+      if(user.role!=='ADMIN'){
+        res.status(403).json({message:"user is not admin"})
+        return;
+      }
     }
 
     const isValid = await bcrypt.compare(password, user.password);

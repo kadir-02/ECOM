@@ -154,18 +154,18 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
       },
     });
 
-    if (!coupon) {
-       res.status(400).json({ message: 'Invalid or expired discount code' });
-       return
-    }
+    // if (!coupon) {
+    //    res.status(400).json({ message: 'Invalid or expired discount code' });
+    //    return
+    // }
 
     // 4. Apply the coupon (mark used, assign cart & user if needed)
     const updatedCoupon = await prisma.couponCode.update({
-      where: { id: coupon.id },
+      where: { id: coupon?.id },
       data: {
         used: true,
         cartId,
-        userId: coupon.userId ?? userId,
+        userId: coupon?.userId ?? userId,
       },
     });
 

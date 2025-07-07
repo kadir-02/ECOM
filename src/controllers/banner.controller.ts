@@ -4,23 +4,21 @@ import cloudinary from '../upload/cloudinary';
 import { Readable } from 'stream';
 import { MulterError } from 'multer';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
+import { formatReadableDate } from '../utils/readableDate';
 
 
 export const getBanners = async (req: Request, res: Response) => {
   try {
-    const { ordering } = req.query;
+    const { ordering, isActive } = req.query;
 
-    // Mapping query field names to DB fields if needed
     const orderFieldMap: Record<string, string> = {
       sequence_number: "sequence_number",
       createdAt: "createdAt",
       heading: "heading",
-      // add more fields if needed
     };
 
-    // Default ordering fallback
+    // 1. Handle ordering
     let orderBy: any = { createdAt: "desc" };
-
     if (ordering && typeof ordering === "string") {
       const isDesc = ordering.startsWith("-");
       const rawField = isDesc ? ordering.slice(1) : ordering;
@@ -29,18 +27,36 @@ export const getBanners = async (req: Request, res: Response) => {
       if (mappedField) {
         orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
       } else {
-         res.status(400).json({
-          error: `Invalid ordering field: ${rawField}`,
-        });
-        return
+         res.status(400).json({ error: `Invalid ordering field: ${rawField}` });
+         return
       }
     }
 
+    // 2. Handle filtering (e.g. isActive)
+    const where: any = {};
+    if (isActive !== undefined) {
+      if (isActive === 'true' || isActive === 'false') {
+        where.isActive = isActive === 'true';
+      } else {
+         res.status(400).json({ error: `'isActive' must be 'true' or 'false'` });
+         return
+      }
+    }
+
+    // 3. Query the DB with filters and ordering
     const banners = await prisma.homepageBanner.findMany({
+      where,
       orderBy,
     });
 
-    res.json(banners);
+    // 4. Format result
+    const formatted = banners.map((banner) => ({
+      ...banner,
+      createdAt: formatReadableDate(new Date(banner.createdAt)),
+      updatedAt: banner.updatedAt ? formatReadableDate(new Date(banner.updatedAt)) : null,
+    }));
+
+    res.json(formatted);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch banners" });
   }

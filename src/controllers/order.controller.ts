@@ -239,8 +239,17 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
       include: {
         items: {
           include: {
-            product: true,
-            variant: true,
+            product: {
+              include: {
+                images: true,
+                category: true,
+              },
+            },
+            variant: {
+              include: {
+                images: true,
+              },
+            },
           },
         },
         payment: true,

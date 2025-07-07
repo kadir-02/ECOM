@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import cloudinary from '../upload/cloudinary';
+import { formatReadableDate } from '../utils/readableDate';
 
 interface CloudinaryUploadResult {
   secure_url: string;
@@ -17,6 +18,18 @@ export const createWhyChooseUsItem = async (req: Request, res: Response) => {
   }
 
   try {
+
+    const sequenceStr = String(sequenceNumber); 
+
+    const existing = await prisma.whyChooseUsItem.findFirst({
+      where: { sequence_number: sequenceStr },
+    });
+
+    if (existing) {
+      res.status(400).json({ message: 'Sequence number already used.' });
+      return;
+    }
+
     let image: string | undefined;
 
     if (req.file) {
@@ -35,11 +48,11 @@ export const createWhyChooseUsItem = async (req: Request, res: Response) => {
 
     const newItem = await prisma.whyChooseUsItem.create({
       data: {
-        sequence_number: sequenceNumber,
+        sequence_number: sequenceStr,
         heading,
         description,
         image,
-        isActive: isActive === 'false' ? false : true, // handle stringified bool from form
+        isActive: isActive === 'false' ? false : true,
       },
     });
 
@@ -63,6 +76,20 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
       return;
     }
 
+    const sequenceStr = String(sequenceNumber);
+
+    const duplicate = await prisma.whyChooseUsItem.findFirst({
+      where: {
+        sequence_number: sequenceStr,
+        NOT: { id: id },
+      },
+    });
+
+    if (duplicate) {
+      res.status(400).json({ message: 'Sequence number already used by another item.' });
+      return;
+    }
+
     let image = existing.image;
 
     if (req.file) {
@@ -82,7 +109,7 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
     const updated = await prisma.whyChooseUsItem.update({
       where: { id },
       data: {
-        sequence_number: sequenceNumber,
+        sequence_number: sequenceStr,
         heading,
         description,
         image,
@@ -104,16 +131,15 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
 // 🔸 Get all
 export const getAllWhyChooseUsItems = async (req: Request, res: Response) => {
   try {
-    const { ordering } = req.query;
+    const { ordering, is_active } = req.query;
 
-    // Default order
+    // Default ordering
     let orderBy: Record<string, 'asc' | 'desc'> = { sequence_number: 'asc' };
 
     if (ordering && typeof ordering === 'string') {
       const isDesc = ordering.startsWith('-');
       const field = isDesc ? ordering.slice(1) : ordering;
 
-      // Whitelist allowed fields to prevent injection
       const allowedFields = ['sequence_number', 'heading', 'isActive'];
       if (allowedFields.includes(field)) {
         orderBy = { [field]: isDesc ? 'desc' : 'asc' };
@@ -123,11 +149,28 @@ export const getAllWhyChooseUsItems = async (req: Request, res: Response) => {
       }
     }
 
-    const items = await prisma.whyChooseUsItem.findMany({
-      orderBy,
-    });
+    // Optional filter for isActive
+    const where: any = {};
+    if (is_active !== undefined) {
+      if (is_active === 'true') {
+        where.isActive = true;
+      } else if (is_active === 'false') {
+        where.isActive = false;
+      } else {
+        res.status(400).json({ success: false, message: 'Invalid is_active value. Use true or false.' });
+        return;
+      }
+    }
 
-    res.json({ success: true, items });
+    const items = await prisma.whyChooseUsItem.findMany({ where, orderBy });
+
+    const formattedItems = items.map(item => ({
+      ...item,
+      createdAt: formatReadableDate(item.createdAt),
+      updatedAt: formatReadableDate(item.updatedAt),
+    }));
+
+    res.json({ success: true, items: formattedItems });
   } catch (error) {
     console.error('Get all WhyChooseUs items error:', error);
     res.status(500).json({ message: 'Error fetching items' });
@@ -146,7 +189,14 @@ export const getWhyChooseUsItemById = async (req: Request, res: Response) => {
       return;
     }
 
-    res.json({success:true,item});
+    res.json({
+      success: true,
+      item: {
+        ...item,
+        createdAt: formatReadableDate(item.createdAt),
+        updatedAt: formatReadableDate(item.updatedAt),
+      },
+    });
   } catch (error) {
     console.error('Get WhyChooseUs item by id error:', error);
     res.status(500).json({ message: 'Error fetching item' });

@@ -46,15 +46,24 @@ export const updateAddress = async (req: CustomRequest, res: Response) => {
 
 export const deleteAddress = async (req: CustomRequest, res: Response) => {
   const { id } = req.params;
+
   try {
     const address = await prisma.address.delete({
       where: { id: Number(id) },
     });
-    res.status(200).json({ message: 'address deleted', address: address });
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to delete address', error });
+
+    res.status(200).json({ message: 'Address deleted', address });
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+       res.status(400).json({
+        message: 'Cannot delete this address because it is linked to an existing order.',
+      });
+      return
+    }
+    res.status(500).json({ message: 'Failed to delete address', error: error.message });
   }
 };
+
 
 export const setDefaultAddress = async (req: CustomRequest, res: Response) => {
   const userId = req.user?.userId;

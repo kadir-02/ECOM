@@ -11,7 +11,7 @@ export const sendNewsletterWelcomeEmail = async (email: string, name?: string) =
         Thanks for subscribing to our newsletter! You're now part of our exclusive list that gets first access to new products, offers, and beauty tips.
       </p>
       <div style="margin:20px 0;text-align:center;">
-        <a href="https://readymadeui-nextjs-ecommerce-site-3.vercel.app/" style="background:#1e88e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">
+        <a href="https://cosmatics.chickenkiller.com/" style="background:#1e88e5;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;">
           Visit Our Store
         </a>
       </div>
