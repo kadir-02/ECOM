@@ -91,7 +91,7 @@ export const createBanner = async (req: Request, res: Response) => {
 
     if (existing) {
        res.status(400).json({
-        error: `A banner with sequence_number ${sequence_number} already exists.`,
+        error: `A banner with this sequence_number already exists.`,
       });
       return
     }
