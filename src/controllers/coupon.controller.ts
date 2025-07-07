@@ -128,34 +128,28 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
   }
 
   try {
-    // Check if cart exists
+    // 1. Check if the cart exists
     const cartExists = await prisma.cart.findUnique({ where: { id: cartId } });
     if (!cartExists) {
        res.status(400).json({ message: 'Invalid cartId: Cart does not exist' });
        return
     }
 
-    // Check if cart already has a used coupon applied
-    const existingCouponForCart = await prisma.couponCode.findFirst({
+    // 2. Remove any previous used coupon for the cart
+    await prisma.couponCode.updateMany({
       where: { cartId, used: true },
+      data: { cartId: null, used: false },
     });
 
-    if (existingCouponForCart) {
-       res.status(400).json({
-        message: `A coupon code "${existingCouponForCart.code}" has already been applied to this cart.`,
-      });
-      return
-    }
-
-    // Find valid coupon matching code, unused, not expired, global or user-specific
+    // 3. Find a valid coupon (not used, not expired, global or for this user)
     const coupon = await prisma.couponCode.findFirst({
       where: {
         code,
         used: false,
         expiresAt: { gt: new Date() },
         OR: [
-          { userId: null }, // global coupons
-          { userId: userId }, // user-specific coupons
+          { userId: null },      // Global coupon
+          { userId: userId },    // User-specific coupon
         ],
       },
     });
@@ -165,7 +159,7 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
        return
     }
 
-    // Mark coupon as used and assign cartId and userId if global
+    // 4. Apply the coupon (mark used, assign cart & user if needed)
     const updatedCoupon = await prisma.couponCode.update({
       where: { id: coupon.id },
       data: {
@@ -180,6 +174,7 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
       message: 'Coupon code applied successfully.',
       data: updatedCoupon,
     });
+
   } catch (error) {
     console.error('Redeem coupon error:', error);
      res.status(500).json({ message: 'Internal server error' });
