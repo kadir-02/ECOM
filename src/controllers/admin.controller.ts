@@ -304,6 +304,8 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
+    const isActiveParam = req.query.is_active;
+    let isDeletedFilter: boolean | undefined = undefined;
 
     // Handle optional ordering param (default: -createdAt)
     const ordering = (req.query.ordering as string) || '-createdAt';
@@ -322,11 +324,17 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
       orderBy = { [field]: direction };
     }
 
+    if (isActiveParam === 'true') {
+  isDeletedFilter = false;
+} else if (isActiveParam === 'false') {
+  isDeletedFilter = true;
+}
+
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
         where: {
           role: 'ADMIN',
-          isDeleted: false,
+          ...(isDeletedFilter !== undefined && { isDeleted: isDeletedFilter }),
         },
         include: { profile: true },
         skip: (page - 1) * pageSize,
@@ -336,7 +344,7 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
       prisma.user.count({
         where: {
           role: 'ADMIN',
-          isDeleted: false,
+            ...(isDeletedFilter !== undefined && { isDeleted: isDeletedFilter }),
         },
       }),
     ]);

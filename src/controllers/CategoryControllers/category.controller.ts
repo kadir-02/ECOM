@@ -77,7 +77,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
     // });
 
     const categories = await prisma.category.findMany({
-      where: { isDeleted: false },
+      // where: { isDeleted: false },
       include: {
         subcategories: {
           // Include all subcategories, even soft-deleted ones

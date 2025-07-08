@@ -158,8 +158,8 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
   const isAdmin = req.user?.role === 'ADMIN';
 
   if (!isAdmin) {
-     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
-     return
+    res.status(403).json({ message: "Access denied. Only admins can view all orders." });
+    return
   }
 
   const pageNum = parseInt(page as string);
@@ -170,49 +170,49 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     const whereConditions: any = {};
 
     if (search) {
-  const searchStr = search.toString();
-  const orConditions: any[] = [];
+      const searchStr = search.toString();
+      const orConditions: any[] = [];
 
-  if (!isNaN(Number(searchStr))) {
-    orConditions.push({ id: Number(searchStr) });
-  }
+      if (!isNaN(Number(searchStr))) {
+        orConditions.push({ id: Number(searchStr) });
+      }
 
-  const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-  if (validStatuses.includes(searchStr)) {
-    orConditions.push({ status: searchStr });
-  }
+      const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+      if (validStatuses.includes(searchStr)) {
+        orConditions.push({ status: searchStr });
+      }
 
-  orConditions.push({
-    OR: [
-      {
-        user: {
-          OR: [
-            { email: { contains: searchStr, mode: 'insensitive' } },
-            {
-              profile: {
-                OR: [
-                  { firstName: { contains: searchStr, mode: 'insensitive' } },
-                  { lastName: { contains: searchStr, mode: 'insensitive' } },
-                ],
-              },
+      orConditions.push({
+        OR: [
+          {
+            user: {
+              OR: [
+                { email: { contains: searchStr, mode: 'insensitive' } },
+                {
+                  profile: {
+                    OR: [
+                      { firstName: { contains: searchStr, mode: 'insensitive' } },
+                      { lastName: { contains: searchStr, mode: 'insensitive' } },
+                    ],
+                  },
+                },
+              ],
             },
-          ],
-        },
-      },
-      {
-        // guest orders: search by address fullName or phone (replace with your fields)
-        address: {
-          OR: [
-            { fullName: { contains: searchStr, mode: 'insensitive' } },
-            { phone: { contains: searchStr, mode: 'insensitive' } },
-          ],
-        },
-      },
-    ],
-  });
+          },
+          {
+            // guest orders: search by address fullName or phone (replace with your fields)
+            address: {
+              OR: [
+                { fullName: { contains: searchStr, mode: 'insensitive' } },
+                { phone: { contains: searchStr, mode: 'insensitive' } },
+              ],
+            },
+          },
+        ],
+      });
 
-  whereConditions.OR = orConditions;
-}
+      whereConditions.OR = orConditions;
+    }
 
 
     if (order_status) {
@@ -222,7 +222,7 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     if (start_date && end_date) {
       const startDate = new Date(start_date as string);
       const endDate = new Date(end_date as string);
-      
+
       // Increment endDate by 1 day for exclusive upper bound
       endDate.setDate(endDate.getDate() + 1);
 
@@ -342,8 +342,8 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
 
     const orderId = Number(orderIdStr);
     if (!orderIdStr || isNaN(orderId)) {
-       res.status(400).json({ message: 'Invalid or missing order ID' });
-       return
+      res.status(400).json({ message: 'Invalid or missing order ID' });
+      return
     }
 
     const order = await prisma.order.findFirst({
@@ -362,13 +362,14 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
     });
 
     if (!order) {
-       res.status(404).json({ message: 'Order not found' });
-       return
+      res.status(404).json({ message: 'Order not found' });
+      return
     }
 
     const finalAmount = order.totalAmount - (order.discountAmount || 0);
-    const customerFirstName = order.user.profile?.firstName || 'Guest';
-    const customerLastName = order.user.profile?.lastName || '';
+    const customerNameFromAddress = order.address.fullName || 'Guest';
+    const customerFirstName = order.user.profile?.firstName || customerNameFromAddress?.split(' ')?.[0] || 'Guest';
+    const customerLastName = order.user.profile?.lastName || customerNameFromAddress?.split(' ')?.slice(1).join(' ') || '';
 
     const invoiceResponse = {
       message: '',
@@ -423,10 +424,10 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       ],
     };
 
-     res.status(200).json(invoiceResponse);
+    res.status(200).json(invoiceResponse);
   } catch (error) {
     console.error('Error fetching order:', error);
-     res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 // PDF invoice generator endpoint
@@ -598,8 +599,8 @@ export const getOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
 
   if (!userId) {
-     res.status(400).json({ message: "Missing or invalid user ID" });
-     return
+    res.status(400).json({ message: "Missing or invalid user ID" });
+    return
   }
 
   const pageNum = parseInt(page as string);
@@ -671,8 +672,8 @@ export const userOrderHistory = async (req: CustomRequest, res: Response) => {
   const userId = isAdmin && customer ? parseInt(customer as string) : req.user?.userId;
 
   if (!userId) {
-     res.status(400).json({ message: "Missing or invalid user ID" });
-     return
+    res.status(400).json({ message: "Missing or invalid user ID" });
+    return
   }
 
   const pageNum = parseInt(page as string);
