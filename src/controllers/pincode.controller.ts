@@ -33,7 +33,27 @@ export const getPaginatedPincodes = async (req: Request, res: Response) => {
           : undefined
         : undefined;
 
-    const whereClause = isActive !== undefined ? { isActive } : {};
+        const search = req.query.search?.toString().trim();
+          const whereClause: any = {};
+     if (isActive !== undefined) {
+      whereClause.isActive = isActive;
+    }
+
+   if (search) {
+  const searchInt = parseInt(search);
+  const orConditions: any[] = [
+    { city: { contains: search, mode: 'insensitive' } },
+    { state: { contains: search, mode: 'insensitive' } },
+  ];
+
+  if (!isNaN(searchInt)) {
+    orConditions.push({ zipcode: searchInt });
+  }
+
+  whereClause.OR = orConditions;
+}
+
+
 
     const [totalCount, pincodes] = await Promise.all([
       prisma.pincode.count({ where: whereClause }),
