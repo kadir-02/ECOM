@@ -146,6 +146,7 @@ export const getProducts = async (req: Request, res: Response) => {
     const { category, parent, ordering, is_active, id } = req.query;
 
     const whereClause: any = { isDeleted: false };
+    const { search } = req.query;
 
     if (category && !isNaN(Number(category))) {
       whereClause.categoryId = Number(category);
@@ -194,7 +195,42 @@ export const getProducts = async (req: Request, res: Response) => {
     }
 
     const products = await prisma.product.findMany({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        ...(search && typeof search === "string"
+          ? {
+            OR: [
+              {
+                name: {
+                  contains: search,
+                  mode: "insensitive",
+                },
+              },
+              {
+                basePrice: {
+                  equals: isNaN(Number(search)) ? undefined : Number(search),
+                },
+              },
+              {
+                sellingPrice: {
+                  equals: isNaN(Number(search)) ? undefined : Number(search),
+                },
+              },
+              {
+                category: {
+                  is: {
+                    name: {
+                      contains: search,
+                      mode: "insensitive",
+                    },
+                  },
+                },
+              }
+
+            ],
+          }
+          : {}),
+      },
       include: {
         category: true,
         subcategory: true,
@@ -204,6 +240,7 @@ export const getProducts = async (req: Request, res: Response) => {
       },
       orderBy,
     });
+
 
     const transformed = products.map((p) => {
       const specsObj: Record<string, string[]> = {};

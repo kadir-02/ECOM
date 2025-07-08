@@ -306,6 +306,8 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
     const pageSize = parseInt(req.query.pageSize as string) || 10;
     const isActiveParam = req.query.is_active;
     let isDeletedFilter: boolean | undefined = undefined;
+    const search = req.query.search as string | undefined;
+
 
     // Handle optional ordering param (default: -createdAt)
     const ordering = (req.query.ordering as string) || '-createdAt';
@@ -330,24 +332,40 @@ export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   isDeletedFilter = true;
 }
 
-    const [users, totalCount] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          role: 'ADMIN',
-          ...(isDeletedFilter !== undefined && { isDeleted: isDeletedFilter }),
+const whereClause: any = {
+  role: 'ADMIN',
+  ...(isDeletedFilter !== undefined && { isDeleted: isDeletedFilter }),
+};
+
+if (search) {
+  whereClause.OR = [
+    { email: { contains: search, mode: 'insensitive' } },
+    {
+      profile: {
+        is: {
+          OR: [
+            { firstName: { contains: search, mode: 'insensitive' } },
+            { lastName: { contains: search, mode: 'insensitive' } },
+          ],
         },
-        include: { profile: true },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy,
-      }),
-      prisma.user.count({
-        where: {
-          role: 'ADMIN',
-            ...(isDeletedFilter !== undefined && { isDeleted: isDeletedFilter }),
-        },
-      }),
-    ]);
+      },
+    },
+  ];
+}
+
+   const [users, totalCount] = await Promise.all([
+  prisma.user.findMany({
+    where: whereClause,
+    include: { profile: true },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+    orderBy,
+  }),
+  prisma.user.count({
+    where: whereClause,
+  }),
+]);
+
 
     const results = users.map(user => {
       const createdBy = `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim();

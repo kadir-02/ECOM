@@ -12,14 +12,14 @@ export const getDashboard = async (req: Request, res: Response) => {
   const start = new Date(start_date), end = new Date(end_date);
 
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-     res.status(400).json({ message: 'Invalid date format' });
-     return
+    res.status(400).json({ message: 'Invalid date format' });
+    return
   }
 
   const dbSettings = await prisma.dashboardSetting.findMany({
     where: { userId: user_id },
   });
-  const settings = Object.fromEntries(dbSettings.map((s:any) => [s.key, s.value ? 1 : 0]));
+  const settings = Object.fromEntries(dbSettings.map((s: any) => [s.key, s.value ? 1 : 0]));
 
   // Default response skeleton
   const resp: any = {
@@ -114,21 +114,27 @@ export const getDashboard = async (req: Request, res: Response) => {
     }
 
     if (settings['user_data'] !== undefined) {
-      const [staff, cust, inactiveC] = await Promise.all([
-        prisma.user.count({ where: { role: 'ADMIN' } }),
-        prisma.user.count({ where: { role: 'USER' } }),
-        prisma.user.count({
-          where: { role: 'USER', orders: { none: {} } },
-        }),
+      const [
+        activeStaff,
+        inactiveStaff,
+        activeCustomers,
+        inactiveCustomers,
+      ] = await Promise.all([
+        prisma.user.count({ where: { role: 'ADMIN', isDeleted: false } }),
+        prisma.user.count({ where: { role: 'ADMIN', isDeleted: true } }),
+        prisma.user.count({ where: { role: 'USER', isDeleted: false } }),
+        prisma.user.count({ where: { role: 'USER', isDeleted: true } }),
       ]);
+
       resp.user_summary = {
-        total_staff_users: staff,
-        active_staff_users: staff,
-        inactive_staff_users: 0,
-        total_customers: cust,
-        active_customers: cust,
-        inactive_customers: inactiveC,
+        total_staff_users: activeStaff + inactiveStaff,
+        active_staff_users: activeStaff,
+        inactive_staff_users: inactiveStaff,
+        total_customers: activeCustomers + inactiveCustomers,
+        active_customers: activeCustomers,
+        inactive_customers: inactiveCustomers,
       };
+
     }
 
     if (settings['product_data'] !== undefined) {
@@ -147,10 +153,14 @@ export const getDashboard = async (req: Request, res: Response) => {
       const lowStock = await prisma.product.count({
         where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
       });
+      const [activeCount, inactiveCount] = await Promise.all([
+        prisma.product.count({ where: { isDeleted: false, isActive: true } }),
+        prisma.product.count({ where: { isDeleted: false, isActive: false } }),
+      ]);
       resp.product_summary = {
         total_products: total,
-        active_products: total,
-        inactive_products: 0,
+        active_products: activeCount,
+        inactive_products: inactiveCount,
         products_in_stock: sumStock._sum?.stock ?? 0,
         products_out_of_stock: outOfStock,
         products_about_to_go_out_of_stock: lowStock,
@@ -300,134 +310,134 @@ export const getDashboard = async (req: Request, res: Response) => {
       }));
     }
 
-   if (settings['unsold_products_data'] !== undefined) {
-  const soldProds = await prisma.orderItem.findMany({
-    select: { productId: true },
-    distinct: ['productId'],
-  });
-  const soldIds = soldProds.map(p => p.productId).filter((x): x is number => x != null);
+    if (settings['unsold_products_data'] !== undefined) {
+      const soldProds = await prisma.orderItem.findMany({
+        select: { productId: true },
+        distinct: ['productId'],
+      });
+      const soldIds = soldProds.map(p => p.productId).filter((x): x is number => x != null);
 
-  const unsold = await prisma.product.findMany({
-    where: {
-      isDeleted: false,
-      id: { notIn: soldIds },
-    },
-    include: {
-      category: true,
-      images: {
-        orderBy: { sequence: 'asc' }, // Get primary image first
-        take: 1
-      }
-    },
-  });
-
-  resp.unsold_products = unsold.map(product => ({
-    id: product.id,
-    name: product.name,
-    image: product.images?.[0]?.image ?? null,
-    category: product.category?.name ?? 'Uncategorized',
-    stock: product.stock,
-    selling_price: product.sellingPrice,
-    cost_price: product.basePrice,
-  }));
-}
-
-
-  if (
-  settings['least_selling_products_data'] !== undefined ||
-  settings['top_selling_products_data'] !== undefined
-) {
-  const groupedItems = await prisma.orderItem.groupBy({
-    by: ['productId'],
-    _sum: { quantity: true },
-  });
-
-  // Sort by quantity sold descending
-  groupedItems.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
-
-  const topIds = groupedItems
-    .slice(0, 5)
-    .map(item => item.productId)
-    .filter((id): id is number => id !== null);
-
-  const leastIds = groupedItems
-    .slice(-5)
-    .map(item => item.productId)
-    .filter((id): id is number => id !== null);
-
-  const allIds = [...new Set([...topIds, ...leastIds])];
-
-  const products = await prisma.product.findMany({
-    where: {
-      id: { in: allIds },
-    },
-    include: {
-      category: true,
-      orderItems: true,
-      images: {
-        orderBy: { sequence: 'asc' },
-        take: 1,
-      },
-    },
-  });
-
-  const formatProduct = (product: any) => {
-    const totalQty = product.orderItems.reduce(
-      (sum: number, item: any) => sum + item.quantity,
-      0
-    );
-    const totalRevenue = product.orderItems.reduce(
-      (sum: number, item: any) => sum + item.quantity * item.price,
-      0
-    );
-
-    return {
-      id: product.id,
-      name: product.name,
-      image: product.images?.[0]?.image ?? null,
-      category: product.category?.name ?? 'Uncategorized',
-      sellingPrice: product.sellingPrice,
-      stock: product.stock,
-      total_quantity_sold: totalQty,
-      revenue_generated: totalRevenue,
-    };
-  };
-
-  if (settings['top_selling_products_data'] !== undefined) {
-    resp.top_selling_products = products
-      .filter(p => topIds.includes(p.id))
-      .map(formatProduct);
-  }
-
-  if (settings['least_selling_products_data'] !== undefined) {
-    resp.least_selling_products = products
-      .filter(p => leastIds.includes(p.id))
-      .map(formatProduct);
-  }
-}
-
-  if (settings['recent_orders_data'] !== undefined) {
-    const recentOrders = await prisma.order.findMany({
-      where: { userId: user_id },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      include: {
-        user: {
-          include: { profile: true }
+      const unsold = await prisma.product.findMany({
+        where: {
+          isDeleted: false,
+          id: { notIn: soldIds },
         },
-        items: true
-      }
-    });
+        include: {
+          category: true,
+          images: {
+            orderBy: { sequence: 'asc' }, // Get primary image first
+            take: 1
+          }
+        },
+      });
 
-    resp.recent_orders = recentOrders.map(order => ({
-      id: order.id,
-      total_amount: order.totalAmount,
-      status: order.status,
-      created_at: order.createdAt,
-      customer_name: `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim(),
-      item_count: order.items.reduce((sum, item) => sum + item.quantity, 0)
-    }));
-  }
+      resp.unsold_products = unsold.map(product => ({
+        id: product.id,
+        name: product.name,
+        image: product.images?.[0]?.image ?? null,
+        category: product.category?.name ?? 'Uncategorized',
+        stock: product.stock,
+        selling_price: product.sellingPrice,
+        cost_price: product.basePrice,
+      }));
+    }
+
+
+    if (
+      settings['least_selling_products_data'] !== undefined ||
+      settings['top_selling_products_data'] !== undefined
+    ) {
+      const groupedItems = await prisma.orderItem.groupBy({
+        by: ['productId'],
+        _sum: { quantity: true },
+      });
+
+      // Sort by quantity sold descending
+      groupedItems.sort((a, b) => (b._sum.quantity ?? 0) - (a._sum.quantity ?? 0));
+
+      const topIds = groupedItems
+        .slice(0, 5)
+        .map(item => item.productId)
+        .filter((id): id is number => id !== null);
+
+      const leastIds = groupedItems
+        .slice(-5)
+        .map(item => item.productId)
+        .filter((id): id is number => id !== null);
+
+      const allIds = [...new Set([...topIds, ...leastIds])];
+
+      const products = await prisma.product.findMany({
+        where: {
+          id: { in: allIds },
+        },
+        include: {
+          category: true,
+          orderItems: true,
+          images: {
+            orderBy: { sequence: 'asc' },
+            take: 1,
+          },
+        },
+      });
+
+      const formatProduct = (product: any) => {
+        const totalQty = product.orderItems.reduce(
+          (sum: number, item: any) => sum + item.quantity,
+          0
+        );
+        const totalRevenue = product.orderItems.reduce(
+          (sum: number, item: any) => sum + item.quantity * item.price,
+          0
+        );
+
+        return {
+          id: product.id,
+          name: product.name,
+          image: product.images?.[0]?.image ?? null,
+          category: product.category?.name ?? 'Uncategorized',
+          sellingPrice: product.sellingPrice,
+          stock: product.stock,
+          total_quantity_sold: totalQty,
+          revenue_generated: totalRevenue,
+        };
+      };
+
+      if (settings['top_selling_products_data'] !== undefined) {
+        resp.top_selling_products = products
+          .filter(p => topIds.includes(p.id))
+          .map(formatProduct);
+      }
+
+      if (settings['least_selling_products_data'] !== undefined) {
+        resp.least_selling_products = products
+          .filter(p => leastIds.includes(p.id))
+          .map(formatProduct);
+      }
+    }
+
+    if (settings['recent_orders_data'] !== undefined) {
+      const recentOrders = await prisma.order.findMany({
+        where: { userId: user_id },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: {
+          user: {
+            include: { profile: true }
+          },
+          items: true
+        }
+      });
+
+      resp.recent_orders = recentOrders.map(order => ({
+        id: order.id,
+        total_amount: order.totalAmount,
+        status: order.status,
+        created_at: order.createdAt,
+        customer_name: `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim(),
+        item_count: order.items.reduce((sum, item) => sum + item.quantity, 0)
+      }));
+    }
 
     if (settings['recent_payment_transactions_data'] !== undefined) {
       resp.recent_payment_transactions = await prisma.order.findMany({
@@ -437,34 +447,34 @@ export const getDashboard = async (req: Request, res: Response) => {
         take: 5,
       }).then(list => list.map(o => o.payment));
     }
-if (settings['low_stock_products_data'] !== undefined) {
-  const company = await prisma.companySettings.findFirst();
-  const threshold = company?.product_low_stock_threshold ?? 5;
+    if (settings['low_stock_products_data'] !== undefined) {
+      const company = await prisma.companySettings.findFirst();
+      const threshold = company?.product_low_stock_threshold ?? 5;
 
-  const lowStockProducts = await prisma.product.findMany({
-    where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
-    include: {
-      category: true,
-      images: {
-        orderBy: { sequence: 'asc' },
-        take: 1
-      }
+      const lowStockProducts = await prisma.product.findMany({
+        where: { isDeleted: false, stock: { gt: 0, lt: threshold } },
+        include: {
+          category: true,
+          images: {
+            orderBy: { sequence: 'asc' },
+            take: 1
+          }
+        }
+      });
+
+      resp.low_stock_products = lowStockProducts.map(product => ({
+        id: product.id,
+        name: product.name,
+        stock: product.stock,
+        image: product.images?.[0]?.image ?? null,
+        category: product.category?.name ?? 'Uncategorized'
+      }));
     }
-  });
 
-  resp.low_stock_products = lowStockProducts.map(product => ({
-    id: product.id,
-    name: product.name,
-    stock: product.stock,
-    image: product.images?.[0]?.image ?? null,
-    category: product.category?.name ?? 'Uncategorized'
-  }));
-}
-
-     res.json(resp);
+    res.json(resp);
   } catch (err) {
     console.error(err);
-     res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -473,8 +483,8 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
     const { user_id } = req.body;
 
     if (typeof user_id !== "number") {
-       res.status(400).json({ message: "user_id (number) is required." });
-       return
+      res.status(400).json({ message: "user_id (number) is required." });
+      return
     }
 
     const sections = [
@@ -494,10 +504,10 @@ export const getUserDashboardSections = async (req: Request, res: Response) => {
       "revenue_data",
     ];
 
-     res.status(200).json({ succes: true, sections });
+    res.status(200).json({ succes: true, sections });
   } catch (error: any) {
     console.error("Error returning dashboard sections:", error);
-     res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -505,8 +515,8 @@ export const upsertDashboardSetting = async (req: Request, res: Response) => {
   const { user_id, components } = req.body;
 
   if (typeof user_id !== 'number' || typeof components !== 'object') {
-     res.status(400).json({ message: 'Invalid input' });
-     return
+    res.status(400).json({ message: 'Invalid input' });
+    return
   }
 
   try {
@@ -520,13 +530,13 @@ export const upsertDashboardSetting = async (req: Request, res: Response) => {
 
     await prisma.$transaction(operations);
 
-     res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'Dashboard settings saved',
       settings: components,
     });
   } catch (error) {
     console.error("Upsert dashboard settings error:", error);
-     res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
