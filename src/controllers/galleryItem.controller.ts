@@ -54,21 +54,21 @@ export const createGalleryItem = async (req: Request, res: Response) => {
 // Get all gallery items
 export const getAllGalleryItems = async (req: Request, res: Response) => {
   try {
-    const { ordering, page = '1', page_size = '10' } = req.query;
+    const { ordering, page = '1', page_size = '10', is_active } = req.query;
 
     // Parse pagination params
     const pageNumber = parseInt(page as string, 10);
     const pageSize = parseInt(page_size as string, 10);
 
     if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid page or page_size. Both must be positive integers.',
       });
-      return
+      return;
     }
 
-    // Ordering
+    // Ordering logic
     let orderBy: Record<string, 'asc' | 'desc'> = { sequence_number: 'asc' };
     if (ordering && typeof ordering === 'string') {
       const isDesc = ordering.startsWith('-');
@@ -76,26 +76,45 @@ export const getAllGalleryItems = async (req: Request, res: Response) => {
 
       const allowedFields = ['sequence_number', 'createdAt', 'updatedAt', 'section'];
       if (!allowedFields.includes(field)) {
-         res.status(400).json({
+        res.status(400).json({
           success: false,
           message: `Invalid ordering field: ${field}`,
         });
-        return
+        return;
       }
 
       orderBy = { [field]: isDesc ? 'desc' : 'asc' };
     }
 
+    // Parse is_active as boolean if present
+    const isActiveParsed =
+      typeof is_active === 'string'
+        ? is_active.toLowerCase() === 'true'
+          ? true
+          : is_active.toLowerCase() === 'false'
+          ? false
+          : undefined
+        : undefined;
+
     const skip = (pageNumber - 1) * pageSize;
+
+    // Build where clause only if is_active is valid
+    const whereClause: any = {};
+    if (typeof isActiveParsed === 'boolean') {
+      whereClause.is_active = isActiveParsed;
+    }
 
     const [items, totalCount] = await Promise.all([
       prisma.galleryItem.findMany({
         include: { type: true },
         orderBy,
+        where: Object.keys(whereClause).length ? whereClause : undefined,
         skip,
         take: pageSize,
       }),
-      prisma.galleryItem.count(),
+      prisma.galleryItem.count({
+        where: Object.keys(whereClause).length ? whereClause : undefined,
+      }),
     ]);
 
     const formatted = items.map(item => ({
@@ -121,6 +140,7 @@ export const getAllGalleryItems = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
 
 // Update gallery item
 export const updateGalleryItem = async (req: Request, res: Response) => {

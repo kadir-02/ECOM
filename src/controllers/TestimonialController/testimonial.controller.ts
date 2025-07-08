@@ -49,7 +49,7 @@ export const createTestimonial = async (req: Request, res: Response) => {
 // 🔹 Get All Testimonials
 export const getAllTestimonials = async (req: Request, res: Response) => {
   try {
-    const { ordering } = req.query;
+    const { ordering, is_active } = req.query;
 
     // Default ordering
     let orderBy: any = { createdAt: 'desc' };
@@ -68,9 +68,28 @@ export const getAllTestimonials = async (req: Request, res: Response) => {
       }
     }
 
-    const testimonials = await prisma.testimonial.findMany({
+    // Parse is_active as boolean if provided
+    const isActiveParsed =
+      typeof is_active === 'string'
+        ? is_active.toLowerCase() === 'true'
+          ? true
+          : is_active.toLowerCase() === 'false'
+          ? false
+          : undefined
+        : undefined;
+
+    // Build query
+    const queryOptions: any = {
       orderBy,
-    });
+    };
+
+    if (typeof isActiveParsed === 'boolean') {
+      queryOptions.where = {
+        is_active: isActiveParsed,
+      };
+    }
+
+    const testimonials = await prisma.testimonial.findMany(queryOptions);
 
     res.status(200).json({
       success: true,
@@ -84,6 +103,7 @@ export const getAllTestimonials = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 // 🔹 Get Testimonial By ID
 export const getTestimonialById = async (req: Request, res: Response) => {
