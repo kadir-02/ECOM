@@ -104,18 +104,18 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     });
 
     // Send order confirmation email
-    // await sendOrderConfirmationEmail(
-    //   order.user.email,
-    //   order.user.profile?.firstName || 'Customer',
-    //   `COM-${order.id}`,
-    //   order.items.map((i) => ({
-    //     name: i.variant?.name || i.product?.name || 'Product',
-    //     quantity: i.quantity,
-    //     price: i.price,
-    //   })),
-    //   finalAmount,
-    //   order.payment?.method || 'N/A'
-    // );
+    await sendOrderConfirmationEmail(
+      order.user.email,
+      order.user.profile?.firstName || 'Customer',
+      `COM-${order.id}`,
+      order.items.map((i) => ({
+        name: i.variant?.name || i.product?.name || 'Product',
+        quantity: i.quantity,
+        price: i.price,
+      })),
+      finalAmount,
+      order.payment?.method || 'N/A'
+    );
 
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${finalAmount}`, 'ORDER');
 
@@ -476,107 +476,166 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
     const discountAmount = order.discountAmount ?? 0;
     const finalAmount = subtotal - discountAmount;
 
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
+res.setHeader('Content-Type', 'application/pdf');
+res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
 
-    doc.pipe(res);
+doc.pipe(res);
 
-    const primaryColor = '#007bff';
-    const headerBgColor = '#e9ecef';
-    const rowAltColor = '#f8f9fa';
+// ====== COLORS & STYLES ======
+const primaryColor = '#007bff';
+const headerBgColor = '#e9ecef';
+const rowAltColor = '#f8f9fa';
+const labelFont = 'Helvetica-Bold';
+const valueFont = 'Helvetica';
 
-    // Header
-    doc.fillColor(primaryColor).font('Helvetica-Bold').fontSize(26).text('INVOICE', 50, 140);
-    doc.fillColor('black').font('Helvetica').fontSize(12);
+// ====== TITLE ======
+doc
+  .fillColor(primaryColor)
+  .font(labelFont)
+  .fontSize(26)
+  .text('INVOICE', { align: 'center' });
 
-    // Customer Info
-    const infoY = 180;
-    const customerName = order.user.profile?.firstName?.trim() || 'USER';
-    doc.text(`Invoice ID: COM-${order.id}-${customerName}`, 50, infoY);
-    doc.text(`Customer: ${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, 50, infoY + 15);
-    doc.text(`Email: ${order.user.email}`, 50, infoY + 30);
-    doc.text(`Phone: ${order.address?.phone || '-'}`, 50, infoY + 45);
-    doc.text(`Address: ${formatAddress(order.address) || '-'}`, 50, infoY + 60, { width: 500 });
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleString()}`, 50, infoY + 90);
-    doc.text(`Payment Method: ${order.payment?.method || 'N/A'}`, 50, infoY + 105);
-    doc.text(`Order Status: ${order.status || '-'}`, 50, infoY + 120);
+// ====== CUSTOMER & ORDER INFO ======
+const sectionTop = 100;
+const leftX = 50;
+const rightX = 320;
+const lineSpacing = 18;
 
-    // Table Headers
-    const tableTop = infoY + 160;
-    const tableLeft = 50;
-    const tableWidth = 500;
-    const rowHeight = 25;
+// Helper
+const drawLabel = (label: string, value: string, x: number, y: number, maxWidth = 200) => {
+  doc
+    .font(labelFont)
+    .fontSize(11)
+    .fillColor('black')
+    .text(label, x, y);
+  doc
+    .font(valueFont)
+    .fontSize(11)
+    .fillColor('black')
+    .text(value || '-', x, y + 13, { width: maxWidth });
+};
 
-    doc.rect(tableLeft, tableTop, tableWidth, rowHeight).fill(headerBgColor);
-    doc
-      .fillColor(primaryColor)
-      .font('Helvetica-Bold')
-      .fontSize(12)
-      .text('Item', tableLeft + 10, tableTop + 7)
-      .text('Qty', tableLeft + 210, tableTop + 7, { width: 50, align: 'right' })
-      .text('Unit Price', tableLeft + 270, tableTop + 7, { width: 100, align: 'right' })
-      .text('Total', tableLeft + 380, tableTop + 7, { width: 100, align: 'right' });
+// Left column (Customer Info)
+let yLeft = sectionTop;
+drawLabel('Customer:', `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, leftX, yLeft);
+yLeft += lineSpacing * 2;
 
-    // Table Rows
-    let y = tableTop + rowHeight;
-    doc.font('Helvetica').fontSize(12);
-    order.items.forEach((item, index) => {
-      if (index % 2 === 0) {
-        doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
-      }
+drawLabel('Email:', order.user.email, leftX, yLeft);
+yLeft += lineSpacing * 2;
 
-      const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
-      const qty = item.quantity;
-      const unitPrice = item.price;
-      const total = qty * unitPrice;
+drawLabel('Phone:', order.address?.phone || '-', leftX, yLeft);
+yLeft += lineSpacing * 2;
 
-      doc
-        .fillColor('black')
-        .text(name, tableLeft + 10, y + 7)
-        .text(qty.toString(), tableLeft + 210, y + 7, { width: 50, align: 'right' })
-        .text(`₹${unitPrice.toFixed(2)}`, tableLeft + 270, y + 7, { width: 100, align: 'right' })
-        .text(`₹${total.toFixed(2)}`, tableLeft + 380, y + 7, { width: 100, align: 'right' });
+const address = formatAddress(order.address) || '-';
+doc
+  .font(labelFont)
+  .fontSize(11)
+  .text('Address:', leftX, yLeft);
+doc
+  .font(valueFont)
+  .fontSize(11)
+  .text(doc.heightOfString(address, { width: 220 }) > 30 ? address.slice(0, 100) + '...' : address, leftX, yLeft + 13, { width: 220 });
+yLeft += lineSpacing * 3;
 
-      y += rowHeight;
-    });
+// Right column (Order Info)
+let yRight = sectionTop;
+const customerName = order.user.profile?.firstName?.trim() || 'USER';
 
-    // Table Border
-    doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
+drawLabel('Invoice ID:', `COM-${order.id}-${customerName}`, rightX, yRight);
+yRight += lineSpacing * 2;
 
-    // Subtotal
-    y += 20;
-    doc
-      .font('Helvetica-Bold')
-      .fillColor('black')
-      .text('Subtotal:', tableLeft + 270, y, { width: 100, align: 'right' })
-      .text(`₹${subtotal.toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
+drawLabel('Date:', new Date(order.createdAt).toLocaleString(), rightX, yRight);
+yRight += lineSpacing * 2;
 
-    // Discount
-    if (discountAmount > 0) {
-      y += 20;
-      doc
-        .fillColor('red')
-        .text('Discount:', tableLeft + 270, y, { width: 100, align: 'right' })
-        .text(`₹${Math.abs(discountAmount).toFixed(2)}`, tableLeft + 380, y, { width: 100, align: 'right' });
-    }
+drawLabel('Payment Method:', order.payment?.method || 'N/A', rightX, yRight);
+yRight += lineSpacing * 2;
 
-    // Grand Total
-    y += 30;
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(14)
-      .fillColor(primaryColor)
-      .text(`Grand Total: ₹${finalAmount.toFixed(2)}`, tableLeft, y, { align: 'right', width: tableWidth });
+drawLabel('Order Status:', order.status || '-', rightX, yRight);
+yRight += lineSpacing * 2;
 
-    // Footer
-    doc
-      .fontSize(10)
-      .fillColor('gray')
-      .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
+// ====== TABLE HEADER ======
+const tableTop = Math.max(yLeft, yRight) + 30;
+const tableLeft = 50;
+const tableWidth = 500;
+const rowHeight = 25;
 
-    doc.end();
+doc
+  .rect(tableLeft, tableTop, tableWidth, rowHeight)
+  .fill(headerBgColor);
+
+doc
+  .fillColor(primaryColor)
+  .font(labelFont)
+  .fontSize(12)
+  .text('Item', tableLeft + 10, tableTop + 7)
+  .text('Qty', tableLeft + 230, tableTop + 7, { width: 40, align: 'right' })
+  .text('Unit Price', tableLeft + 310, tableTop + 7, { width: 80, align: 'right' })
+  .text('Total', tableLeft + 410, tableTop + 7, { width: 80, align: 'right' });
+
+// ====== TABLE ROWS ======
+let y = tableTop + rowHeight;
+doc.font(valueFont).fontSize(11);
+
+order.items.forEach((item, index) => {
+  if (index % 2 === 0) {
+    doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
+  }
+
+  const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
+  const qty = item.quantity;
+  const unitPrice = item.price;
+  const total = qty * unitPrice;
+
+  doc
+    .fillColor('black')
+    .text(name, tableLeft + 10, y + 7, { width: 200, ellipsis: true })
+    .text(qty.toString(), tableLeft + 230, y + 7, { width: 40, align: 'right' })
+    .text(unitPrice.toFixed(2), tableLeft + 310, y + 7, { width: 80, align: 'right' })
+    .text(total.toFixed(2), tableLeft + 410, y + 7, { width: 80, align: 'right' });
+
+  y += rowHeight;
+});
+
+// Table border
+doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
+
+// ====== TOTALS ======
+y += 20;
+
+doc
+  .font(labelFont)
+  .fillColor('black')
+  .text('Subtotal:', tableLeft + 310, y, { width: 80, align: 'right' })
+  .text(subtotal.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+
+if (discountAmount > 0) {
+  y += 18;
+  doc
+    .fillColor('red')
+    .text('Discount:', tableLeft + 310, y, { width: 80, align: 'right' })
+    .text(discountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+}
+
+y += 25;
+doc
+  .font(labelFont)
+  .fontSize(13)
+  .fillColor(primaryColor)
+  .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
+  .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+
+// ====== FOOTER ======
+doc
+  .fontSize(10)
+  .fillColor('gray')
+  .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
+
+doc.end();
+
+
+
   } catch (error) {
     console.error('Invoice PDF generation failed:', error);
     res.status(500).send('Failed to generate invoice PDF');

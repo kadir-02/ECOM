@@ -4,9 +4,22 @@ import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
 
 // CREATE CATEGORY
 export const createCategory = async (req: Request, res: Response) => {
+  console.log(req.body)
   const { name, sequence_number, isDeleted } = req.body;
+  
 
   try {
+     const existingSeq = await prisma.category.findFirst({
+      where: { sequence_number:  Number(sequence_number) },
+    });
+
+    if (existingSeq) {
+      return res.status(400).json({
+        success: false,
+        message: "Sequence number already exists",
+      });
+    }
+
     let imageUrl: string | undefined;
     let banner: string | undefined;
     let publicId: string | undefined;
