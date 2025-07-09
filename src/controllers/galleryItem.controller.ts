@@ -7,7 +7,7 @@ export const createGalleryItem = async (req: Request, res: Response) => {
   const { sequence_number, section, is_active } = req.body;
 
   if (!sequence_number || !req.file?.buffer) {
-     res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'sequence_number and image file are required',
     });
@@ -15,13 +15,24 @@ export const createGalleryItem = async (req: Request, res: Response) => {
   }
 
   try {
-    // Validate section if provided
+    const existingItem = await prisma.galleryItem.findFirst({
+      where: { sequence_number },
+    });
+
+    if (existingItem) {
+      res.status(400).json({
+        success: false,
+        message: 'This sequence number already exists',
+      });
+      return;
+    }
+
     if (section) {
       const type = await prisma.galleryType.findUnique({
         where: { name: section },
       });
       if (!type) {
-         res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid section — GalleryType not found',
         });
@@ -92,8 +103,8 @@ export const getAllGalleryItems = async (req: Request, res: Response) => {
         ? is_active.toLowerCase() === 'true'
           ? true
           : is_active.toLowerCase() === 'false'
-          ? false
-          : undefined
+            ? false
+            : undefined
         : undefined;
 
     const skip = (pageNumber - 1) * pageSize;
@@ -148,8 +159,8 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
   const existing = await prisma.galleryItem.findUnique({ where: { id } });
 
   if (!existing) {
-     res.status(404).json({ success: false, message: 'GalleryItem not found' });
-     return
+    res.status(404).json({ success: false, message: 'GalleryItem not found' });
+    return
   }
 
   const { sequence_number, section, is_active } = req.body;
@@ -167,7 +178,7 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
         where: { name: section },
       });
       if (!type) {
-         res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid section — GalleryType not found',
         });

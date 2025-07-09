@@ -7,6 +7,28 @@ export const createCategory = async (req: Request, res: Response) => {
   const { name, sequence_number, isDeleted } = req.body;
 
   try {
+     const existingSeq = await prisma.category.findFirst({
+      where: { sequence_number: Number(sequence_number) },
+    });
+
+    if (existingSeq) {
+      return res.status(400).json({
+        success: false,
+        message: "Sequence number already exists",
+      });
+    }
+
+    // 💡 Validate name
+    const existingName = await prisma.category.findFirst({
+      where: { name },
+    });
+
+    if (existingName) {
+      return res.status(400).json({
+        success: false,
+        message: "Category name already exists",
+      });
+    }
     let imageUrl: string | undefined;
     let banner: string | undefined;
     let publicId: string | undefined;
