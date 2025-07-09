@@ -7,15 +7,6 @@ export const createCategory = async (req: Request, res: Response) => {
   const { name, sequence_number, isDeleted } = req.body;
 
   try {
-    
-    if (!name || String(sequence_number).trim() === '' || isNaN(Number(sequence_number)))  {
-      return res.status(400).json({
-        success: false,
-        message: "Name and valid sequence_number are required",
-      });
-    }
-      const seqNumberInt = Number(sequence_number);
-
     let imageUrl: string | undefined;
     let banner: string | undefined;
     let publicId: string | undefined;
@@ -41,31 +32,6 @@ export const createCategory = async (req: Request, res: Response) => {
         "categories/banner"
       );
       banner = result.secure_url;
-    }
-    
-
-    // ✅ Manually check for duplicate sequence_number
-    const existingSeq = await prisma.category.findFirst({
-      where: { sequence_number: seqNumberInt },
-    });
-
-    if (existingSeq) {
-      return res.status(400).json({
-        success: false,
-        message: "Sequence number already exists",
-      });
-    }
-
-    // ✅ Manually check for duplicate name
-    const existingName = await prisma.category.findFirst({
-      where: { name },
-    });
-
-    if (existingName) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name already exists",
-      });
     }
 
     const category = await prisma.category.create({
