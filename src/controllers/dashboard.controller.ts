@@ -502,7 +502,7 @@ export const getDashboard = async (req: Request, res: Response) => {
           : order.address?.fullName ?? order.user?.email ?? 'Guest';
 
         return {
-          id: order.payment?.id,
+          id: order.id,
           method: order.payment?.method,
           status: order.payment?.status,
           transactionId: order.payment?.transactionId,
