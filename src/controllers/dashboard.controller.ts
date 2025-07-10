@@ -272,17 +272,39 @@ export const getDashboard = async (req: Request, res: Response) => {
         include: { profile: true },
       });
 
-      const userMap = new Map(
-        users.map(u => [
-          u.id,
-          {
-            id: u.id,
-            name: `${u.profile?.firstName || ''} ${u.profile?.lastName || ''}`.trim(),
-            email: u.email,
-            profile_picture: u.profile?.imageUrl || '',
-          },
-        ])
-      );
+      const userMap = new Map<number, {
+        id: number;
+        name: string;
+        email: string;
+        profile_picture: string;
+      }>();
+
+      for (const user of users) {
+        const profileName = `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim();
+
+        let name = profileName;
+        if (!name) {
+          const lastOrder = await prisma.order.findFirst({
+            where: {
+              userId: user.id,
+              addressId: { not: undefined },
+            },
+            orderBy: { createdAt: 'desc' },
+            include: {
+              address: true,
+            },
+          });
+
+          name = lastOrder?.address?.fullName || user.email || 'Guest';
+        }
+
+        userMap.set(user.id, {
+          id: user.id,
+          name,
+          email: user.email,
+          profile_picture: user.profile?.imageUrl || '',
+        });
+      }
 
       // Enrich results
       resp.top_customers.by_orders = topByOrders.map(o => ({
@@ -425,28 +447,76 @@ export const getDashboard = async (req: Request, res: Response) => {
           user: {
             include: { profile: true }
           },
-          items: true
+          items: true,
+          address: true,
         }
       });
 
-      resp.recent_orders = recentOrders.map(order => ({
-        id: order.id,
-        total_amount: order.totalAmount,
-        status: order.status,
-        created_at: order.createdAt,
-        customer_name: `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim(),
-        item_count: order.items.reduce((sum, item) => sum + item.quantity, 0)
-      }));
+      resp.recent_orders = recentOrders.map(order => {
+        const hasProfile = order.user?.profile;
+        const name = hasProfile
+          ? `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim()
+          : order.address?.fullName ?? order.user?.email ?? 'Guest';
+
+        return {
+          id: order.id,
+          total_amount: order.totalAmount,
+          status: order.status,
+          created_at: order.createdAt,
+          customer_name: name,
+          item_count: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        };
+      });
     }
 
+    // if (settings['recent_payment_transactions_data'] !== undefined) {
+    //   resp.recent_payment_transactions = await prisma.order.findMany({
+    //     where: { userId: user_id, payment: { isNot: null } },
+    //     include: { payment: true },
+    //     orderBy: { updatedAt: 'desc' },
+    //     take: 5,
+    //   }).then(list => list.map(o => o.payment));
+    // }
+
     if (settings['recent_payment_transactions_data'] !== undefined) {
-      resp.recent_payment_transactions = await prisma.order.findMany({
-        where: { userId: user_id, payment: { isNot: null } },
-        include: { payment: true },
+      const recentPayments = await prisma.order.findMany({
+        where: {
+          payment: { isNot: null },
+          createdAt: { gte: start, lte: end },
+        },
+        include: {
+          payment: true,
+          user: {
+            include: { profile: true },
+          },
+          address: true,
+        },
         orderBy: { updatedAt: 'desc' },
         take: 5,
-      }).then(list => list.map(o => o.payment));
+      });
+
+      resp.recent_payment_transactions = recentPayments.map(order => {
+        const hasProfile = order.user?.profile;
+        const name = hasProfile
+          ? `${order.user?.profile?.firstName ?? ''} ${order.user?.profile?.lastName ?? ''}`.trim()
+          : order.address?.fullName ?? order.user?.email ?? 'Guest';
+
+        return {
+          id: order.payment?.id,
+          method: order.payment?.method,
+          status: order.payment?.status,
+          transactionId: order.payment?.transactionId,
+          amount: order?.totalAmount,
+          paidAt: order.payment?.paidAt,
+          createdAt: order.payment?.createdAt,
+          user_id: order.userId,
+          customer_name: name,
+          customer_email: order.user?.email ?? '',
+          // updated_at: order.payment?.updatedAt,
+        };
+      });
     }
+
     if (settings['low_stock_products_data'] !== undefined) {
       const company = await prisma.companySettings.findFirst();
       const threshold = company?.product_low_stock_threshold ?? 5;
