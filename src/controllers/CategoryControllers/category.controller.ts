@@ -14,10 +14,11 @@ export const createCategory = async (req: Request, res: Response) => {
     });
 
     if (existingSeq) {
-      return res.status(400).json({
+       res.status(400).json({
         success: false,
         message: "Sequence number already exists",
       });
+      return;
     }
 
     let imageUrl: string | undefined;
