@@ -277,7 +277,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 //   }
 // };
 
-
 // Get orders for admin
 export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const {
@@ -294,7 +293,7 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
 
   if (!isAdmin) {
     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
-    return;
+    return
   }
 
   const pageNum = parseInt(page as string);
@@ -304,22 +303,25 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
   try {
     const whereConditions: any = {};
 
-    if (search) {
+
+    if (req.query.id) {
+      const id = parseInt(req.query.id as string);
+      if (!isNaN(id)) {
+        whereConditions.id = id;
+      }
+    } else if (search) {
       const searchStr = search.toString();
       const orConditions: any[] = [];
 
-      // --- Highlighted Change: Search by order ID if numeric ---
       if (!isNaN(Number(searchStr))) {
         orConditions.push({ id: Number(searchStr) });
       }
 
-      // --- Highlighted Change: Search by valid order statuses ---
       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
       if (validStatuses.includes(searchStr.toUpperCase())) {
         orConditions.push({ status: searchStr.toUpperCase() });
       }
 
-      // --- Highlighted Change: Search registered users by email or profile name ---
       orConditions.push({
         OR: [
           {
@@ -337,8 +339,6 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
               ],
             },
           },
-
-          // --- Highlighted Change: Search guest users by address fullName or phone ---
           {
             address: {
               OR: [
@@ -350,7 +350,9 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
         ],
       });
 
-      whereConditions.OR = orConditions;
+      if (orConditions.length > 0) {
+        whereConditions.OR = orConditions;
+      }
     }
 
     if (order_status) {
@@ -360,7 +362,8 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     if (start_date && end_date) {
       const startDate = new Date(start_date as string);
       const endDate = new Date(end_date as string);
-      // Increment endDate by 1 day to make upper bound exclusive
+
+      // Increment endDate by 1 day for exclusive upper bound
       endDate.setDate(endDate.getDate() + 1);
 
       whereConditions.createdAt = {
@@ -391,7 +394,7 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
         },
         payment: true,
         address: true,
-        user: true,
+        user: true, // include user details (optional, for admin view)
       },
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
@@ -413,7 +416,6 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
     res.status(500).json({ message: 'Failed to fetch admin orders', error });
   }
 };
-
 
 
 // Get a specific order by ID for the logged-in user
