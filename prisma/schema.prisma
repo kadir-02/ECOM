@@ -55,7 +55,6 @@ model User {
   discountCodes  DiscountCode[]
   notifications  Notification[]
  
-  couponRedemptions CouponRedemption[]
 }
 
 model Profile {
@@ -207,6 +206,7 @@ model Cart {
   reminderCount  Int            @default(0)
   lastReminderAt DateTime?
   discountCodes  DiscountCode[]
+  couponRedemptions CouponRedemption[]
  
 }
 
@@ -465,13 +465,14 @@ model CouponCode {
 model CouponRedemption {
   id        Int          @id @default(autoincrement())
   couponId  Int
-  userId    Int
+  cartId    Int
   usedAt    DateTime     @default(now())
 
   coupon    CouponCode   @relation(fields: [couponId], references: [id])
-  user      User         @relation(fields: [userId], references: [id])
 
-  @@unique([couponId, userId])
+  cart      Cart       @relation(fields: [cartId], references: [id])
+
+  @@unique([couponId, cartId]) 
 }
 
 model Pincode {
