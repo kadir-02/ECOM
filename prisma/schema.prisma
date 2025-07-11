@@ -54,7 +54,8 @@ model User {
   addresses      Address[]
   discountCodes  DiscountCode[]
   notifications  Notification[]
-  couponCodes  CouponCode[]
+ 
+  couponRedemptions CouponRedemption[]
 }
 
 model Profile {
@@ -206,7 +207,7 @@ model Cart {
   reminderCount  Int            @default(0)
   lastReminderAt DateTime?
   discountCodes  DiscountCode[]
-  couponCodes  CouponCode[]
+ 
 }
 
 model CartItem {
@@ -448,19 +449,29 @@ model ContactRequest {
 }
 
 model CouponCode {
-  id          Int       @id @default(autoincrement())
-  name        String    // Name or title of the discount, e.g. "Summer Sale"
-  code        String    @unique
-  userId      Int?
-  cartId      Int?      // Nullable, because a discount might not be assigned yet
-  discount    Int       // Discount amount or percentage (you might want a float or decimal depending on your use case)
-  used        Boolean   @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
-show_on_homepage Boolean @default(false)
+  id               Int               @id @default(autoincrement())
+  name             String
+  code             String            @unique
+  discount         Int
+  expiresAt        DateTime
+  createdAt        DateTime          @default(now())
+  show_on_homepage Boolean           @default(false)
+  redeemCount      Int               @default(0)
+  maxRedeemCount   Int               @default(100)
 
-  user        User?      @relation(fields: [userId], references: [id])
-  cart        Cart?     @relation(fields: [cartId], references: [id])
+  redemptions      CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        Int          @id @default(autoincrement())
+  couponId  Int
+  userId    Int
+  usedAt    DateTime     @default(now())
+
+  coupon    CouponCode   @relation(fields: [couponId], references: [id])
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@unique([couponId, userId])
 }
 
 model Pincode {
