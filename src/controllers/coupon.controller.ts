@@ -184,7 +184,8 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
     const { cartId } = req.body;
 
     if (!cartId) {
-      return res.status(400).json({ success: false, message: "Cart ID is required." });
+      res.status(400).json({ success: false, message: "Cart ID is required." });
+      return;
     }
 
     const activeCodes = await prisma.couponCode.findMany({
