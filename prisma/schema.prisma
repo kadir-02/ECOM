@@ -457,6 +457,7 @@ model CouponCode {
   used        Boolean   @default(false)
   expiresAt   DateTime
   createdAt   DateTime  @default(now())
+show_on_homepage Boolean @default(false)
 
   user        User?      @relation(fields: [userId], references: [id])
   cart        Cart?     @relation(fields: [cartId], references: [id])
