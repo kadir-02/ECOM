@@ -13,7 +13,7 @@ const generateRandomCode = (length = 8): string => {
 
 // Admin: Create coupon code
 export const createCouponCode = async (req: Request, res: Response) => {
-  const { name, discount, cartId, expiresAt } = req.body;
+  const { name, discount, expiresAt, code } = req.body;
 
   if (!name || !discount || !expiresAt) {
     res.status(400).json({ message: 'Missing required fields: name, discount, expiresAt' });
@@ -21,20 +21,13 @@ export const createCouponCode = async (req: Request, res: Response) => {
   }
 
   try {
-    let code: string;
-    let exists = true;
-    do {
-      code = generateRandomCode();
-      const existing = await prisma.couponCode.findUnique({ where: { code } });
-      exists = !!existing;
-    } while (exists);
 
     const newCode = await prisma.couponCode.create({
       data: {
         name,
         code,
         discount,
-        cartId: cartId || null,
+        // cartId: cartId || null,
         expiresAt: new Date(expiresAt),
         userId: null,  // explicitly null to make it a global coupon
       },
@@ -105,8 +98,8 @@ export const getUserCouponCodes = async (req: CustomRequest, res: Response) => {
   try {
     const activeCodes = await prisma.couponCode.findMany({
     where: {
-        used: false,
-        userId: null,
+        // used: false,
+        // userId: null,
         expiresAt: { gt: new Date() },
     },
     orderBy: { createdAt: 'desc' },
