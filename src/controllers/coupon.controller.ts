@@ -106,6 +106,7 @@ export const getUserCouponCodes = async (req: CustomRequest, res: Response) => {
     const activeCodes = await prisma.couponCode.findMany({
     where: {
         used: false,
+        userId: null,
         expiresAt: { gt: new Date() },
     },
     orderBy: { createdAt: 'desc' },

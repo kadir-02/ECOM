@@ -22,7 +22,7 @@ router.post('/', authenticate, authorizeAdmin, createCouponCode);
 
 router.delete('/discounts/:id', authenticate, authorizeAdmin, deleteCouponCode);
 
-router.get('/discounts', authenticate, authorizeAdmin, getAllCouponCodes);
+router.get('/discounts', authenticate, getAllCouponCodes);
 
 
 export default router;
