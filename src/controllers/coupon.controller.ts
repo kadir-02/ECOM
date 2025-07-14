@@ -78,6 +78,29 @@ export const deleteCouponCode = async (req: Request, res: Response) => {
 // Admin: Get all coupon codes (global)
 export const getAllCouponCodes = async (req: Request, res: Response) => {
   try {
+     const { is_active, ordering } = req.query;
+
+    // Dynamic filters
+    const whereClause: any = {};
+    if (is_active === "true") whereClause.is_active = true;
+    else if (is_active === "false") whereClause.is_active = false;
+
+    // Default orderBy
+    let orderByClause: any = { createdAt: "desc" };
+
+    if (ordering) {
+      if (typeof ordering === "string") {
+        if (ordering.startsWith("-")) {
+          orderByClause = {
+            [ordering.slice(1)]: "desc",
+          };
+        } else {
+          orderByClause = {
+            [ordering]: "asc",
+          };
+        }
+      }
+    }
     const codes = await prisma.couponCode.findMany({
       include: {
         _count: {
@@ -86,7 +109,7 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy:orderByClause,
     });
 
     // Optionally: format the result to include redeemCount directly
