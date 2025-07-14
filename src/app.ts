@@ -35,6 +35,10 @@ import newsLetterRoutes from './routes/HomePageRoutes/newsletter.route';
 import googleAnalyticsRoutes from './routes/googleAnalytics/googleAnalytics.route';
 import counterRoutes from './routes/HomePageRoutes/homepageStatistic.route';
 import productTagRoutes from './routes/ProductRoutes/productTag.route';
+import taxRoutes from './routes/tax.route';
+import shippingRoutes from './routes/shippingService.route';
+import aboutRoutes from './routes/AboutUs/aboutUsSection.route';
+import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -75,6 +79,10 @@ app.use('/', dashboardRoutes);
 app.use('/google-analytics', googleAnalyticsRoutes)
 app.use('/homepage_statistics', counterRoutes)
 app.use('/product-tag', productTagRoutes)
+app.use('/tax', taxRoutes);
+app.use('/shipping-service', shippingRoutes);
+app.use('/about_us_section', aboutRoutes);
+app.use('/about_us_component', aboutComponentRoutes);
 
 
 app.use(globalErrorHandler);

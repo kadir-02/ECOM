@@ -527,3 +527,76 @@ model ProductTag {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
+
+model Tax {
+  id          Int      @id @default(autoincrement())
+  name        String
+  percentage  Float
+  is_active   Boolean  @default(true)
+  created_by  String
+  updated_by  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model ShippingService {
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  url                    String?
+  is_active              Boolean  @default(true)
+  created_by             String?
+  created_at             DateTime @default(now())
+  updated_by             String?
+  updated_at             DateTime @updatedAt
+
+  // Aramex
+  aramex_username        String?
+  aramex_password        String?
+  aramex_account_number  String?
+  aramex_account_pin     String?
+
+  // Shiprocket
+  shiprocket_username    String?
+  shiprocket_password    String?
+  shiprocket_token       String?
+
+  // USPS
+  usps_client_id         String?
+  usps_client_secret     String?
+
+  start_date             DateTime?
+  end_date               DateTime?
+}
+
+model AboutUsSection {
+  id              Int      @id @default(autoincrement())
+  sequence_number Int
+  section_name    String
+  heading         String?
+  sub_heading     String?
+  description     String?
+  image           String?
+  is_active       Boolean  @default(true)
+  created_by      String?
+  created_at      DateTime @default(now())
+  updated_by      String?
+  updated_at      DateTime @updatedAt
+  components      AboutUsComponent[] 
+}
+
+model AboutUsComponent {
+  id             Int              @id @default(autoincrement())
+  sequence_number Int
+  section        AboutUsSection  @relation(fields: [sectionId], references: [id])
+  sectionId      Int
+  heading        String?
+  sub_heading    String?
+  description    String?
+  image          String?
+  is_active      Boolean          @default(true)
+  precentage     String?
+  created_by     String?
+  updated_by     String?
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+}
