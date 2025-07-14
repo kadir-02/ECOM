@@ -173,20 +173,23 @@ export const updateComponent = async (req: Request, res: Response) => {
 
 // DELETE component
 export const deleteComponent = async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    const existing = await prisma.aboutUsComponent.findUnique({ where: { id } });
+  const id = Number(req.params.id);
+  const sectionId = Number(req.query.section_id); // <- optional usage
 
-    if (!existing) {
-       res.status(404).json({ success: false, message: 'Component not found' });
-       return;
-    }
+  const existing = await prisma.aboutUsComponent.findUnique({ where: { id } });
 
-    await prisma.aboutUsComponent.delete({ where: { id } });
-
-    res.json({ success: true, message: 'Component deleted successfully' });
-  } catch (err) {
-    console.error('Delete component error:', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+  if (!existing) {
+     res.status(404).json({ success: false, message: 'Component not found' });
+     return
   }
+
+  // Optional validation: ensure the component belongs to the given section
+  if (sectionId && existing.sectionId !== sectionId) {
+     res.status(400).json({ success: false, message: 'Section ID mismatch' });
+     return
+  }
+
+  await prisma.aboutUsComponent.delete({ where: { id } });
+
+  res.json({ success: true, message: 'Component deleted successfully' });
 };
