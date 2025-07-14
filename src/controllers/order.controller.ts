@@ -24,6 +24,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     totalAmount,
     paymentMethod,
     discountAmount = 0,
+    subtotal,
     discountCode = '',
     billingAddress,      
     shippingAddress, 
@@ -34,6 +35,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     totalAmount: number;
     paymentMethod: string;
     discountAmount?: number;
+    subtotal: number;
     discountCode?: string;
     billingAddress:string ;   
     shippingAddress : string;
@@ -42,6 +44,11 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
 
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+   
+  if(!subtotal || !totalAmount){
+    res.status(400).json({ message: 'Invalid json' });
     return;
   }
 
@@ -84,6 +91,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       data: {
         userId,
         addressId,
+        subtotal,
         totalAmount,
         discountAmount,
         discountCode,
