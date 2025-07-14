@@ -191,6 +191,7 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
     const activeCodes = await prisma.couponCode.findMany({
       where: {
         expiresAt: { gt: new Date() },
+         redeemCount: { lt: prisma.couponCode.fields.maxRedeemCount },
         redemptions: {
           none: {
             cartId: cartId,

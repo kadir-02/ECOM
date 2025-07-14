@@ -253,12 +253,15 @@ model Order {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   paymentId      Int?        @unique
-  addressId      Int
+  addressId     Int?
+  billingAddress  String
+  shippingAddress String
 
   user    User        @relation(fields: [userId], references: [id])
   items   OrderItem[]
   payment Payment?    @relation(fields: [paymentId], references: [id])
-  address Address     @relation(fields: [addressId], references: [id])
+  address Address?     @relation(fields: [addressId], references: [id])
+  couponRedemption CouponRedemption[]
 }
 
 model OrderItem {
@@ -467,10 +470,11 @@ model CouponRedemption {
   couponId  Int
   cartId    Int
   usedAt    DateTime     @default(now())
-
+  orderId   Int?   
   coupon    CouponCode   @relation(fields: [couponId], references: [id])
 
   cart      Cart       @relation(fields: [cartId], references: [id])
+  order     Order?     @relation(fields: [orderId], references: [id])
 
   @@unique([couponId, cartId]) 
 }

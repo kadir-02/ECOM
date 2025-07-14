@@ -13,7 +13,7 @@ import { authorizeAdmin } from '../middlewares/authorizaAdmin';
 
 const router = express.Router();
 
-router.get('/', authenticate, getUserCouponCodes);
+router.post('/user-coupon', authenticate, getUserCouponCodes);
 
 router.post('/redeem', authenticate, redeemCouponCode);
 

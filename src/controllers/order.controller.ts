@@ -25,6 +25,9 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     paymentMethod,
     discountAmount = 0,
     discountCode = '',
+    billingAddress,      
+    shippingAddress, 
+    cartId,
   }: {
     items: OrderItemInput[];
     addressId: number;
@@ -32,6 +35,9 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     paymentMethod: string;
     discountAmount?: number;
     discountCode?: string;
+    billingAddress:string ;   
+    shippingAddress : string;
+    cartId?:number
   } = req.body;
 
   if (!userId) {
@@ -81,6 +87,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         totalAmount,
         discountAmount,
         discountCode,
+        billingAddress,      
+        shippingAddress,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         items: {
@@ -102,6 +110,42 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         },
       },
     });
+if (discountCode && cartId) {
+  const coupon = await prisma.couponCode.findUnique({
+    where: { code: discountCode },
+  });
+
+  if (coupon) {
+    const redemption = await prisma.couponRedemption.findUnique({
+      where: {
+        couponId_cartId: {
+          couponId: coupon.id,
+          cartId: cartId,
+        },
+      },
+    });
+
+    if (redemption && !redemption.orderId) {
+      await prisma.couponRedemption.update({
+        where: { id: redemption.id },
+        data: {
+          orderId: order.id,
+        },
+      });
+
+      const updatedCount = coupon.redeemCount + 1;
+      const stillVisible = updatedCount < coupon.maxRedeemCount;
+
+      await prisma.couponCode.update({
+        where: { id: coupon.id },
+        data: {
+          redeemCount: updatedCount,
+          show_on_homepage: stillVisible,
+        },
+      });
+    }
+  }
+}
 
     // Send order confirmation email
     await sendOrderConfirmationEmail(
@@ -396,6 +440,139 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
         address: true,
         user: true, // include user details (optional, for admin view)
       },
+// Get orders for admin
+// export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
+//   const {
+//     search,
+//     page = 1,
+//     page_size = 10,
+//     ordering = 'desc',
+//     order_status,
+//     start_date,
+//     end_date,
+//   } = req.query;
+
+//   const isAdmin = req.user?.role === 'ADMIN';
+
+//   if (!isAdmin) {
+//     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
+//     return
+//   }
+
+//   const pageNum = parseInt(page as string);
+//   const pageSizeNum = parseInt(page_size as string);
+//   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
+
+//   try {
+//     const whereConditions: any = {};
+
+//     if (search) {
+//       const searchStr = search.toString();
+//       const orConditions: any[] = [];
+
+//       if (!isNaN(Number(searchStr))) {
+//         orConditions.push({ id: Number(searchStr) });
+//       }
+
+//       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+//       if (validStatuses.includes(searchStr)) {
+//         orConditions.push({ status: searchStr });
+//       }
+
+//       orConditions.push({
+//         OR: [
+//           {
+//             user: {
+//               OR: [
+//                 { email: { contains: searchStr, mode: 'insensitive' } },
+//                 {
+//                   profile: {
+//                     OR: [
+//                       { firstName: { contains: searchStr, mode: 'insensitive' } },
+//                       { lastName: { contains: searchStr, mode: 'insensitive' } },
+//                     ],
+//                   },
+//                 },
+//               ],
+//             },
+//           },
+//           {
+//             // guest orders: search by address fullName or phone (replace with your fields)
+//             address: {
+//               OR: [
+//                 { fullName: { contains: searchStr, mode: 'insensitive' } },
+//                 { phone: { contains: searchStr, mode: 'insensitive' } },
+//               ],
+//             },
+//           },
+//         ],
+//       });
+
+//       whereConditions.OR = orConditions;
+//     }
+
+
+//     if (order_status) {
+//       whereConditions.status = order_status;
+//     }
+
+//     if (start_date && end_date) {
+//       const startDate = new Date(start_date as string);
+//       const endDate = new Date(end_date as string);
+
+//       // Increment endDate by 1 day for exclusive upper bound
+//       endDate.setDate(endDate.getDate() + 1);
+
+//       whereConditions.createdAt = {
+//         gte: startDate,
+//         lt: endDate,
+//       };
+//     }
+
+//     const totalCount = await prisma.order.count({ where: whereConditions });
+
+//     const orders = await prisma.order.findMany({
+//       where: whereConditions,
+//       include: {
+//         items: {
+//           include: {
+//             product: {
+//               include: {
+//                 images: true,
+//                 category: true,
+//               },
+//             },
+//             variant: {
+//               include: {
+//                 images: true,
+//               },
+//             },
+//           },
+//         },
+//         payment: true,
+//         address: true,
+//         user: true, // include user details (optional, for admin view)
+//       },
+//       orderBy: { createdAt: sortOrder },
+//       skip: (pageNum - 1) * pageSizeNum,
+//       take: pageSizeNum,
+//     });
+
+//     res.json({
+//       success: true,
+//       result: orders,
+//       pagination: {
+//         total: totalCount,
+//         current_page: pageNum,
+//         page_size: pageSizeNum,
+//         total_pages: Math.ceil(totalCount / pageSizeNum),
+//       },
+//     });
+//   } catch (error) {
+//     console.error('Admin fetch orders failed:', error);
+//     res.status(500).json({ message: 'Failed to fetch admin orders', error });
+//   }
+// };
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
       take: pageSizeNum,
@@ -506,7 +683,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
     }
 
     const finalAmount = order.totalAmount - (order.discountAmount || 0);
-    const customerNameFromAddress = order.address.fullName || 'Guest';
+    const customerNameFromAddress = order.address?.fullName || 'Guest';
     const customerFirstName = order.user.profile?.firstName || customerNameFromAddress?.split(' ')?.[0] || 'Guest';
     const customerLastName = order.user.profile?.lastName || customerNameFromAddress?.split(' ')?.slice(1).join(' ') || '';
 
@@ -523,7 +700,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             first_name: customerFirstName,
             last_name: customerLastName,
             country_code_for_phone_number: null,
-            phone_number: order.address.phone,
+            phone_number: order.address?.phone,
             email: order.user.email,
             billing_address: formatAddress(order.address),
             delivery_address: formatAddress(order.address),
