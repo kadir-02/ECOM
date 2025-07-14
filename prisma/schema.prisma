@@ -461,6 +461,7 @@ model CouponCode {
   show_on_homepage Boolean           @default(false)
   redeemCount      Int               @default(0)
   maxRedeemCount   Int               @default(100)
+  is_active        Boolean            @default(false)
 
   redemptions      CouponRedemption[]
 }

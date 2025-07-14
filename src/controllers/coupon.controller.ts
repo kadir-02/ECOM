@@ -6,7 +6,7 @@ import { CustomRequest } from '../middlewares/authenticate';
 
 // Admin: Create coupon code
 export const createCouponCode = async (req: Request, res: Response) => {
-  const { name, discount, expiresAt, code, maxRedeemCount, show_on_homepage } = req.body;
+  const { name, discount, expiresAt, code, maxRedeemCount, show_on_homepage,is_active } = req.body;
 
   // Validate required fields
   if (!name || !discount || !expiresAt || !code || !maxRedeemCount) {
@@ -24,8 +24,8 @@ export const createCouponCode = async (req: Request, res: Response) => {
         discount,
         expiresAt: new Date(expiresAt),
         maxRedeemCount,
-        show_on_homepage: show_on_homepage ?? false, // default if not provided
-        // createdAt is auto-set by Prisma schema
+        show_on_homepage: show_on_homepage === 'false'? false : !!(show_on_homepage?? true), 
+        is_active: is_active === 'false' ? false : !!(is_active ?? true),
       },
     });
 
@@ -130,6 +130,7 @@ export const updateCouponCode = async (req: Request, res: Response) => {
     expiresAt,
     maxRedeemCount,
     show_on_homepage,
+    is_active,
   } = req.body;
 
   if (!id) {
@@ -157,11 +158,14 @@ export const updateCouponCode = async (req: Request, res: Response) => {
         ...(discount !== undefined && { discount }),
         ...(expiresAt !== undefined && { expiresAt: new Date(expiresAt) }),
         ...(maxRedeemCount !== undefined && { maxRedeemCount }),
-        ...(show_on_homepage !== undefined && { show_on_homepage }),
+       ...(show_on_homepage !== undefined && { show_on_homepage: show_on_homepage == 'true' }),
+
+       ...(is_active !== undefined && { is_active: is_active == 'true' }),
+
       },
     });
 
-     res.status(200).json(updatedCoupon);
+     res.status(200).json({"message":"coupon updated successfully",updatedCoupon});
      return
 
   } catch (error: any) {
@@ -192,11 +196,7 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
       where: {
         expiresAt: { gt: new Date() },
          redeemCount: { lt: prisma.couponCode.fields.maxRedeemCount },
-        redemptions: {
-          none: {
-            cartId: cartId,
-          },
-        },
+         is_active: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -270,14 +270,6 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
       data: {
         couponId: coupon.id,
         cartId: cartId,
-      },
-    });
-
-    // 6. Increment the redeemCount
-    await prisma.couponCode.update({
-      where: { id: coupon.id },
-      data: {
-        redeemCount: { increment: 1 },
       },
     });
 
