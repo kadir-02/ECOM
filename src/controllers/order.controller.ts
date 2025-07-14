@@ -714,10 +714,10 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             delivery_address: order.shippingAddress,
           },
           order_info: {
-            sub_total: order.totalAmount,
+            sub_total: order.subtotal,
             discount: order.discountAmount || 0,
             discount_coupon_code: order.discountCode || '',
-            final_total: finalAmount,
+            final_total: order.totalAmount,
             order_status: order.status,
             invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
             created_at_formatted: dayjs(order.createdAt).format('DD/MM/YYYY, hh:mmA'),
