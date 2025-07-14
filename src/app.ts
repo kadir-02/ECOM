@@ -31,7 +31,10 @@ import dashboardRoutes from './routes/dashboard.route';
 import contactRoutes from './routes/contact.route';
 import couponRoutes from './routes/coupon.route';
 import pincodeRoutes from './routes/pincode.route';
-import newsLetterRoutes from './routes/HomePageRoutes/newsletter.router';
+import newsLetterRoutes from './routes/HomePageRoutes/newsletter.route';
+import googleAnalyticsRoutes from './routes/googleAnalytics/googleAnalytics.route';
+import counterRoutes from './routes/HomePageRoutes/homepageStatistic.route';
+import productTagRoutes from './routes/ProductRoutes/productTag.route';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -69,6 +72,9 @@ app.use('/company-settings',companyRoutes)
 app.use('/gallerytype',gallerytypeRoutes)
 app.use('/galleryitem',galleryitemRoutes)
 app.use('/', dashboardRoutes);
+app.use('/google-analytics', googleAnalyticsRoutes)
+app.use('/homepage_statistics', counterRoutes)
+app.use('/product-tag', productTagRoutes)
 
 
 app.use(globalErrorHandler);
