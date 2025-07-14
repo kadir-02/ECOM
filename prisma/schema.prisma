@@ -254,8 +254,8 @@ model Order {
   updatedAt      DateTime    @updatedAt
   paymentId      Int?        @unique
   addressId     Int?
-  billingAddress  String
-  shippingAddress String
+  billingAddress  String?    
+  shippingAddress String?
 
   user    User        @relation(fields: [userId], references: [id])
   items   OrderItem[]
