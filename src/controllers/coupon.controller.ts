@@ -121,6 +121,7 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
 //     res.status(500).json({ message: 'Internal server error' });
 //   }
 // };
+
 export const updateCouponCode = async (req: Request, res: Response) => {
   const { id } = req.params;
   const {

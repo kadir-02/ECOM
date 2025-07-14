@@ -710,8 +710,8 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             country_code_for_phone_number: null,
             phone_number: order.address?.phone,
             email: order.user.email,
-            billing_address: formatAddress(order.address),
-            delivery_address: formatAddress(order.address),
+            billing_address: order.billingAddress,
+            delivery_address: order.shippingAddress,
           },
           order_info: {
             sub_total: order.totalAmount,
