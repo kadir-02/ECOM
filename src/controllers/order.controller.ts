@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import PDFDocument from 'pdfkit';
 import { sendOrderConfirmationEmail } from '../email/sendOrderConfirmationEmail';
 import { sendNotification } from '../utils/notification';
+import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
 
 type OrderItemInput = {
   productId?: number;
@@ -170,6 +171,8 @@ if (discountCode && cartId) {
     );
 
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${finalAmount}`, 'ORDER');
+
+    await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
 
     res.status(201).json({ ...order, finalAmount });
   } catch (error) {

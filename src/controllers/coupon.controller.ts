@@ -78,10 +78,17 @@ export const deleteCouponCode = async (req: Request, res: Response) => {
 // Admin: Get all coupon codes (global)
 export const getAllCouponCodes = async (req: Request, res: Response) => {
   try {
-     const { is_active, ordering } = req.query;
+    const { is_active, ordering } = req.query;
 
     // Dynamic filters
-    const whereClause: any = {};
+    const whereClause: any = {
+      code: {
+        not: {
+          startsWith: 'ABND-', // 👈 Exclude abandoned cart codes
+        },
+      },
+    };
+
     if (is_active === "true") whereClause.is_active = true;
     else if (is_active === "false") whereClause.is_active = false;
 
@@ -101,6 +108,7 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
         }
       }
     }
+
     const codes = await prisma.couponCode.findMany({
       where: whereClause,
       include: {
@@ -110,10 +118,9 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy:orderByClause,
+      orderBy: orderByClause,
     });
 
-    // Optionally: format the result to include redeemCount directly
     const formatted = codes.map(code => ({
       ...code,
       redeemCount: code._count.redemptions,
@@ -125,6 +132,7 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 // // Get coupon code by ID
@@ -213,17 +221,28 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
     const { cartId } = req.body;
 
     if (!cartId) {
-      res.status(400).json({ success: false, message: "Cart ID is required." });
-      return;
+       res.status(400).json({ success: false, message: "Cart ID is required." });
+       return;
     }
 
     const activeCodes = await prisma.couponCode.findMany({
       where: {
-        expiresAt: { gt: new Date() },
-         redeemCount: { lt: prisma.couponCode.fields.maxRedeemCount },
-         is_active: true,
+        code: {
+          not: {
+            startsWith: 'ABND-',
+          },
+        },
+        expiresAt: {
+          gt: new Date(),
+        },
+        redeemCount: {
+          lt: prisma.couponCode.fields.maxRedeemCount,
+        },
+        is_active: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
 
     res.status(200).json({ success: true, data: activeCodes });
@@ -232,6 +251,7 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 // POST /user/coupons/redeem - Apply a coupon code to user's car
