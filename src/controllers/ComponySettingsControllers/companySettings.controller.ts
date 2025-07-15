@@ -23,6 +23,8 @@ export const createCompanySettings = async (req: Request, res: Response) => {
       linkedin_link,
       product_low_stock_threshold,
       minimum_order_quantity,
+      is_tax_inclusive, 
+      company_state,  
     } = req.body;
 
     let logoUrl: string | undefined;
@@ -58,6 +60,8 @@ export const createCompanySettings = async (req: Request, res: Response) => {
         linkedin_link,
         product_low_stock_threshold: Number(product_low_stock_threshold),
         minimum_order_quantity: Number(minimum_order_quantity),
+        is_tax_inclusive: is_tax_inclusive === 'true',
+        company_state, 
         logo: logoUrl,
       },
     });
@@ -145,6 +149,9 @@ export const upsertCompanySettings = async (req: Request, res: Response) => {
       linkedin_link,
       product_low_stock_threshold,
       minimum_order_quantity,
+      is_tax_inclusive,
+      company_state ,
+
     } = req.body;
 
     const files = req.files as {
@@ -196,6 +203,8 @@ export const upsertCompanySettings = async (req: Request, res: Response) => {
       instagram_link,
       twitter_link,
       linkedin_link,
+       is_tax_inclusive: is_tax_inclusive === 'true' || is_tax_inclusive === true, // ✅ handle both types
+      company_state: company_state || null,  
       product_low_stock_threshold: isNaN(Number(product_low_stock_threshold)) ? null : Number(product_low_stock_threshold),
       minimum_order_quantity: isNaN(Number(minimum_order_quantity)) ? null : Number(minimum_order_quantity),
       ...(logoUrl && { logo: logoUrl }),

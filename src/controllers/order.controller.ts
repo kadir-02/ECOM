@@ -27,8 +27,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     discountAmount = 0,
     subtotal,
     discountCode = '',
-    billingAddress,      
-    shippingAddress, 
+    billingAddress,
+    shippingAddress,
     cartId,
   }: {
     items: OrderItemInput[];
@@ -38,17 +38,17 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     discountAmount?: number;
     subtotal: number;
     discountCode?: string;
-    billingAddress:string ;   
-    shippingAddress : string;
-    cartId?:number
+    billingAddress: string;
+    shippingAddress: string;
+    cartId?: number
   } = req.body;
 
   if (!userId) {
     res.status(401).json({ message: 'Unauthorized' });
     return;
   }
-   
-  if(!subtotal || !totalAmount){
+
+  if (!subtotal || !totalAmount) {
     res.status(400).json({ message: 'Invalid json' });
     return;
   }
@@ -74,8 +74,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       };
     });
 
-    // Calculate final amount after discount (never below zero)
-    const finalAmount = Math.max(totalAmount - discountAmount, 0);
+    // // Calculate final amount after discount (never below zero)
+    // const finalAmount = Math.max(totalAmount - discountAmount, 0);
 
     const paymentStatus =
       paymentMethod.toUpperCase() === 'RAZORPAY'
@@ -88,16 +88,79 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         status: paymentStatus,
       },
     });
+
+    const address = await prisma.address.findUnique({
+      where: { id: addressId },
+    });
+    if (!address) {
+      res.status(400).json({ message: 'Invalid address ID' });
+      return
+    }
+
+    // 2. Get delivery pincode state
+    const pincodeEntry = await prisma.pincode.findUnique({
+      where: { zipcode: Number(address.pincode) },
+    });
+    if (!pincodeEntry) {
+      res.status(400).json({ message: 'Delivery not available for this pincode' });
+      return
+    }
+    const deliveryState = pincodeEntry.state;
+
+    // 3. Get company settings
+    const company = await prisma.companySettings.findFirst();
+    if (!company) {
+      res.status(500).json({ message: 'Company settings not configured' });
+      return
+    }
+
+    // 4. Determine tax type
+    // const isInterState = deliveryState !== company.company_state;
+    // const isInclusive = company.is_tax_inclusive;
+
+    const taxRates = await prisma.tax.findMany({
+      where: { is_active: true },
+    });
+
+    const cgst = taxRates.find(t => t.name.toUpperCase() === 'CGST')?.percentage ?? 0;
+    const sgst = taxRates.find(t => t.name.toUpperCase() === 'SGST')?.percentage ?? 0;
+    const igst = taxRates.find(t => t.name.toUpperCase() === 'IGST')?.percentage ?? 0;
+
+    const isInterState = deliveryState !== company.company_state;
+    const isInclusive = company.is_tax_inclusive;
+
+    const appliedTaxRate = isInterState ? igst : cgst + sgst;
+
+    let taxAmount = 0;
+    let baseAmount = subtotal;
+
+    if (isInclusive) {
+      baseAmount = subtotal / (1 + appliedTaxRate / 100);
+      taxAmount = subtotal - baseAmount;
+    } else {
+      taxAmount = subtotal * (appliedTaxRate / 100);
+    }
+
+    const totalBeforeDiscount = isInclusive ? subtotal : subtotal + taxAmount;
+    const finalAmount = Math.max(totalBeforeDiscount - discountAmount, 0);
+
+
+
     const order = await prisma.order.create({
       data: {
         userId,
         addressId,
-        subtotal,
-        totalAmount,
+        subtotal:baseAmount,
+        totalAmount:totalBeforeDiscount,
+        finalAmount, 
         discountAmount,
         discountCode,
-        billingAddress,      
+        billingAddress,
         shippingAddress,
+        taxAmount,
+        taxType: isInterState ? 'IGST' : 'CGST+SGST',
+        appliedTaxRate,
+        isTaxInclusive: isInclusive,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         items: {
@@ -119,42 +182,42 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         },
       },
     });
-if (discountCode && cartId) {
-  const coupon = await prisma.couponCode.findUnique({
-    where: { code: discountCode },
-  });
-
-  if (coupon) {
-    const redemption = await prisma.couponRedemption.findUnique({
-      where: {
-        couponId_cartId: {
-          couponId: coupon.id,
-          cartId: cartId,
-        },
-      },
-    });
-
-    if (redemption && !redemption.orderId) {
-      await prisma.couponRedemption.update({
-        where: { id: redemption.id },
-        data: {
-          orderId: order.id,
-        },
+    if (discountCode && cartId) {
+      const coupon = await prisma.couponCode.findUnique({
+        where: { code: discountCode },
       });
 
-      const updatedCount = coupon.redeemCount + 1;
-      const stillVisible = updatedCount < coupon.maxRedeemCount;
+      if (coupon) {
+        const redemption = await prisma.couponRedemption.findUnique({
+          where: {
+            couponId_cartId: {
+              couponId: coupon.id,
+              cartId: cartId,
+            },
+          },
+        });
 
-      await prisma.couponCode.update({
-        where: { id: coupon.id },
-        data: {
-          redeemCount: updatedCount,
-          show_on_homepage: stillVisible,
-        },
-      });
+        if (redemption && !redemption.orderId) {
+          await prisma.couponRedemption.update({
+            where: { id: redemption.id },
+            data: {
+              orderId: order.id,
+            },
+          });
+
+          const updatedCount = coupon.redeemCount + 1;
+          const stillVisible = updatedCount < coupon.maxRedeemCount;
+
+          await prisma.couponCode.update({
+            where: { id: coupon.id },
+            data: {
+              redeemCount: updatedCount,
+              show_on_homepage: stillVisible,
+            },
+          });
+        }
+      }
     }
-  }
-}
 
     // Send order confirmation email
     await sendOrderConfirmationEmail(
@@ -451,139 +514,139 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
         address: true,
         user: true, // include user details (optional, for admin view)
       },
-// Get orders for admin
-// export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
-//   const {
-//     search,
-//     page = 1,
-//     page_size = 10,
-//     ordering = 'desc',
-//     order_status,
-//     start_date,
-//     end_date,
-//   } = req.query;
+      // Get orders for admin
+      // export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
+      //   const {
+      //     search,
+      //     page = 1,
+      //     page_size = 10,
+      //     ordering = 'desc',
+      //     order_status,
+      //     start_date,
+      //     end_date,
+      //   } = req.query;
 
-//   const isAdmin = req.user?.role === 'ADMIN';
+      //   const isAdmin = req.user?.role === 'ADMIN';
 
-//   if (!isAdmin) {
-//     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
-//     return
-//   }
+      //   if (!isAdmin) {
+      //     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
+      //     return
+      //   }
 
-//   const pageNum = parseInt(page as string);
-//   const pageSizeNum = parseInt(page_size as string);
-//   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
+      //   const pageNum = parseInt(page as string);
+      //   const pageSizeNum = parseInt(page_size as string);
+      //   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
 
-//   try {
-//     const whereConditions: any = {};
+      //   try {
+      //     const whereConditions: any = {};
 
-//     if (search) {
-//       const searchStr = search.toString();
-//       const orConditions: any[] = [];
+      //     if (search) {
+      //       const searchStr = search.toString();
+      //       const orConditions: any[] = [];
 
-//       if (!isNaN(Number(searchStr))) {
-//         orConditions.push({ id: Number(searchStr) });
-//       }
+      //       if (!isNaN(Number(searchStr))) {
+      //         orConditions.push({ id: Number(searchStr) });
+      //       }
 
-//       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-//       if (validStatuses.includes(searchStr)) {
-//         orConditions.push({ status: searchStr });
-//       }
+      //       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+      //       if (validStatuses.includes(searchStr)) {
+      //         orConditions.push({ status: searchStr });
+      //       }
 
-//       orConditions.push({
-//         OR: [
-//           {
-//             user: {
-//               OR: [
-//                 { email: { contains: searchStr, mode: 'insensitive' } },
-//                 {
-//                   profile: {
-//                     OR: [
-//                       { firstName: { contains: searchStr, mode: 'insensitive' } },
-//                       { lastName: { contains: searchStr, mode: 'insensitive' } },
-//                     ],
-//                   },
-//                 },
-//               ],
-//             },
-//           },
-//           {
-//             // guest orders: search by address fullName or phone (replace with your fields)
-//             address: {
-//               OR: [
-//                 { fullName: { contains: searchStr, mode: 'insensitive' } },
-//                 { phone: { contains: searchStr, mode: 'insensitive' } },
-//               ],
-//             },
-//           },
-//         ],
-//       });
+      //       orConditions.push({
+      //         OR: [
+      //           {
+      //             user: {
+      //               OR: [
+      //                 { email: { contains: searchStr, mode: 'insensitive' } },
+      //                 {
+      //                   profile: {
+      //                     OR: [
+      //                       { firstName: { contains: searchStr, mode: 'insensitive' } },
+      //                       { lastName: { contains: searchStr, mode: 'insensitive' } },
+      //                     ],
+      //                   },
+      //                 },
+      //               ],
+      //             },
+      //           },
+      //           {
+      //             // guest orders: search by address fullName or phone (replace with your fields)
+      //             address: {
+      //               OR: [
+      //                 { fullName: { contains: searchStr, mode: 'insensitive' } },
+      //                 { phone: { contains: searchStr, mode: 'insensitive' } },
+      //               ],
+      //             },
+      //           },
+      //         ],
+      //       });
 
-//       whereConditions.OR = orConditions;
-//     }
+      //       whereConditions.OR = orConditions;
+      //     }
 
 
-//     if (order_status) {
-//       whereConditions.status = order_status;
-//     }
+      //     if (order_status) {
+      //       whereConditions.status = order_status;
+      //     }
 
-//     if (start_date && end_date) {
-//       const startDate = new Date(start_date as string);
-//       const endDate = new Date(end_date as string);
+      //     if (start_date && end_date) {
+      //       const startDate = new Date(start_date as string);
+      //       const endDate = new Date(end_date as string);
 
-//       // Increment endDate by 1 day for exclusive upper bound
-//       endDate.setDate(endDate.getDate() + 1);
+      //       // Increment endDate by 1 day for exclusive upper bound
+      //       endDate.setDate(endDate.getDate() + 1);
 
-//       whereConditions.createdAt = {
-//         gte: startDate,
-//         lt: endDate,
-//       };
-//     }
+      //       whereConditions.createdAt = {
+      //         gte: startDate,
+      //         lt: endDate,
+      //       };
+      //     }
 
-//     const totalCount = await prisma.order.count({ where: whereConditions });
+      //     const totalCount = await prisma.order.count({ where: whereConditions });
 
-//     const orders = await prisma.order.findMany({
-//       where: whereConditions,
-//       include: {
-//         items: {
-//           include: {
-//             product: {
-//               include: {
-//                 images: true,
-//                 category: true,
-//               },
-//             },
-//             variant: {
-//               include: {
-//                 images: true,
-//               },
-//             },
-//           },
-//         },
-//         payment: true,
-//         address: true,
-//         user: true, // include user details (optional, for admin view)
-//       },
-//       orderBy: { createdAt: sortOrder },
-//       skip: (pageNum - 1) * pageSizeNum,
-//       take: pageSizeNum,
-//     });
+      //     const orders = await prisma.order.findMany({
+      //       where: whereConditions,
+      //       include: {
+      //         items: {
+      //           include: {
+      //             product: {
+      //               include: {
+      //                 images: true,
+      //                 category: true,
+      //               },
+      //             },
+      //             variant: {
+      //               include: {
+      //                 images: true,
+      //               },
+      //             },
+      //           },
+      //         },
+      //         payment: true,
+      //         address: true,
+      //         user: true, // include user details (optional, for admin view)
+      //       },
+      //       orderBy: { createdAt: sortOrder },
+      //       skip: (pageNum - 1) * pageSizeNum,
+      //       take: pageSizeNum,
+      //     });
 
-//     res.json({
-//       success: true,
-//       result: orders,
-//       pagination: {
-//         total: totalCount,
-//         current_page: pageNum,
-//         page_size: pageSizeNum,
-//         total_pages: Math.ceil(totalCount / pageSizeNum),
-//       },
-//     });
-//   } catch (error) {
-//     console.error('Admin fetch orders failed:', error);
-//     res.status(500).json({ message: 'Failed to fetch admin orders', error });
-//   }
-// };
+      //     res.json({
+      //       success: true,
+      //       result: orders,
+      //       pagination: {
+      //         total: totalCount,
+      //         current_page: pageNum,
+      //         page_size: pageSizeNum,
+      //         total_pages: Math.ceil(totalCount / pageSizeNum),
+      //       },
+      //     });
+      //   } catch (error) {
+      //     console.error('Admin fetch orders failed:', error);
+      //     res.status(500).json({ message: 'Failed to fetch admin orders', error });
+      //   }
+      // };
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
       take: pageSizeNum,
@@ -693,7 +756,8 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       return
     }
 
-    const finalAmount = order.totalAmount - (order.discountAmount || 0);
+    const finalAmount = order.finalAmount ?? (order.totalAmount - (order.discountAmount || 0));
+
     const customerNameFromAddress = order.address?.fullName || 'Guest';
     const customerFirstName = order.user.profile?.firstName || customerNameFromAddress?.split(' ')?.[0] || 'Guest';
     const customerLastName = order.user.profile?.lastName || customerNameFromAddress?.split(' ')?.slice(1).join(' ') || '';
@@ -716,16 +780,23 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             billing_address: order.billingAddress,
             delivery_address: order.shippingAddress,
           },
-          order_info: {
-            sub_total: order.subtotal,
-            discount: order.discountAmount || 0,
-            discount_coupon_code: order.discountCode || '',
-            final_total: order.totalAmount,
-            order_status: order.status,
-            invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
-            created_at_formatted: dayjs(order.createdAt).format('DD/MM/YYYY, hh:mmA'),
-            created_at: dayjs(order.createdAt).format('DD MMMM YYYY, hh:mmA'),
-          },
+         order_info: {
+  sub_total: order.subtotal,
+  tax_type: order.taxType || '',
+  applied_tax_rate: order.appliedTaxRate || 0,
+  tax_inclusive: order.isTaxInclusive,
+  tax_amount: order.taxAmount || 0,
+  discount: order.discountAmount || 0,
+  discount_coupon_code: order.discountCode || '',
+  total_before_discount: order.totalAmount,
+   final_payable_amount: finalAmount,
+  final_total: finalAmount, // fallback if finalAmount not stored
+
+  order_status: order.status,
+  invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
+  created_at_formatted: dayjs(order.createdAt).format('DD/MM/YYYY, hh:mmA'),
+  created_at: dayjs(order.createdAt).format('DD MMMM YYYY, hh:mmA'),
+},
           payment_info: {
             is_payment_done: order.payment?.status === 'SUCCESS',
             payment_transaction_id: order.payment?.transactionId || '',
@@ -803,163 +874,163 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
     const discountAmount = order.discountAmount ?? 0;
     const finalAmount = subtotal - discountAmount;
 
-  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
-res.setHeader('Content-Type', 'application/pdf');
-res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
 
-doc.pipe(res);
+    doc.pipe(res);
 
-// ====== COLORS & STYLES ======
-const primaryColor = '#007bff';
-const headerBgColor = '#e9ecef';
-const rowAltColor = '#f8f9fa';
-const labelFont = 'Helvetica-Bold';
-const valueFont = 'Helvetica';
+    // ====== COLORS & STYLES ======
+    const primaryColor = '#007bff';
+    const headerBgColor = '#e9ecef';
+    const rowAltColor = '#f8f9fa';
+    const labelFont = 'Helvetica-Bold';
+    const valueFont = 'Helvetica';
 
-// ====== TITLE ======
-doc
-  .fillColor(primaryColor)
-  .font(labelFont)
-  .fontSize(26)
-  .text('INVOICE', { align: 'center' });
+    // ====== TITLE ======
+    doc
+      .fillColor(primaryColor)
+      .font(labelFont)
+      .fontSize(26)
+      .text('INVOICE', { align: 'center' });
 
-// ====== CUSTOMER & ORDER INFO ======
-const sectionTop = 100;
-const leftX = 50;
-const rightX = 320;
-const lineSpacing = 18;
+    // ====== CUSTOMER & ORDER INFO ======
+    const sectionTop = 100;
+    const leftX = 50;
+    const rightX = 320;
+    const lineSpacing = 18;
 
-// Helper
-const drawLabel = (label: string, value: string, x: number, y: number, maxWidth = 200) => {
-  doc
-    .font(labelFont)
-    .fontSize(11)
-    .fillColor('black')
-    .text(label, x, y);
-  doc
-    .font(valueFont)
-    .fontSize(11)
-    .fillColor('black')
-    .text(value || '-', x, y + 13, { width: maxWidth });
-};
+    // Helper
+    const drawLabel = (label: string, value: string, x: number, y: number, maxWidth = 200) => {
+      doc
+        .font(labelFont)
+        .fontSize(11)
+        .fillColor('black')
+        .text(label, x, y);
+      doc
+        .font(valueFont)
+        .fontSize(11)
+        .fillColor('black')
+        .text(value || '-', x, y + 13, { width: maxWidth });
+    };
 
-// Left column (Customer Info)
-let yLeft = sectionTop;
-drawLabel('Customer:', `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, leftX, yLeft);
-yLeft += lineSpacing * 2;
+    // Left column (Customer Info)
+    let yLeft = sectionTop;
+    drawLabel('Customer:', `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, leftX, yLeft);
+    yLeft += lineSpacing * 2;
 
-drawLabel('Email:', order.user.email, leftX, yLeft);
-yLeft += lineSpacing * 2;
+    drawLabel('Email:', order.user.email, leftX, yLeft);
+    yLeft += lineSpacing * 2;
 
-drawLabel('Phone:', order.address?.phone || '-', leftX, yLeft);
-yLeft += lineSpacing * 2;
+    drawLabel('Phone:', order.address?.phone || '-', leftX, yLeft);
+    yLeft += lineSpacing * 2;
 
-const address = formatAddress(order.address) || '-';
-doc
-  .font(labelFont)
-  .fontSize(11)
-  .text('Address:', leftX, yLeft);
-doc
-  .font(valueFont)
-  .fontSize(11)
-  .text(doc.heightOfString(address, { width: 220 }) > 30 ? address.slice(0, 100) + '...' : address, leftX, yLeft + 13, { width: 220 });
-yLeft += lineSpacing * 3;
+    const address = formatAddress(order.address) || '-';
+    doc
+      .font(labelFont)
+      .fontSize(11)
+      .text('Address:', leftX, yLeft);
+    doc
+      .font(valueFont)
+      .fontSize(11)
+      .text(doc.heightOfString(address, { width: 220 }) > 30 ? address.slice(0, 100) + '...' : address, leftX, yLeft + 13, { width: 220 });
+    yLeft += lineSpacing * 3;
 
-// Right column (Order Info)
-let yRight = sectionTop;
-const customerName = order.user.profile?.firstName?.trim() || 'USER';
+    // Right column (Order Info)
+    let yRight = sectionTop;
+    const customerName = order.user.profile?.firstName?.trim() || 'USER';
 
-drawLabel('Invoice ID:', `COM-${order.id}-${customerName}`, rightX, yRight);
-yRight += lineSpacing * 2;
+    drawLabel('Invoice ID:', `COM-${order.id}-${customerName}`, rightX, yRight);
+    yRight += lineSpacing * 2;
 
-drawLabel('Date:', new Date(order.createdAt).toLocaleString(), rightX, yRight);
-yRight += lineSpacing * 2;
+    drawLabel('Date:', new Date(order.createdAt).toLocaleString(), rightX, yRight);
+    yRight += lineSpacing * 2;
 
-drawLabel('Payment Method:', order.payment?.method || 'N/A', rightX, yRight);
-yRight += lineSpacing * 2;
+    drawLabel('Payment Method:', order.payment?.method || 'N/A', rightX, yRight);
+    yRight += lineSpacing * 2;
 
-drawLabel('Order Status:', order.status || '-', rightX, yRight);
-yRight += lineSpacing * 2;
+    drawLabel('Order Status:', order.status || '-', rightX, yRight);
+    yRight += lineSpacing * 2;
 
-// ====== TABLE HEADER ======
-const tableTop = Math.max(yLeft, yRight) + 30;
-const tableLeft = 50;
-const tableWidth = 500;
-const rowHeight = 25;
+    // ====== TABLE HEADER ======
+    const tableTop = Math.max(yLeft, yRight) + 30;
+    const tableLeft = 50;
+    const tableWidth = 500;
+    const rowHeight = 25;
 
-doc
-  .rect(tableLeft, tableTop, tableWidth, rowHeight)
-  .fill(headerBgColor);
+    doc
+      .rect(tableLeft, tableTop, tableWidth, rowHeight)
+      .fill(headerBgColor);
 
-doc
-  .fillColor(primaryColor)
-  .font(labelFont)
-  .fontSize(12)
-  .text('Item', tableLeft + 10, tableTop + 7)
-  .text('Qty', tableLeft + 230, tableTop + 7, { width: 40, align: 'right' })
-  .text('Unit Price', tableLeft + 310, tableTop + 7, { width: 80, align: 'right' })
-  .text('Total', tableLeft + 410, tableTop + 7, { width: 80, align: 'right' });
+    doc
+      .fillColor(primaryColor)
+      .font(labelFont)
+      .fontSize(12)
+      .text('Item', tableLeft + 10, tableTop + 7)
+      .text('Qty', tableLeft + 230, tableTop + 7, { width: 40, align: 'right' })
+      .text('Unit Price', tableLeft + 310, tableTop + 7, { width: 80, align: 'right' })
+      .text('Total', tableLeft + 410, tableTop + 7, { width: 80, align: 'right' });
 
-// ====== TABLE ROWS ======
-let y = tableTop + rowHeight;
-doc.font(valueFont).fontSize(11);
+    // ====== TABLE ROWS ======
+    let y = tableTop + rowHeight;
+    doc.font(valueFont).fontSize(11);
 
-order.items.forEach((item, index) => {
-  if (index % 2 === 0) {
-    doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
-  }
+    order.items.forEach((item, index) => {
+      if (index % 2 === 0) {
+        doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
+      }
 
-  const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
-  const qty = item.quantity;
-  const unitPrice = item.price;
-  const total = qty * unitPrice;
+      const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
+      const qty = item.quantity;
+      const unitPrice = item.price;
+      const total = qty * unitPrice;
 
-  doc
-    .fillColor('black')
-    .text(name, tableLeft + 10, y + 7, { width: 200, ellipsis: true })
-    .text(qty.toString(), tableLeft + 230, y + 7, { width: 40, align: 'right' })
-    .text(unitPrice.toFixed(2), tableLeft + 310, y + 7, { width: 80, align: 'right' })
-    .text(total.toFixed(2), tableLeft + 410, y + 7, { width: 80, align: 'right' });
+      doc
+        .fillColor('black')
+        .text(name, tableLeft + 10, y + 7, { width: 200, ellipsis: true })
+        .text(qty.toString(), tableLeft + 230, y + 7, { width: 40, align: 'right' })
+        .text(unitPrice.toFixed(2), tableLeft + 310, y + 7, { width: 80, align: 'right' })
+        .text(total.toFixed(2), tableLeft + 410, y + 7, { width: 80, align: 'right' });
 
-  y += rowHeight;
-});
+      y += rowHeight;
+    });
 
-// Table border
-doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
+    // Table border
+    doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
 
-// ====== TOTALS ======
-y += 20;
+    // ====== TOTALS ======
+    y += 20;
 
-doc
-  .font(labelFont)
-  .fillColor('black')
-  .text('Subtotal:', tableLeft + 310, y, { width: 80, align: 'right' })
-  .text(subtotal.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+    doc
+      .font(labelFont)
+      .fillColor('black')
+      .text('Subtotal:', tableLeft + 310, y, { width: 80, align: 'right' })
+      .text(subtotal.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
 
-if (discountAmount > 0) {
-  y += 18;
-  doc
-    .fillColor('red')
-    .text('Discount:', tableLeft + 310, y, { width: 80, align: 'right' })
-    .text(discountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
-}
+    if (discountAmount > 0) {
+      y += 18;
+      doc
+        .fillColor('red')
+        .text('Discount:', tableLeft + 310, y, { width: 80, align: 'right' })
+        .text(discountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+    }
 
-y += 25;
-doc
-  .font(labelFont)
-  .fontSize(13)
-  .fillColor(primaryColor)
-  .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
-  .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+    y += 25;
+    doc
+      .font(labelFont)
+      .fontSize(13)
+      .fillColor(primaryColor)
+      .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
+      .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
 
-// ====== FOOTER ======
-doc
-  .fontSize(10)
-  .fillColor('gray')
-  .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
+    // ====== FOOTER ======
+    doc
+      .fontSize(10)
+      .fillColor('gray')
+      .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
 
-doc.end();
+    doc.end();
 
 
 
