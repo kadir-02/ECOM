@@ -5,7 +5,7 @@ import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
 // CREATE CATEGORY
 export const createCategory = async (req: Request, res: Response) => {
   console.log(req.body)
-  const { name, sequence_number, isDeleted } = req.body;
+  const { name, sequence_number, is_active ,seo_title, seo_description } = req.body;
   
 
   try {
@@ -55,7 +55,10 @@ export const createCategory = async (req: Request, res: Response) => {
         imageUrl,
         banner,
         publicId,
-        isDeleted:isDeleted === "true" || isDeleted === true
+        is_active : is_active === true || is_active === "true" ? true : false ,
+        seo_title,
+         seo_description 
+
       },
     });
 
@@ -76,10 +79,28 @@ export const getAllCategories = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.page_size as string) || 10;
     const skip = (page - 1) * pageSize;
+    const search = (req.query.search as string)?.trim();
+    const is_active_raw = req.query.is_active;
+    const is_active_param = String(is_active_raw).toLowerCase();
+
+    const whereClause: any = {
+      isDeleted: false,
+    };
+
+    if (search) {
+      whereClause.name = {
+        contains: search,
+        mode: "insensitive",
+      };
+    }
+
+   if (is_active_param === "true" || is_active_param === "false") {
+  whereClause.is_active = is_active_param === "true";
+}
 
     // Total count for pagination
     const totalCount = await prisma.category.count({
-      where: { isDeleted: false },
+      where: whereClause,
     });
 
     // const categories = await prisma.category.findMany({
@@ -91,7 +112,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
     // });
 
     const categories = await prisma.category.findMany({
-      // where: { isDeleted: false },
+     where: whereClause,
       include: {
         subcategories: {
           // Include all subcategories, even soft-deleted ones
@@ -121,7 +142,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
 export const getFrontendCategories = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
-      where: { isDeleted: false },
+      where: { is_active: false },
       include: { subcategories: true },
       orderBy: { sequence_number: "asc" },
     });
@@ -234,17 +255,19 @@ export const getCategoryById = async (req: Request, res: Response) => {
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, sequence_number, isDeleted } = req.body;
+  const { name, sequence_number, is_active ,seo_description, seo_title } = req.body;
 
   try {
     const data: any = {};
 
-    console.log("isDeleted", isDeleted);
+    console.log("is_active", is_active);
     if (name) data.name = name;
-    if (typeof isDeleted !== "undefined") {
-      data.isDeleted = isDeleted === "true" || isDeleted === true;
+    if (typeof is_active !== "undefined") {
+      data.is_active = is_active === true || is_active === "true" ? true : false;
     }
     if (sequence_number) data.sequence_number = Number(sequence_number);
+      if (seo_title) data.seo_title = seo_title;
+    if (seo_description) data.seo_description = seo_description;
 
     if (req.files && "image" in req.files) {
       const imageFile = Array.isArray(req.files["image"])

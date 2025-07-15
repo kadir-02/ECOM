@@ -77,6 +77,9 @@ model Category {
   banner          String?
   imageUrl        String?
   publicId        String?
+  is_active       Boolean  @default(true)
+  seo_title       String?
+  seo_description String?
 }
 
 model Subcategory {
