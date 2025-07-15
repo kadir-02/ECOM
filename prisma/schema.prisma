@@ -623,3 +623,15 @@ model Store {
   updated_by     String?
   updated_at     DateTime  @updatedAt
 }
+
+model AbandonedCartSetting {
+  id                                 Int      @id @default(autoincrement())
+  hours_after_email_is_sent         Int
+  discount_to_be_given_in_percent   Int
+  hours_after_email_cart_is_emptied Int
+  is_active                          Boolean  @default(true)
+  created_by                         String?
+  created_at                         DateTime @default(now())
+  updated_by                         String?
+  updated_at                         DateTime @updatedAt
+}

@@ -40,6 +40,7 @@ import shippingRoutes from './routes/shippingService.route';
 import aboutRoutes from './routes/AboutUs/aboutUsSection.route';
 import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
 import storeRoutes from './routes/StoreAddress/store.route';
+import abandonedCartRoutes from './routes/Abandoned/abandonedCartSetting.route';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -59,6 +60,7 @@ app.use('/shipping-service', shippingRoutes);
 app.use('/about_us_section', aboutRoutes);
 app.use('/about_us_component', aboutComponentRoutes);
 app.use('/store', storeRoutes);
+app.use('/abandoned-cart-setting', abandonedCartRoutes);
 app.use('/pincode', pincodeRoutes);
 app.use('/coupon', couponRoutes);
 app.use('/frontend/testimonial',TestimonialRoutes)
