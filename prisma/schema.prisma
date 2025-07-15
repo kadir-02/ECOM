@@ -603,3 +603,23 @@ model AboutUsComponent {
   created_at     DateTime         @default(now())
   updated_at     DateTime         @updatedAt
 }
+
+model Store {
+  id             Int      @id @default(autoincrement())
+  name           String
+  email          String?   @db.VarChar(255)
+  phone_numbers  String
+  address        String
+  locality       String?
+  city           String
+  state          String
+  country        String
+  zipcode        Int
+  latitude       String
+  longitude      String
+  is_active      Boolean   @default(true)
+  created_by     String?
+  created_at     DateTime  @default(now())
+  updated_by     String?
+  updated_at     DateTime  @updatedAt
+}

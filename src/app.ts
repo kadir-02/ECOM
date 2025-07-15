@@ -39,6 +39,7 @@ import taxRoutes from './routes/tax.route';
 import shippingRoutes from './routes/shippingService.route';
 import aboutRoutes from './routes/AboutUs/aboutUsSection.route';
 import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
+import storeRoutes from './routes/StoreAddress/store.route';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -83,6 +84,7 @@ app.use('/tax', taxRoutes);
 app.use('/shipping-service', shippingRoutes);
 app.use('/about_us_section', aboutRoutes);
 app.use('/about_us_component', aboutComponentRoutes);
+app.use('/store', storeRoutes);
 
 
 app.use(globalErrorHandler);
