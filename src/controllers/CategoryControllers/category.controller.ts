@@ -142,7 +142,7 @@ export const getAllCategories = async (req: Request, res: Response) => {
 export const getFrontendCategories = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
-      where: { is_active: false },
+      where: { is_active: true , isDeleted: false },
       include: { subcategories: true },
       orderBy: { sequence_number: "asc" },
     });
@@ -183,7 +183,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
     const validCategories = await prisma.category.findMany({
       where: {
         id: { in: categoryIds },
-        isDeleted: false,
+        is_active: true,
       },
       include: {
         subcategories: true,
@@ -202,7 +202,7 @@ export const getCategoryById = async (req: Request, res: Response) => {
       prisma.product.findMany({
         where: {
           categoryId: { in: validCategoryIds },
-          isDeleted: false,
+          // isDeleted: true,
         },
         include: {
           variants: {

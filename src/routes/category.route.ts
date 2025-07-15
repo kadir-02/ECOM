@@ -20,8 +20,8 @@ const router = Router();
 // Public routes
 router.get('/', getAllCategories);
 router.get('/frontend', getFrontendCategories);
-router.use('/subcategory', subcategoryRoutes);
 router.get('/id', getCategoryById);
+router.use('/subcategory', subcategoryRoutes);
 // Nested subcategory routes
 
 // Admin-only routes

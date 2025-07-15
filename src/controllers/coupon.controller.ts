@@ -102,6 +102,7 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
       }
     }
     const codes = await prisma.couponCode.findMany({
+      where: whereClause,
       include: {
         _count: {
           select: {
