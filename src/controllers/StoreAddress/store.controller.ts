@@ -81,6 +81,34 @@ export const createStore = async (req: Request, res: Response) => {
 
     const created_by = await getUserNameFromToken(req);
 
+    // Convert to number early
+    const numericZip = Number(zipcode);
+
+    // ✅ Check if pincode already exists
+    const existingPincode = await prisma.pincode.findFirst({
+      where: {
+        zipcode: numericZip,
+        city,
+        state,
+      },
+    });
+
+    // ✅ Create pincode only if it doesn't exist
+    if (!existingPincode) {
+      await prisma.pincode.create({
+        data: {
+          city,
+          state,
+          zipcode: numericZip,
+          estimatedDeliveryDays: 3, // or infer dynamically
+          isActive: true,
+          createdBy: created_by,
+          updatedBy: created_by,
+        },
+      });
+    }
+
+    // ✅ Now create store
     const store = await prisma.store.create({
       data: {
         name,
@@ -91,7 +119,7 @@ export const createStore = async (req: Request, res: Response) => {
         city,
         state,
         country,
-        zipcode: Number(zipcode),
+        zipcode: numericZip,
         latitude,
         longitude,
         created_by,
@@ -105,6 +133,7 @@ export const createStore = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Failed to create store' });
   }
 };
+
 
 export const updateStore = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
@@ -181,11 +210,96 @@ const sanitizeNumber = (input: string | undefined): string => {
   return input.toString().replace(/[^\d]/g, '');
 };
 
+// export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
+//   try {
+//     if (!req.file || !req.file.buffer) {
+//        res.status(400).json({ message: 'No file uploaded or file is empty' });
+//       return;
+//     }
+
+//     const stream = fastcsv.parse({ headers: true, trim: true });
+//     const rows: any[] = [];
+//     let count = 0;
+
+//     stream.on('error', (error) => {
+//       console.error('CSV parse error:', error);
+//        res.status(400).json({ message: 'Error parsing CSV' });
+//        return
+//     });
+
+//     stream.on('data', (row) => {
+//       rows.push(row);
+//     });
+
+//     stream.on('end', async () => {
+//       for (const row of rows) {
+//         try {
+//           const name = row['NAME']?.trim();
+//           const address = row['ADDRESS']?.trim();
+//           const city = row['CITY']?.trim();
+//           const state = row['STATE']?.trim();
+//           const zipcode = parseInt(sanitizeNumber(row['ZIP']), 10);
+
+//           if (!name || !address || !city || !state || isNaN(zipcode)) {
+//             console.warn('Skipping invalid row:', row);
+//             continue;
+//           }
+
+//           const phone = sanitizeNumber(row['PHONE']);
+//           const mobile = sanitizeNumber(row['MOBILE']);
+
+//           const storeData = {
+//             name,
+//             address,
+//             city,
+//             state,
+//             zipcode,
+//             phone_numbers: [phone, mobile].filter(Boolean).join(', '),
+//             email: null,
+//             locality: '',
+//             country: 'India',
+//             latitude: '0.0',
+//             longitude: '0.0',
+//             is_active: true,
+//             created_by: 'CSV Import',
+//             updated_by: 'CSV Import',
+//           };
+
+//           const existing = await prisma.store.findFirst({ where: { name } });
+
+//           if (existing) {
+//             await prisma.store.update({
+//               where: { id: existing.id },
+//               data: storeData,
+//             });
+//           } else {
+//             await prisma.store.create({ data: storeData });
+//           }
+
+//           count++;
+//         } catch (err) {
+//           console.error('Error processing row:', row, err);
+//         }
+//       }
+
+//        res.status(200).json({ message: 'Store CSV processed successfully', count });
+//        return
+//     });
+
+//     stream.write(req.file.buffer);
+//     stream.end();
+//   } catch (err) {
+//     console.error('Upload error:', err);
+//      res.status(500).json({ message: 'Internal server error' });
+//      ;return
+//   }
+// };
+
 export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
   try {
     if (!req.file || !req.file.buffer) {
        res.status(400).json({ message: 'No file uploaded or file is empty' });
-      return;
+       return;
     }
 
     const stream = fastcsv.parse({ headers: true, trim: true });
@@ -195,7 +309,7 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
     stream.on('error', (error) => {
       console.error('CSV parse error:', error);
        res.status(400).json({ message: 'Error parsing CSV' });
-       return
+       return;
     });
 
     stream.on('data', (row) => {
@@ -236,11 +350,37 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
             updated_by: 'CSV Import',
           };
 
-          const existing = await prisma.store.findFirst({ where: { name } });
+          // ✅ Auto-create pincode if not exists
+          const existingPincode = await prisma.pincode.findFirst({
+            where: {
+              zipcode,
+              city,
+              state,
+            },
+          });
 
-          if (existing) {
+          if (!existingPincode) {
+            await prisma.pincode.create({
+              data: {
+                city,
+                state,
+                zipcode,
+                estimatedDeliveryDays: 3, // default value or calculate dynamically
+                isActive: true,
+                createdBy: 'CSV Import',
+                updatedBy: 'CSV Import',
+              },
+            });
+          }
+
+          // ✅ Upsert store
+          const existingStore = await prisma.store.findFirst({
+            where: { name },
+          });
+
+          if (existingStore) {
             await prisma.store.update({
-              where: { id: existing.id },
+              where: { id: existingStore.id },
               data: storeData,
             });
           } else {
@@ -253,8 +393,11 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
         }
       }
 
-       res.status(200).json({ message: 'Store CSV processed successfully', count });
-       return
+       res.status(200).json({
+        message: 'Store CSV processed successfully',
+        count,
+      });
+      return;
     });
 
     stream.write(req.file.buffer);
@@ -262,6 +405,6 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
   } catch (err) {
     console.error('Upload error:', err);
      res.status(500).json({ message: 'Internal server error' });
-     ;return
+     return;
   }
 };

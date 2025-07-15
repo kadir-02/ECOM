@@ -3,6 +3,7 @@ import prisma from '../db/prisma';
 import dayjs from 'dayjs';
 import fs from 'fs';
 import * as fastcsv from 'fast-csv';
+import { getUserNameFromToken } from '../utils/extractName';
 
 export interface PincodePayload {
   city: string;
@@ -100,7 +101,7 @@ export const createPincode = async (req: Request, res: Response) => {
       is_active,
       created_by,
     }: PincodePayload = req.body;
-
+    const user = await getUserNameFromToken(req)
     const newPincode = await prisma.pincode.create({
       data: {
         city,
@@ -108,8 +109,8 @@ export const createPincode = async (req: Request, res: Response) => {
         zipcode,
         estimatedDeliveryDays: estimated_delivery_days,
         isActive: is_active,
-        createdBy: created_by,
-        updatedBy: created_by,
+        createdBy: user,
+        updatedBy: user,
       },
     });
 
@@ -131,7 +132,7 @@ export const updatePincode = async (req: Request, res: Response) => {
       is_active,
       updated_by,
     }: PincodePayload = req.body;
-
+    const user = await getUserNameFromToken(req)
     const updated = await prisma.pincode.update({
       where: { id },
       data: {
@@ -140,7 +141,7 @@ export const updatePincode = async (req: Request, res: Response) => {
         zipcode,
         estimatedDeliveryDays: estimated_delivery_days,
         isActive: is_active,
-        updatedBy: updated_by || 'System',
+        updatedBy: user || 'System',
       },
     });
 

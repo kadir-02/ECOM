@@ -635,3 +635,42 @@ model AbandonedCartSetting {
   updated_by                         String?
   updated_at                         DateTime @updatedAt
 }
+
+model PaymentService {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  url                String?
+  is_active          Boolean  @default(true)
+
+  created_by         String?
+  created_at         DateTime @default(now())
+  updated_by         String?
+  updated_at         DateTime @updatedAt
+
+  start_date         DateTime?
+  end_date           DateTime?
+
+  // PayPal
+  paypal_client_id   String?
+  paypal_secret      String?
+
+  // Razorpay
+  razorpay_key_id     String?
+  razorpay_key_secret String?
+
+  // Cashfree
+  cashfree_client_id     String?
+  cashfree_client_secret String?
+
+  // Authorize.Net
+  authorize_net_login_id     String?
+  authorize_net_transaction_key String?
+
+  // Stripe
+  stripe_publishable_key String?
+  stripe_secret_key      String?
+
+  // Hyperpay
+  hyperpay_entity_id   String?
+  hyperpay_access_token String?
+}
