@@ -39,6 +39,7 @@ import taxRoutes from './routes/tax.route';
 import shippingRoutes from './routes/shippingService.route';
 import aboutRoutes from './routes/AboutUs/aboutUsSection.route';
 import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
+import storeRoutes from './routes/StoreAddress/store.route';
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -50,6 +51,14 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/google-analytics', googleAnalyticsRoutes)
+app.use('/homepage_statistics', counterRoutes)
+app.use('/product-tag', productTagRoutes)
+app.use('/tax', taxRoutes);
+app.use('/shipping-service', shippingRoutes);
+app.use('/about_us_section', aboutRoutes);
+app.use('/about_us_component', aboutComponentRoutes);
+app.use('/store', storeRoutes);
 app.use('/pincode', pincodeRoutes);
 app.use('/coupon', couponRoutes);
 app.use('/frontend/testimonial',TestimonialRoutes)
@@ -76,13 +85,6 @@ app.use('/company-settings',companyRoutes)
 app.use('/gallerytype',gallerytypeRoutes)
 app.use('/galleryitem',galleryitemRoutes)
 app.use('/', dashboardRoutes);
-app.use('/google-analytics', googleAnalyticsRoutes)
-app.use('/homepage_statistics', counterRoutes)
-app.use('/product-tag', productTagRoutes)
-app.use('/tax', taxRoutes);
-app.use('/shipping-service', shippingRoutes);
-app.use('/about_us_section', aboutRoutes);
-app.use('/about_us_component', aboutComponentRoutes);
 
 
 app.use(globalErrorHandler);
