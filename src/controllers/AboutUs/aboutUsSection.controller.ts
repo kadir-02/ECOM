@@ -6,17 +6,49 @@ import { getUserNameFromToken } from '../../utils/extractName';
 
 // GET all
 export const getAllAboutUsSections = async (req: Request, res: Response) => {
-  const sections = await prisma.aboutUsSection.findMany({
-    orderBy: { sequence_number: 'asc' },
-  });
+  try {
+    const sections = await prisma.aboutUsSection.findMany({
+      orderBy: { sequence_number: 'asc' },
+      include: {
+        components: {
+          orderBy: { sequence_number: 'asc' },
+        },
+      },
+    });
 
-  res.json({
-    results: sections.map((section:any) => ({
-      ...section,
+    const results = sections.map((section: any) => ({
+      id: section.id,
+      sequence_number: section.sequence_number,
+      section_name: section.section_name,
+      heading: section.heading,
+      sub_heading: section.sub_heading,
+      description: section.description,
+      image: section.image,
+      is_active: section.is_active,
+      created_by: section.created_by,
+      updated_by: section.updated_by,
       created_at: formatReadableDate(section.created_at),
       updated_at: formatReadableDate(section.updated_at),
-    })),
-  });
+
+      components: section.components.map((component: any) => ({
+        id: component.id,
+        sequence_number: component.sequence_number,
+        title: component.title,
+        description: component.description,
+        image: component.image,
+        is_active: component.is_active,
+        created_by: component.created_by,
+        updated_by: component.updated_by,
+        created_at: formatReadableDate(component.created_at),
+        updated_at: formatReadableDate(component.updated_at),
+      })),
+    }));
+
+    res.json({ results });
+  } catch (error) {
+    console.error('Error fetching About Us sections:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
 };
 
 // PATCH (Edit)
