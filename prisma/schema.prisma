@@ -249,6 +249,7 @@ model Order {
   id             Int         @id @default(autoincrement())
   userId         Int
   totalAmount    Float
+  finalAmount      Float?   
   status         OrderStatus @default(PENDING)
   subtotal       Float?
   discountAmount Float?
@@ -259,6 +260,11 @@ model Order {
   addressId     Int?
   billingAddress  String?    
   shippingAddress String?
+
+  taxAmount          Float?          // e.g., 45.23
+  taxType            String?         // "IGST" or "CGST+SGST"
+  appliedTaxRate     Float?          // e.g., 18.0
+  isTaxInclusive     Boolean? 
 
   user    User        @relation(fields: [userId], references: [id])
   items   OrderItem[]
@@ -372,6 +378,9 @@ model CompanySettings {
 
   product_low_stock_threshold Int?
   minimum_order_quantity      Int?
+
+  is_tax_inclusive       Boolean  @default(true)  // Inclusive or Exclusive
+  company_state          String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
