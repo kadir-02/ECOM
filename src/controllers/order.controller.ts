@@ -126,7 +126,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     const sgst = taxRates.find(t => t.name.toUpperCase() === 'SGST')?.percentage ?? 0;
     const igst = taxRates.find(t => t.name.toUpperCase() === 'IGST')?.percentage ?? 0;
 
-    const isInterState = deliveryState !== company.company_state;
+   const isInterState =
+  deliveryState.trim().toLowerCase() !== company?.company_state?.trim().toLowerCase();
     const isInclusive = company.is_tax_inclusive;
 
     const appliedTaxRate = isInterState ? igst : cgst + sgst;
