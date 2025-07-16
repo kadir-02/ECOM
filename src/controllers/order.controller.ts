@@ -7,6 +7,7 @@ import PDFDocument from 'pdfkit';
 import { sendOrderConfirmationEmail } from '../email/sendOrderConfirmationEmail';
 import { sendNotification } from '../utils/notification';
 import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
+import { createShiprocketShipment } from '../utils/createShipping';
 
 type OrderItemInput = {
   productId?: number;
@@ -237,7 +238,33 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${finalAmount}`, 'ORDER');
 
     await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
+// const shippingService = await prisma.shippingService.findFirst({
+//   where: { name: 'Shiprocket', is_active: true },
+// });
 
+// if (!shippingService?.shiprocket_token) {
+//   console.warn('Shiprocket token not available. Skipping shipment creation.');
+//    res.status(201).json({ ...order, finalAmount });
+//    return;
+// }
+
+// const shipmentData = await createShiprocketShipment(order, address, shippingService.shiprocket_token);
+
+// if (shipmentData) {
+//   await prisma.shipment.create({
+//     data: {
+//       orderId: order.id,
+//       courierName: shipmentData.courier_company || 'Shiprocket',
+//       awbCode: shipmentData.awb_code,
+//       trackingUrl: shipmentData.tracking_url,
+//       shipmentId: shipmentData.shipment_id?.toString() || '',
+//       status: shipmentData.current_status || 'Pending',
+//       labelUrl: shipmentData.label_url,
+//     },
+//   });
+
+//   console.log(`✅ Shipment created for Order #${order.id}`);
+// }
     res.status(201).json({ ...order, finalAmount });
   } catch (error) {
     console.error('Create order failed:', error);
