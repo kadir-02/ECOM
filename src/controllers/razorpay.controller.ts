@@ -13,6 +13,9 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
     .update(body)
     .digest('hex');
 
+    console.log("expectedSignature", expectedSignature)
+    console.log("signature", signature)
+
   if (signature !== expectedSignature) {
     console.warn('Invalid Razorpay webhook signature');
     res.status(400).json({ message: 'Invalid signature' });
