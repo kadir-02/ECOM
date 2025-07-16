@@ -42,6 +42,7 @@ import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
 import storeRoutes from './routes/StoreAddress/store.route';
 import abandonedCartRoutes from './routes/Abandoned/abandonedCartSetting.route';
 import paymentServiceRoutes from './routes/PaymentService/paymentService.route';
+import razorpayWebhookRoutes from './routes/razorpay.route'
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
+app.use('/razorpay-webhook', razorpayWebhookRoutes);
 app.use('/google-analytics', googleAnalyticsRoutes)
 app.use('/homepage_statistics', counterRoutes)
 app.use('/product-tag', productTagRoutes)

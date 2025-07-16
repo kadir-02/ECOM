@@ -276,6 +276,7 @@ model Order {
   address          Address?           @relation(fields: [addressId], references: [id])
   couponRedemption CouponRedemption[]
   isVisible        Boolean     @default(false)
+  razorpayOrderId  String?  
 }
 
 model OrderItem {

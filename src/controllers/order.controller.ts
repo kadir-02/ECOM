@@ -8,6 +8,12 @@ import { sendOrderConfirmationEmail } from '../email/sendOrderConfirmationEmail'
 import { sendNotification } from '../utils/notification';
 import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
 import { createShiprocketShipment } from '../utils/createShipping';
+import Razorpay from "razorpay";
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 type OrderItemInput = {
   productId?: number;
@@ -107,7 +113,11 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       res.status(400).json({ message: 'Invalid address ID' });
       return
     }
-
+const razorpayOrder = await razorpay.orders.create({
+  amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
+  currency: "INR",
+  receipt: `receipt_order_${Date.now()}`,
+});
     const order = await prisma.order.create({
       data: {
         userId,
@@ -125,6 +135,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         shippingRate,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
+        razorpayOrderId:razorpayOrder.id,
         items: {
           create: createItems,
         },
@@ -225,7 +236,13 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
 
 //   console.log(`✅ Shipment created for Order #${order.id}`);
 // }
-    res.status(201).json({ ...order, totalAmount });
+// const razorpayOrder = await razorpay.orders.create({
+//   amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
+//   currency: "INR",
+//   receipt: `receipt_order_${Date.now()}`,
+// });
+
+    res.status(201).json({ ...order, razorpayid:razorpayOrder.id,totalAmount });
   } catch (error) {
     console.error('Create order failed:', error);
     res.status(500).json({ message: 'Failed to create order', error });
