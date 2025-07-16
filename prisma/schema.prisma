@@ -54,7 +54,6 @@ model User {
   addresses      Address[]
   discountCodes  DiscountCode[]
   notifications  Notification[]
- 
 }
 
 model Profile {
@@ -77,7 +76,7 @@ model Category {
   banner          String?
   imageUrl        String?
   publicId        String?
-  is_active       Boolean  @default(true)
+  is_active       Boolean       @default(true)
   seo_title       String?
   seo_description String?
 }
@@ -99,10 +98,10 @@ model Subcategory {
 }
 
 model Product {
-  id                     Int    @id @default(autoincrement())
+  id                     Int       @id @default(autoincrement())
   isActive               Boolean
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
   isDeleted              Boolean
   deletedAt              DateTime? @db.Timestamptz(6)
   name                   String    @db.VarChar(200)
@@ -122,6 +121,7 @@ model Product {
   length         String? @db.VarChar(15)
   width          String? @db.VarChar(15)
   weight         String? @db.VarChar(15)
+  height         Decimal?
   slug           String? @db.VarChar(50)
   sequenceNumber Int?    @db.SmallInt
   seoTitle       String?
@@ -139,10 +139,10 @@ model Product {
 }
 
 model ProductSpecification {
-  id        Int    @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   isActive  Boolean
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   isDeleted Boolean
   deletedAt DateTime? @db.Timestamptz(6)
   name      String    @db.VarChar(30)
@@ -154,63 +154,62 @@ model ProductSpecification {
 
 model ProductImage {
   id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now()) 
-  updatedAt DateTime @updatedAt 
-  sequence  Int      
-  image     String   
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sequence  Int
+  image     String
   productId Int
 
   product Product @relation(fields: [productId], references: [id])
 }
 
 model ProductVariant {
-  id                   Int             @id @default(autoincrement())
-  productId            Int
-  name                 String?
-  SKU                  String 
-  description          String?
-  specification        Json
-  selling_price        Float           // actual selling price
-  base_and_selling_price_difference_in_percent  Float?  // renamed from oldPrice
-  stock                Int
-  colour_code          String?         // renamed from colourCode
-  is_selected          Boolean         @default(false)
-  is_active            Boolean         @default(true)
-  is_new_arrival       Boolean         @default(false)
-  created_by           Int
-  low_stock_threshold  Int?            // renamed from lowStockThreshold
-  createdAt            DateTime        @default(now())
-  isDeleted            Boolean         @default(false)
+  id                                           Int      @id @default(autoincrement())
+  productId                                    Int
+  name                                         String?
+  SKU                                          String
+  description                                  String?
+  specification                                Json
+  selling_price                                Float // actual selling price
+  base_and_selling_price_difference_in_percent Float? // renamed from oldPrice
+  stock                                        Int
+  colour_code                                  String? // renamed from colourCode
+  is_selected                                  Boolean  @default(false)
+  is_active                                    Boolean  @default(true)
+  is_new_arrival                               Boolean  @default(false)
+  created_by                                   Int
+  low_stock_threshold                          Int? // renamed from lowStockThreshold
+  createdAt                                    DateTime @default(now())
+  isDeleted                                    Boolean  @default(false)
 
-  product              Product         @relation(fields: [productId], references: [id])
-  images               VariantImage[]
-  cartItems            CartItem[]
-  orderItems           OrderItem[]
+  product    Product        @relation(fields: [productId], references: [id])
+  images     VariantImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 }
 
 model VariantImage {
-  id        Int      @id @default(autoincrement())
-  url       String
-  publicId  String?
-  createdAt DateTime @default(now())
-  variantId Int
+  id              Int            @id @default(autoincrement())
+  url             String
+  publicId        String?
+  createdAt       DateTime       @default(now())
+  variantId       Int
   sequence_number Int
-  is_active       Boolean         @default(true)
-  variant ProductVariant @relation(fields: [variantId], references: [id])
+  is_active       Boolean        @default(true)
+  variant         ProductVariant @relation(fields: [variantId], references: [id])
 }
 
 model Cart {
-  id             Int            @id @default(autoincrement())
-  userId         Int            @unique
-  user           User           @relation(fields: [userId], references: [id])
-  items          CartItem[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  reminderCount  Int            @default(0)
-  lastReminderAt DateTime?
-  discountCodes  DiscountCode[]
+  id                Int                @id @default(autoincrement())
+  userId            Int                @unique
+  user              User               @relation(fields: [userId], references: [id])
+  items             CartItem[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  reminderCount     Int                @default(0)
+  lastReminderAt    DateTime?
+  discountCodes     DiscountCode[]
   couponRedemptions CouponRedemption[]
- 
 }
 
 model CartItem {
@@ -246,35 +245,40 @@ model Address {
 }
 
 model Order {
-  id             Int         @id @default(autoincrement())
-  userId         Int
-  totalAmount    Float
-  finalAmount      Float?   
-  status         OrderStatus @default(PENDING)
-  subtotal       Float?
-  discountAmount Float?
-  discountCode   String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  paymentId      Int?        @unique
-  addressId     Int?
-  billingAddress  String?    
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  totalAmount     Float
+  finalAmount     Float?
+  status          OrderStatus @default(PENDING)
+  subtotal        Float?
+  discountAmount  Float?
+  discountCode    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  paymentId       Int?        @unique
+  addressId       Int?
+  billingAddress  String?
   shippingAddress String?
 
-  taxAmount          Float?          // e.g., 45.23
-  taxType            String?         // "IGST" or "CGST+SGST"
-  appliedTaxRate     Float?          // e.g., 18.0
-  isTaxInclusive     Boolean? 
+  taxAmount      Float? // e.g., 45.23
+  taxType        String? // "IGST" or "CGST+SGST"
+  appliedTaxRate Float? // e.g., 18.0
+  isTaxInclusive Boolean?
 
-  user    User        @relation(fields: [userId], references: [id])
-  items   OrderItem[]
-  payment Payment?    @relation(fields: [paymentId], references: [id])
-  address Address?     @relation(fields: [addressId], references: [id])
+  shippingRate    Float?
+  shippingCourier String?
+  shippingETA     String?
+  shipment        Shipment?
+
+  user             User               @relation(fields: [userId], references: [id])
+  items            OrderItem[]
+  payment          Payment?           @relation(fields: [paymentId], references: [id])
+  address          Address?           @relation(fields: [addressId], references: [id])
   couponRedemption CouponRedemption[]
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
+  id        Int   @id @default(autoincrement())
   orderId   Int
   productId Int?
   variantId Int?
@@ -379,8 +383,8 @@ model CompanySettings {
   product_low_stock_threshold Int?
   minimum_order_quantity      Int?
 
-  is_tax_inclusive       Boolean  @default(true)  // Inclusive or Exclusive
-  company_state          String?
+  is_tax_inclusive Boolean @default(true) // Inclusive or Exclusive
+  company_state    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -429,9 +433,9 @@ model GalleryItem {
 }
 
 model NewsLetter {
-  id              Int          @id @default(autoincrement())
-  email           String       @unique
-  createdAt       DateTime     @default(now())
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }
 
 model DashboardSetting {
@@ -458,38 +462,38 @@ model ContactRequest {
   own_retail_space       Boolean?
   subject                String?
   message                String?
-  contacted_the_customer Boolean   @default(false)
+  contacted_the_customer Boolean  @default(false)
   reply_given            String?
   updated_by             String?
 }
 
 model CouponCode {
-  id               Int               @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   name             String
-  code             String            @unique
+  code             String   @unique
   discount         Int
   expiresAt        DateTime
-  createdAt        DateTime          @default(now())
-  show_on_homepage Boolean           @default(false)
-  redeemCount      Int               @default(0)
-  maxRedeemCount   Int               @default(100)
-  is_active        Boolean            @default(false)
+  createdAt        DateTime @default(now())
+  show_on_homepage Boolean  @default(false)
+  redeemCount      Int      @default(0)
+  maxRedeemCount   Int      @default(100)
+  is_active        Boolean  @default(false)
 
-  redemptions      CouponRedemption[]
+  redemptions CouponRedemption[]
 }
 
 model CouponRedemption {
-  id        Int          @id @default(autoincrement())
-  couponId  Int
-  cartId    Int
-  usedAt    DateTime     @default(now())
-  orderId   Int?   
-  coupon    CouponCode   @relation(fields: [couponId], references: [id])
+  id       Int        @id @default(autoincrement())
+  couponId Int
+  cartId   Int
+  usedAt   DateTime   @default(now())
+  orderId  Int?
+  coupon   CouponCode @relation(fields: [couponId], references: [id])
 
-  cart      Cart       @relation(fields: [cartId], references: [id])
-  order     Order?     @relation(fields: [orderId], references: [id])
+  cart  Cart   @relation(fields: [cartId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
 
-  @@unique([couponId, cartId]) 
+  @@unique([couponId, cartId])
 }
 
 model Pincode {
@@ -506,162 +510,162 @@ model Pincode {
 }
 
 model GoogleAnalytics {
-  id             Int      @id @default(autoincrement())
+  id             Int     @id @default(autoincrement())
   google_email   String
   tag            String
   measurement_id String
-  is_active      Boolean  @default(true)
+  is_active      Boolean @default(true)
 
-  created_by     String
-  updated_by     String
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_by String
+  updated_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model HomepageStatistic {
-  id          Int      @id @default(autoincrement())
-  title       String
-  number      Int
-  is_active   Boolean  @default(true)
+  id        Int     @id @default(autoincrement())
+  title     String
+  number    Int
+  is_active Boolean @default(true)
 
-  created_by  String
-  updated_by  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_by String
+  updated_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model ProductTag {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  is_active   Boolean  @default(true)
-  created_by  String
-  updated_by  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  is_active  Boolean  @default(true)
+  created_by String
+  updated_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model Tax {
-  id          Int      @id @default(autoincrement())
-  name        String
-  percentage  Float
-  is_active   Boolean  @default(true)
-  created_by  String
-  updated_by  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  name       String
+  percentage Float
+  is_active  Boolean  @default(true)
+  created_by String
+  updated_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model ShippingService {
-  id                     Int      @id @default(autoincrement())
-  name                   String
-  url                    String?
-  is_active              Boolean  @default(true)
-  created_by             String?
-  created_at             DateTime @default(now())
-  updated_by             String?
-  updated_at             DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  name       String
+  url        String?
+  is_active  Boolean  @default(true)
+  created_by String?
+  created_at DateTime @default(now())
+  updated_by String?
+  updated_at DateTime @updatedAt
 
   // Aramex
-  aramex_username        String?
-  aramex_password        String?
-  aramex_account_number  String?
-  aramex_account_pin     String?
+  aramex_username       String?
+  aramex_password       String?
+  aramex_account_number String?
+  aramex_account_pin    String?
 
   // Shiprocket
-  shiprocket_username    String?
-  shiprocket_password    String?
-  shiprocket_token       String?
+  shiprocket_username String?
+  shiprocket_password String?
+  shiprocket_token    String?
 
   // USPS
-  usps_client_id         String?
-  usps_client_secret     String?
+  usps_client_id     String?
+  usps_client_secret String?
 
-  start_date             DateTime?
-  end_date               DateTime?
+  start_date DateTime?
+  end_date   DateTime?
 }
 
 model AboutUsSection {
-  id              Int      @id @default(autoincrement())
+  id              Int                @id @default(autoincrement())
   sequence_number Int
   section_name    String
   heading         String?
   sub_heading     String?
   description     String?
   image           String?
-  is_active       Boolean  @default(true)
+  is_active       Boolean            @default(true)
   created_by      String?
-  created_at      DateTime @default(now())
+  created_at      DateTime           @default(now())
   updated_by      String?
-  updated_at      DateTime @updatedAt
-  components      AboutUsComponent[] 
+  updated_at      DateTime           @updatedAt
+  components      AboutUsComponent[]
 }
 
 model AboutUsComponent {
-  id             Int              @id @default(autoincrement())
+  id              Int            @id @default(autoincrement())
   sequence_number Int
-  section        AboutUsSection  @relation(fields: [sectionId], references: [id])
-  sectionId      Int
-  heading        String?
-  sub_heading    String?
-  description    String?
-  image          String?
-  is_active      Boolean          @default(true)
-  precentage     String?
-  created_by     String?
-  updated_by     String?
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
+  section         AboutUsSection @relation(fields: [sectionId], references: [id])
+  sectionId       Int
+  heading         String?
+  sub_heading     String?
+  description     String?
+  image           String?
+  is_active       Boolean        @default(true)
+  precentage      String?
+  created_by      String?
+  updated_by      String?
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
 }
 
 model Store {
-  id             Int      @id @default(autoincrement())
-  name           String
-  email          String?   @db.VarChar(255)
-  phone_numbers  String
-  address        String
-  locality       String?
-  city           String
-  state          String
-  country        String
-  zipcode        Int
-  latitude       String
-  longitude      String
-  is_active      Boolean   @default(true)
-  created_by     String?
-  created_at     DateTime  @default(now())
-  updated_by     String?
-  updated_at     DateTime  @updatedAt
+  id            Int      @id @default(autoincrement())
+  name          String
+  email         String?  @db.VarChar(255)
+  phone_numbers String
+  address       String
+  locality      String?
+  city          String
+  state         String
+  country       String
+  zipcode       Int
+  latitude      String
+  longitude     String
+  is_active     Boolean  @default(true)
+  created_by    String?
+  created_at    DateTime @default(now())
+  updated_by    String?
+  updated_at    DateTime @updatedAt
 }
 
 model AbandonedCartSetting {
-  id                                 Int      @id @default(autoincrement())
+  id                                Int      @id @default(autoincrement())
   hours_after_email_is_sent         Int
   discount_to_be_given_in_percent   Int
   hours_after_email_cart_is_emptied Int
-  is_active                          Boolean  @default(true)
-  created_by                         String?
-  created_at                         DateTime @default(now())
-  updated_by                         String?
-  updated_at                         DateTime @updatedAt
+  is_active                         Boolean  @default(true)
+  created_by                        String?
+  created_at                        DateTime @default(now())
+  updated_by                        String?
+  updated_at                        DateTime @updatedAt
 }
 
 model PaymentService {
-  id                 Int      @id @default(autoincrement())
-  name               String
-  url                String?
-  is_active          Boolean  @default(true)
+  id        Int     @id @default(autoincrement())
+  name      String
+  url       String?
+  is_active Boolean @default(true)
 
-  created_by         String?
-  created_at         DateTime @default(now())
-  updated_by         String?
-  updated_at         DateTime @updatedAt
+  created_by String?
+  created_at DateTime @default(now())
+  updated_by String?
+  updated_at DateTime @updatedAt
 
-  start_date         DateTime?
-  end_date           DateTime?
+  start_date DateTime?
+  end_date   DateTime?
 
   // PayPal
-  paypal_client_id   String?
-  paypal_secret      String?
+  paypal_client_id String?
+  paypal_secret    String?
 
   // Razorpay
   razorpay_key_id     String?
@@ -672,7 +676,7 @@ model PaymentService {
   cashfree_client_secret String?
 
   // Authorize.Net
-  authorize_net_login_id     String?
+  authorize_net_login_id        String?
   authorize_net_transaction_key String?
 
   // Stripe
@@ -680,6 +684,22 @@ model PaymentService {
   stripe_secret_key      String?
 
   // Hyperpay
-  hyperpay_entity_id   String?
+  hyperpay_entity_id    String?
   hyperpay_access_token String?
+}
+
+model Shipment {
+  id                Int       @id @default(autoincrement())
+  orderId           Int       @unique
+  courierName       String
+  awbCode           String    @unique
+  trackingUrl       String?
+  shipmentId        String? // Shiprocket shipment ID
+  status            String? // e.g. "Picked Up", "In Transit"
+  labelUrl          String? // PDF label URL
+  estimatedDelivery DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
 }
