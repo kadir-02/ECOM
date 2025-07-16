@@ -9,7 +9,6 @@ import { getBestSellingProducts, getNewArrivalProducts, getProductBySlug } from 
 
 const router = Router({ mergeParams: true });
 
-// Public routes
 router.get('/', getProducts);
 router.get('/filter', getProductsFilter);
 router.use('/image/',productImageRoutes)
@@ -20,7 +19,6 @@ router.get('/best-selling', getBestSellingProducts);
 router.get('/newarrivals',getNewArrivalProducts)
 
 
-// Admin-only routes
 router.use(authenticate, authorizeAdmin);
 
 router.patch('/toggle/:id', toggleProductStatus);

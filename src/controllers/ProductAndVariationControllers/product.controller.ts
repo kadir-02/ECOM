@@ -3,7 +3,6 @@ import prisma from "../../db/prisma";
 import { generateSlug } from "../../utils/slugify";
 import { buildProductQuery } from '../../utils/productFilters';
 
-// CREATE PRODUCT
 export const createProduct = async (req: Request, res: Response) => {
   try {
     const {
@@ -287,10 +286,11 @@ export const getProducts = async (req: Request, res: Response) => {
       if (mappedField) {
         orderBy = { [mappedField]: isDesc ? 'desc' : 'asc' };
       } else {
-        return res.status(400).json({
+         res.status(400).json({
           success: false,
           message: `Invalid ordering field: ${rawField}`,
         });
+        return;
       }
     }
 
