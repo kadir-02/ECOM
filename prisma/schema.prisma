@@ -275,6 +275,7 @@ model Order {
   payment          Payment?           @relation(fields: [paymentId], references: [id])
   address          Address?           @relation(fields: [addressId], references: [id])
   couponRedemption CouponRedemption[]
+  isVisible        Boolean     @default(false)
 }
 
 model OrderItem {
