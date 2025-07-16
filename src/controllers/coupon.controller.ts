@@ -308,10 +308,11 @@ const alreadyRedeemed = await prisma.couponRedemption.findUnique({
 if (alreadyRedeemed) {
   if (alreadyRedeemed.orderId !== null) {
     // Coupon already used in an actual order
-    return res.status(400).json({ message: 'This coupon is already used in a completed order' });
+    res.status(400).json({ message: 'This coupon is already used in a completed order' });
+     return
   } else {
     // Soft redemption exists (no order placed) — reuse it instead of re-inserting
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'Coupon code applied successfully.',
       data: {
