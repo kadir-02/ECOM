@@ -20,6 +20,7 @@ export const createProduct = async (req: Request, res: Response) => {
       length,
       width,
       weight,
+      height,
       seoTitle,
       seoKeyword,
       seoDescription,
@@ -75,6 +76,8 @@ export const createProduct = async (req: Request, res: Response) => {
         length,
         width,
         weight,
+       height,
+
         slug,
         sequenceNumber: nextSeq,
         seoTitle,
@@ -240,7 +243,11 @@ export const getProducts = async (req: Request, res: Response) => {
     const parent = query.parent;
     const id = parseInt(query.id as string);
 
-    const categoryId = parseInt(query.category as string);
+    const categoryIds = Array.isArray(query.category)
+  ? query.category.map(Number)
+  : query.category
+  ? [Number(query.category)]
+  : [];
     const subcategoryId = parseInt(query.subcategory as string);
     const minPrice = parseFloat(query.min as string);
     const maxPrice = parseFloat(query.max as string);
@@ -249,7 +256,9 @@ export const getProducts = async (req: Request, res: Response) => {
       isDeleted: false,
     };
 
-    if (!isNaN(categoryId)) whereClause.categoryId = categoryId;
+   if (categoryIds.length > 0) {
+  whereClause.categoryId = { in: categoryIds };
+}
     if (!isNaN(subcategoryId)) whereClause.subcategoryId = subcategoryId;
     if (!isNaN(id)) whereClause.id = id;
 
@@ -354,12 +363,54 @@ export const getProducts = async (req: Request, res: Response) => {
         specifications: specsObj,
       };
     });
+const totalCount = await prisma.product.count({
+  where: {
+    ...whereClause,
+    ...(search
+      ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+            {
+              basePrice: {
+                equals: isNaN(Number(search)) ? undefined : Number(search),
+              },
+            },
+            {
+              sellingPrice: {
+                equals: isNaN(Number(search)) ? undefined : Number(search),
+              },
+            },
+            {
+              category: {
+                is: {
+                  name: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  },
+});
 
-    res.status(200).json({
-      success: true,
-      count: transformed.length,
-      products: transformed,
-    });
+const totalPages = Math.ceil(totalCount / limit);
+
+  res.status(200).json({
+  success: true,
+  count: transformed.length,
+  totalCount,
+  totalPages,
+  currentPage: page,
+  products: transformed,
+});
   } catch (error: any) {
     console.error('Get products error:', error);
     res.status(500).json({ success: false, message: error.message });
