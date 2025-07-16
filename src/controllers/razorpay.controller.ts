@@ -6,32 +6,55 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!;
   const signature = req.headers['x-razorpay-signature'] as string;
 
-  const body = (req.body as Buffer).toString(); // ✅ Raw body
+  const body = (req.body as Buffer).toString();
 
   const expectedSignature = crypto
     .createHmac('sha256', webhookSecret)
     .update(body)
     .digest('hex');
 
-    console.log("expectedSignature", expectedSignature)
-    console.log("signature", signature)
+  const isValid = signature === expectedSignature;
 
-  if (signature !== expectedSignature) {
-    console.warn('Invalid Razorpay webhook signature');
-    res.status(400).json({ message: 'Invalid signature' });
+  let event: any;
+
+  try {
+    event = JSON.parse(body);
+  } catch (err) {
+    console.error('🔴 Failed to parse webhook body:', err);
+    res.status(400).json({ message: 'Invalid body' });
     return;
   }
 
-  const event = JSON.parse(body);
+  const razorpayOrderId = event?.payload?.payment?.entity?.order_id || null;
+  const razorpayPaymentId = event?.payload?.payment?.entity?.id || null; // ✅ Transaction ID
 
-  console.log("event.event", event.event);
-  console.log("req.body", req.body)
+  // ✅ Log to database
+  try {
+    await prisma.razorpayWebhookLog.create({
+      data: {
+        event: event.event || 'unknown',
+        orderId: razorpayOrderId,
+        payload: event,
+        receivedAt: new Date(),
+        signature,
+        isValid,
+      },
+    });
+  } catch (logError) {
+    console.error('🔴 Failed to log webhook:', logError);
+  }
 
-  if (event.event === 'payment.captured') {
-    const razorpayOrderId = event.payload.payment.entity.order_id;
+  // ❌ Invalid signature
+  if (!isValid) {
+    console.warn('❌ Invalid Razorpay webhook signature');
+    res.status(400).json({ message: 'Invalid signature' });
+    return
+  }
 
+  // ✅ Handle valid webhook
+  if (event.event === 'payment.captured' && razorpayOrderId) {
     try {
-      const res = await prisma.order.updateMany({
+      const order = await prisma.order.update({
         where: { razorpayOrderId },
         data: {
           isVisible: true,
@@ -39,8 +62,21 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
         },
       });
 
+      if(!order) {
+        res.status(400).json({error: "order payment not get"})
+      }
+
+      await prisma.payment.updateMany({
+        where: {
+          id: Number(order.paymentId)
+        },
+        data: {
+          transactionId: razorpayPaymentId,
+          status: 'SUCCESS'
+        }
+      })
+
       console.log(`✅ Order updated after payment capture: ${razorpayOrderId}`);
-      console.log("res", res)
     } catch (err) {
       console.error('🔴 Failed to update order:', err);
     }

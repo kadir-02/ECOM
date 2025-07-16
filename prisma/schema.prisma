@@ -276,7 +276,7 @@ model Order {
   address          Address?           @relation(fields: [addressId], references: [id])
   couponRedemption CouponRedemption[]
   isVisible        Boolean     @default(false)
-  razorpayOrderId  String?  
+  razorpayOrderId  String?     @unique 
 }
 
 model OrderItem {
@@ -704,4 +704,15 @@ model Shipment {
   updatedAt         DateTime  @updatedAt
 
   order Order @relation(fields: [orderId], references: [id])
+}
+
+
+model RazorpayWebhookLog {
+  id           Int      @id @default(autoincrement())
+  event        String
+  orderId      String?   // Razorpay Order ID
+  payload      Json
+  receivedAt   DateTime  @default(now())
+  signature    String
+  isValid      Boolean
 }
