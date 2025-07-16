@@ -48,13 +48,14 @@ import razorpayWebhookRoutes from './routes/razorpay.route'
 dotenv.config();
 const app = express();
 
+app.use('/razorpay-webhook', razorpayWebhookRoutes);
+
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
 
 // app.use('/verify-email', emailRoutes);
-app.use('/razorpay-webhook', razorpayWebhookRoutes);
 app.use('/google-analytics', googleAnalyticsRoutes)
 app.use('/homepage_statistics', counterRoutes)
 app.use('/product-tag', productTagRoutes)
