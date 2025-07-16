@@ -101,17 +101,97 @@ export const createProduct = async (req: Request, res: Response) => {
   }
 };
 
+
 // export const getProducts = async (req: Request, res: Response) => {
 //   try {
-//     const { category } = req.query;
+//     const { category, parent, ordering, is_active, id } = req.query;
 
 //     const whereClause: any = { isDeleted: false };
+//     const { search } = req.query;
+
 //     if (category && !isNaN(Number(category))) {
 //       whereClause.categoryId = Number(category);
 //     }
 
+//     if (id && !isNaN(Number(id))) {
+//       whereClause.id = Number(id);
+//     }
+
+//     if (parent === "true") {
+//       whereClause.subcategoryId = null;
+//     }
+
+//     if (is_active !== undefined) {
+//       // Convert "true" / "false" string to boolean
+//       whereClause.isActive = is_active === "true";
+//     }
+
+//     // Map snake_case query fields to DB camelCase fields
+//     const orderFieldMap: Record<string, string> = {
+//       selling_price: "sellingPrice",
+//       base_price: "basePrice",
+//       price_difference_percent: "priceDifferencePercent",
+//       stock: "stock",
+//       name: "name",
+//       sequence_number: "sequenceNumber",
+//     };
+
+//     // Default ordering by sequenceNumber ascending
+//     let orderBy: any = { sequenceNumber: "asc" };
+
+//     if (ordering && typeof ordering === "string") {
+//       const isDesc = ordering.startsWith("-");
+//       const rawField = isDesc ? ordering.slice(1) : ordering;
+//       const mappedField = orderFieldMap[rawField];
+
+//       if (mappedField) {
+//         orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
+//       } else {
+//         res.status(400).json({
+//           success: false,
+//           message: `Invalid ordering field: ${rawField}`,
+//         });
+//         return;
+//       }
+//     }
+
 //     const products = await prisma.product.findMany({
-//       where: whereClause,
+//       where: {
+//         ...whereClause,
+//         ...(search && typeof search === "string"
+//           ? {
+//             OR: [
+//               {
+//                 name: {
+//                   contains: search,
+//                   mode: "insensitive",
+//                 },
+//               },
+//               {
+//                 basePrice: {
+//                   equals: isNaN(Number(search)) ? undefined : Number(search),
+//                 },
+//               },
+//               {
+//                 sellingPrice: {
+//                   equals: isNaN(Number(search)) ? undefined : Number(search),
+//                 },
+//               },
+//               {
+//                 category: {
+//                   is: {
+//                     name: {
+//                       contains: search,
+//                       mode: "insensitive",
+//                     },
+//                   },
+//                 },
+//               }
+
+//             ],
+//           }
+//           : {}),
+//       },
 //       include: {
 //         category: true,
 //         subcategory: true,
@@ -119,8 +199,9 @@ export const createProduct = async (req: Request, res: Response) => {
 //         variants: { include: { images: true } },
 //         specifications: true,
 //       },
-//       orderBy: { sequenceNumber: 'asc' },
+//       orderBy,
 //     });
+
 
 //     const transformed = products.map((p) => {
 //       const specsObj: Record<string, string[]> = {};
@@ -134,101 +215,119 @@ export const createProduct = async (req: Request, res: Response) => {
 //       };
 //     });
 
-//     res.status(200).json({ success: true, count: transformed.length, products: transformed });
+//     res.status(200).json({
+//       success: true,
+//       count: transformed.length,
+//       products: transformed,
+//     });
 //   } catch (error: any) {
-//     console.error('Get products error:', error);
+//     console.error("Get products error:", error);
 //     res.status(500).json({ success: false, message: error.message });
 //   }
 // };
 
+
 export const getProducts = async (req: Request, res: Response) => {
   try {
-    const { category, parent, ordering, is_active, id } = req.query;
+    const query = req.query;
 
-    const whereClause: any = { isDeleted: false };
-    const { search } = req.query;
+    const page = parseInt(query.page as string) || 1;
+    const limit = parseInt(query.limit as string) || 10;
+    const skip = (page - 1) * limit;
 
-    if (category && !isNaN(Number(category))) {
-      whereClause.categoryId = Number(category);
-    }
+    const search = query.search as string || '';
+    const ordering = query.sort as string;
+    const is_active = query.is_active;
+    const parent = query.parent;
+    const id = parseInt(query.id as string);
 
-    if (id && !isNaN(Number(id))) {
-      whereClause.id = Number(id);
-    }
+    const categoryId = parseInt(query.category as string);
+    const subcategoryId = parseInt(query.subcategory as string);
+    const minPrice = parseFloat(query.min as string);
+    const maxPrice = parseFloat(query.max as string);
 
-    if (parent === "true") {
-      whereClause.subcategoryId = null;
-    }
-
-    if (is_active !== undefined) {
-      // Convert "true" / "false" string to boolean
-      whereClause.isActive = is_active === "true";
-    }
-
-    // Map snake_case query fields to DB camelCase fields
-    const orderFieldMap: Record<string, string> = {
-      selling_price: "sellingPrice",
-      base_price: "basePrice",
-      price_difference_percent: "priceDifferencePercent",
-      stock: "stock",
-      name: "name",
-      sequence_number: "sequenceNumber",
+    const whereClause: any = {
+      isDeleted: false,
     };
 
-    // Default ordering by sequenceNumber ascending
-    let orderBy: any = { sequenceNumber: "asc" };
+    if (!isNaN(categoryId)) whereClause.categoryId = categoryId;
+    if (!isNaN(subcategoryId)) whereClause.subcategoryId = subcategoryId;
+    if (!isNaN(id)) whereClause.id = id;
 
-    if (ordering && typeof ordering === "string") {
-      const isDesc = ordering.startsWith("-");
+    if (parent === 'true') whereClause.subcategoryId = null;
+    if (is_active !== undefined) whereClause.isActive = is_active === 'true';
+
+    if (!isNaN(minPrice) && !isNaN(maxPrice)) {
+      whereClause.sellingPrice = {
+        gte: minPrice,
+        lte: maxPrice,
+      };
+    } else if (!isNaN(minPrice)) {
+      whereClause.sellingPrice = { gte: minPrice };
+    } else if (!isNaN(maxPrice)) {
+      whereClause.sellingPrice = { lte: maxPrice };
+    }
+
+    const orderFieldMap: Record<string, string> = {
+      selling_price: 'sellingPrice',
+      base_price: 'basePrice',
+      price_difference_percent: 'priceDifferencePercent',
+      stock: 'stock',
+      name: 'name',
+      sequence_number: 'sequenceNumber',
+    };
+
+    let orderBy: any = { sequenceNumber: 'asc' };
+
+    if (ordering && typeof ordering === 'string') {
+      const isDesc = ordering.startsWith('-');
       const rawField = isDesc ? ordering.slice(1) : ordering;
       const mappedField = orderFieldMap[rawField];
 
       if (mappedField) {
-        orderBy = { [mappedField]: isDesc ? "desc" : "asc" };
+        orderBy = { [mappedField]: isDesc ? 'desc' : 'asc' };
       } else {
-        res.status(400).json({
+        return res.status(400).json({
           success: false,
           message: `Invalid ordering field: ${rawField}`,
         });
-        return;
       }
     }
 
     const products = await prisma.product.findMany({
       where: {
         ...whereClause,
-        ...(search && typeof search === "string"
+        ...(search
           ? {
-            OR: [
-              {
-                name: {
-                  contains: search,
-                  mode: "insensitive",
+              OR: [
+                {
+                  name: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
                 },
-              },
-              {
-                basePrice: {
-                  equals: isNaN(Number(search)) ? undefined : Number(search),
+                {
+                  basePrice: {
+                    equals: isNaN(Number(search)) ? undefined : Number(search),
+                  },
                 },
-              },
-              {
-                sellingPrice: {
-                  equals: isNaN(Number(search)) ? undefined : Number(search),
+                {
+                  sellingPrice: {
+                    equals: isNaN(Number(search)) ? undefined : Number(search),
+                  },
                 },
-              },
-              {
-                category: {
-                  is: {
-                    name: {
-                      contains: search,
-                      mode: "insensitive",
+                {
+                  category: {
+                    is: {
+                      name: {
+                        contains: search,
+                        mode: 'insensitive',
+                      },
                     },
                   },
                 },
-              }
-
-            ],
-          }
+              ],
+            }
           : {}),
       },
       include: {
@@ -239,8 +338,9 @@ export const getProducts = async (req: Request, res: Response) => {
         specifications: true,
       },
       orderBy,
+      skip,
+      take: limit,
     });
-
 
     const transformed = products.map((p) => {
       const specsObj: Record<string, string[]> = {};
@@ -248,6 +348,7 @@ export const getProducts = async (req: Request, res: Response) => {
         if (!specsObj[s.name]) specsObj[s.name] = [];
         if (!specsObj[s.name].includes(s.value)) specsObj[s.name].push(s.value);
       });
+
       return {
         ...p,
         specifications: specsObj,
@@ -260,11 +361,10 @@ export const getProducts = async (req: Request, res: Response) => {
       products: transformed,
     });
   } catch (error: any) {
-    console.error("Get products error:", error);
+    console.error('Get products error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 
 export const getProductsFilter = async (req: Request, res: Response) => {

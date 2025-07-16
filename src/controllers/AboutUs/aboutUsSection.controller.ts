@@ -73,6 +73,13 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
   let image = existing.image;
 
   try {
+    const seq=Number(sequence_number)
+    if (seq != null && seq <= 0) {
+      res.status(400).json({
+        success: false,
+        message: `sequence_number ${sequence_number} is not positive`,
+      });
+    }
     // 🔁 Check for duplicate sequence_number if changed
     if (sequence_number && Number(sequence_number) !== existing.sequence_number) {
       const duplicate = await prisma.aboutUsSection.findFirst({
@@ -159,7 +166,13 @@ export const createAboutUsSection = async (req: Request, res: Response) => {
     } = req.body;
 
     const created_by = await getUserNameFromToken(req);
-
+    const seq=Number(sequence_number)
+    if (seq != null && seq <= 0) {
+      res.status(400).json({
+        success: false,
+        message: `sequence_number ${sequence_number} is not positive`,
+      });
+    }
     // 🔍 Check for duplicate sequence_number
     const existing = await prisma.aboutUsSection.findFirst({
       where: { sequence_number: Number(sequence_number) },

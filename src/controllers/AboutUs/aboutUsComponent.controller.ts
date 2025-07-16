@@ -38,7 +38,12 @@ export const createComponent = async (req: Request, res: Response) => {
 
     const sectionId = Number(section);
     const seqNum = Number(sequence_number);
-
+    if (seqNum != null && seqNum <= 0) {
+      res.status(400).json({
+        success: false,
+        message: `sequence_number ${seqNum} is not positive`,
+      });
+    }
     const duplicate = await prisma.aboutUsComponent.findFirst({
       where: {
         sectionId,
@@ -111,7 +116,12 @@ export const updateComponent = async (req: Request, res: Response) => {
     } = req.body;
 
     const seqNum = Number(sequence_number);
-
+    if (seqNum != null && seqNum <= 0) {
+      res.status(400).json({
+        success: false,
+        message: `sequence_number ${seqNum} is not positive`,
+      });
+    }
     if (seqNum && seqNum !== existing.sequence_number) {
       const duplicate = await prisma.aboutUsComponent.findFirst({
         where: {
