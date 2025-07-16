@@ -24,6 +24,11 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     items,
     addressId,
     totalAmount,
+    taxAmount,
+    taxType,
+    appliedTaxRate,
+    isTaxInclusive,
+    shippingRate,
     paymentMethod,
     discountAmount = 0,
     subtotal,
@@ -38,6 +43,11 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     paymentMethod: string;
     discountAmount?: number;
     subtotal: number;
+    taxType:string;
+    taxAmount:number;
+    appliedTaxRate:number;
+    isTaxInclusive:boolean;
+    shippingRate:number
     discountCode?: string;
     billingAddress: string;
     shippingAddress: string;
@@ -50,7 +60,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
   }
 
   if (!subtotal || !totalAmount) {
-    res.status(400).json({ message: 'Invalid json' });
+    res.status(400).json({ message: 'subtotal ,totalAmount required' });
     return;
   }
 
@@ -98,71 +108,21 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       return
     }
 
-    // 2. Get delivery pincode state
-    const pincodeEntry = await prisma.pincode.findUnique({
-      where: { zipcode: Number(address.pincode) },
-    });
-    if (!pincodeEntry) {
-      res.status(400).json({ message: 'Delivery not available for this pincode' });
-      return
-    }
-    const deliveryState = pincodeEntry.state;
-
-    // 3. Get company settings
-    const company = await prisma.companySettings.findFirst();
-    if (!company) {
-      res.status(500).json({ message: 'Company settings not configured' });
-      return
-    }
-
-    // 4. Determine tax type
-    // const isInterState = deliveryState !== company.company_state;
-    // const isInclusive = company.is_tax_inclusive;
-
-    const taxRates = await prisma.tax.findMany({
-      where: { is_active: true },
-    });
-
-    const cgst = taxRates.find(t => t.name.toUpperCase() === 'CGST')?.percentage ?? 0;
-    const sgst = taxRates.find(t => t.name.toUpperCase() === 'SGST')?.percentage ?? 0;
-    const igst = taxRates.find(t => t.name.toUpperCase() === 'IGST')?.percentage ?? 0;
-
-   const isInterState =
-  deliveryState.trim().toLowerCase() !== company?.company_state?.trim().toLowerCase();
-    const isInclusive = company.is_tax_inclusive;
-
-    const appliedTaxRate = isInterState ? igst : cgst + sgst;
-
-    let taxAmount = 0;
-    let baseAmount = subtotal;
-
-    if (isInclusive) {
-      baseAmount = subtotal / (1 + appliedTaxRate / 100);
-      taxAmount = subtotal - baseAmount;
-    } else {
-      taxAmount = subtotal * (appliedTaxRate / 100);
-    }
-
-    const totalBeforeDiscount = isInclusive ? subtotal : subtotal + taxAmount;
-    const finalAmount = Math.max(totalBeforeDiscount - discountAmount, 0);
-
-
-
     const order = await prisma.order.create({
       data: {
         userId,
         addressId,
-        subtotal:baseAmount,
-        totalAmount:totalBeforeDiscount,
-        finalAmount, 
+        subtotal,
+        totalAmount,
         discountAmount,
         discountCode,
         billingAddress,
         shippingAddress,
         taxAmount,
-        taxType: isInterState ? 'IGST' : 'CGST+SGST',
+        taxType,
         appliedTaxRate,
-        isTaxInclusive: isInclusive,
+        isTaxInclusive,
+        shippingRate,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         items: {
@@ -231,11 +191,11 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
         quantity: i.quantity,
         price: i.price,
       })),
-      finalAmount,
+    totalAmount,
       order.payment?.method || 'N/A'
     );
 
-    await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${finalAmount}`, 'ORDER');
+    await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${totalAmount}`, 'ORDER');
 
     await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
 // const shippingService = await prisma.shippingService.findFirst({
@@ -265,7 +225,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
 
 //   console.log(`✅ Shipment created for Order #${order.id}`);
 // }
-    res.status(201).json({ ...order, finalAmount });
+    res.status(201).json({ ...order, totalAmount });
   } catch (error) {
     console.error('Create order failed:', error);
     res.status(500).json({ message: 'Failed to create order', error });
@@ -814,11 +774,12 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   applied_tax_rate: order.appliedTaxRate || 0,
   tax_inclusive: order.isTaxInclusive,
   tax_amount: order.taxAmount || 0,
+  shippingRate :order.  shippingRate ,
   discount: order.discountAmount || 0,
   discount_coupon_code: order.discountCode || '',
   total_before_discount: order.totalAmount,
-   final_payable_amount: finalAmount,
-  final_total: finalAmount, // fallback if finalAmount not stored
+   final_payable_amount: order.totalAmount,
+  final_total: order.totalAmount, // fallback if finalAmount not stored
 
   order_status: order.status,
   invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
