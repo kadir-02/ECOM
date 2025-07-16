@@ -295,28 +295,41 @@ export const redeemCouponCode = async (req: CustomRequest, res: Response) => {
        return
     }
 
-    // 4. Check if this cart already redeemed this coupon
-    const alreadyRedeemed = await prisma.couponRedemption.findUnique({
-      where: {
-        couponId_cartId: {
-          couponId: coupon.id,
-          cartId: cartId,
-        },
-      },
-    });
+  // 4. Check if this cart already redeemed this coupon
+const alreadyRedeemed = await prisma.couponRedemption.findUnique({
+  where: {
+    couponId_cartId: {
+      couponId: coupon.id,
+      cartId: cartId,
+    },
+  },
+});
 
-    if (alreadyRedeemed) {
-       res.status(400).json({ message: 'This coupon is already applied to the cart' });
-       return
-    }
-
-    // 5. Create the redemption entry
-    await prisma.couponRedemption.create({
+if (alreadyRedeemed) {
+  if (alreadyRedeemed.orderId !== null) {
+    // Coupon already used in an actual order
+    return res.status(400).json({ message: 'This coupon is already used in a completed order' });
+  } else {
+    // Soft redemption exists (no order placed) — reuse it instead of re-inserting
+    return res.status(200).json({
+      success: true,
+      message: 'Coupon code applied successfully.',
       data: {
-        couponId: coupon.id,
-        cartId: cartId,
+        couponCode: coupon.code,
+        discount: coupon.discount,
       },
     });
+  }
+}
+
+// 5. Create the redemption entry (safe to do now)
+await prisma.couponRedemption.create({
+  data: {
+    couponId: coupon.id,
+    cartId: cartId,
+  },
+});
+
 
      res.status(200).json({
       success: true,
