@@ -597,20 +597,16 @@ export const updateProduct = async (req: Request, res: Response) => {
         include: { tags: true },
     });
 if (Array.isArray(tags)) {
-      const existingTags = updatedProduct.tags.map(t => t.id);
-      const newTagIds = tags.filter((tagId: number) => !existingTags.includes(tagId));
+  await prisma.product.update({
+    where: { id },
+    data: {
+      tags: {
+        set: tags.map((tagId: number) => ({ id: tagId })),
+      },
+    },
+  });
+}
 
-      if (newTagIds.length > 0) {
-        await prisma.product.update({
-          where: { id },
-          data: {
-            tags: {
-              connect: newTagIds.map(tagId => ({ id: tagId })),
-            },
-          },
-        });
-      }
-    }
     if (Array.isArray(variant_specifications)) {
       await prisma.productSpecification.deleteMany({ where: { productId: id } });
       await prisma.productSpecification.createMany({
@@ -623,8 +619,16 @@ if (Array.isArray(tags)) {
         })),
       });
     }
+    const finalProduct = await prisma.product.findUnique({
+  where: { id },
+  include: {
+    tags: true,
+    specifications: true,
+    // ✅ add more relations if needed, like category, subcategory, etc.
+  },
+});
 
-    res.status(200).json({ success: true, product: updatedProduct });
+    res.status(200).json({ success: true, product: finalProduct });
   } catch (error: any) {
     console.error("Update product error:", error);
     res.status(500).json({ success: false, message: error.message });
