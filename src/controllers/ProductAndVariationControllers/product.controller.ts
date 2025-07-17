@@ -351,6 +351,7 @@ export const getProducts = async (req: Request, res: Response) => {
         images: true,
         variants: { include: { images: true } },
         specifications: true,
+        tags:true
       },
       orderBy,
       skip,

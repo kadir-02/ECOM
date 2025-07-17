@@ -202,7 +202,8 @@ export const getCategoryById = async (req: Request, res: Response) => {
       prisma.product.findMany({
         where: {
           categoryId: { in: validCategoryIds },
-          // isDeleted: true,
+          isDeleted: false,
+          isActive: true,
         },
         include: {
           variants: {
