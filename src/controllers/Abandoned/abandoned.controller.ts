@@ -110,8 +110,8 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
   const { cartId } = req.body;
 
   if (!cartId) {
-     res.status(400).json({ message: 'Cart ID is required' });
-     return;
+    res.status(400).json({ message: 'Cart ID is required' });
+    return;
   }
 
   try {
@@ -130,8 +130,8 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
     });
 
     if (!cart) {
-       res.status(404).json({ message: 'Cart not found' });
-       return
+      res.status(404).json({ message: 'Cart not found' });
+      return;
     }
 
     // 2. Fetch abandoned items for this user/cart
@@ -147,11 +147,18 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
     });
 
     if (!abandonedItems.length) {
-       res.status(400).json({ message: 'No abandoned cart items found' });
-      return
+      res.status(400).json({ message: 'No abandoned cart items found' });
+      return;
     }
 
-    // 3. Match and calculate
+    // 3. Calculate subtotal (all items)
+    const subtotal = cart.items.reduce((sum, item) => {
+      const rawPrice = item.variant?.selling_price ?? item.product?.sellingPrice ?? 0;
+      const price = rawPrice instanceof Decimal ? rawPrice.toNumber() : Number(rawPrice);
+      return sum + price * item.quantity;
+    }, 0);
+
+    // 4. Match abandoned items and calculate total discount
     const discountedItems: any[] = [];
     const unmatchedItems: any[] = [];
     let totalDiscount = 0;
@@ -189,28 +196,31 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
       }
     }
 
-    // 4. Update cart with discountedAbandonedTotal
+    // 5. Calculate final total after discount
+    const finalTotal = subtotal - totalDiscount;
+
+    // 6. Update cart with discountedAbandonedTotal (optional, if you want to store discount)
     await prisma.cart.update({
       where: { id: cart.id },
       data: {
-        discountedAbandonedTotal: Number(totalDiscount),
+        discountedAbandonedTotal: Number(finalTotal),
       },
     });
 
-    // 5. Return response
-     res.status(200).json({
+    // 7. Return response with all pricing details
+    res.status(200).json({
       success: true,
       message: unmatchedItems.length
         ? 'Partial discount applied. Some items do not qualify.'
         : 'Discount applied successfully.',
+      subtotal,
       totalDiscount,
+      finalTotal,
       discountedItems,
       unmatchedItems,
     });
-    return;
   } catch (error) {
     console.error('❌ Error applying abandoned cart discount:', error);
-     res.status(500).json({ message: 'Internal server error' });
-     return
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
