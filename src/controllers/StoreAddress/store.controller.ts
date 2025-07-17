@@ -295,6 +295,7 @@ const sanitizeNumber = (input: string | undefined): string => {
 //   }
 // };
 
+
 export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
   try {
     if (!req.file || !req.file.buffer) {
@@ -312,9 +313,7 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
        return;
     });
 
-    stream.on('data', (row) => {
-      rows.push(row);
-    });
+    stream.on('data', (row) => rows.push(row));
 
     stream.on('end', async () => {
       for (const row of rows) {
@@ -332,6 +331,9 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
 
           const phone = sanitizeNumber(row['PHONE']);
           const mobile = sanitizeNumber(row['MOBILE']);
+          const latitude = row['LATITUDE']?.trim() || '0.0';
+          const longitude = row['LONGITUDE']?.trim() || '0.0';
+          const estimatedDeliveryDays = parseInt(row['DELIVERY_DAYS']?.trim(), 10) || 3;
 
           const storeData = {
             name,
@@ -340,23 +342,17 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
             state,
             zipcode,
             phone_numbers: [phone, mobile].filter(Boolean).join(', '),
-            email: null,
-            locality: '',
+            latitude,
+            longitude,
             country: 'India',
-            latitude: '0.0',
-            longitude: '0.0',
             is_active: true,
             created_by: 'CSV Import',
             updated_by: 'CSV Import',
           };
 
-          // ✅ Auto-create pincode if not exists
+          // ✅ Ensure pincode exists or create
           const existingPincode = await prisma.pincode.findFirst({
-            where: {
-              zipcode,
-              city,
-              state,
-            },
+            where: { zipcode, city, state },
           });
 
           if (!existingPincode) {
@@ -365,7 +361,7 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
                 city,
                 state,
                 zipcode,
-                estimatedDeliveryDays: 3, // default value or calculate dynamically
+                estimatedDeliveryDays,
                 isActive: true,
                 createdBy: 'CSV Import',
                 updatedBy: 'CSV Import',
@@ -373,7 +369,7 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
             });
           }
 
-          // ✅ Upsert store
+          // ✅ Upsert store by name
           const existingStore = await prisma.store.findFirst({
             where: { name },
           });
