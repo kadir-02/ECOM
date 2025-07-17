@@ -136,6 +136,7 @@ model Product {
   specifications ProductSpecification[]
   cartItems      CartItem[]
   orderItems     OrderItem[]
+  tags          ProductTag[] @relation("ProductTags")
 }
 
 model ProductSpecification {
@@ -544,6 +545,7 @@ model ProductTag {
   updated_by String
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  products Product[] @relation("ProductTags")
 }
 
 model Tax {

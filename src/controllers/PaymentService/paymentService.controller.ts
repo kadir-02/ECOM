@@ -120,3 +120,21 @@ export const createOrUpdatePaymentService = async (req: Request, res: Response) 
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+export const getPaymentServicesFrontend = async (_req: Request, res: Response) => {
+  try {
+    const services = await prisma.paymentService.findMany({
+      where: { is_active: true },
+      orderBy: { updated_at: 'desc' },
+    });
+
+    const activeServiceNames: string[] = services.map(service =>
+      service.name.toLowerCase().replace(/ /g, '_')
+    );
+
+    res.json({ active_payment_services: activeServiceNames });
+  } catch (err) {
+    console.error('Get payment services error:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
