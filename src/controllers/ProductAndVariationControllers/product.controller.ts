@@ -27,6 +27,7 @@ export const createProduct = async (req: Request, res: Response) => {
       productDetails,
       is_active,
       variant_specifications,
+      tags,
     } = req.body;
 
     // Basic validation (add more checks as needed)
@@ -92,10 +93,15 @@ export const createProduct = async (req: Request, res: Response) => {
             isDeleted: false,
           })),
         },
+        tags: tags && Array.isArray(tags)
+          ? {
+              connect: tags.map((tagId: number) => ({ id: tagId }))
+            }
+          : undefined,
       },
-      include: { specifications: true },
+      include: { specifications: true, tags: true },
     });
-
+    
     res.status(201).json({ success: true, product });
   } catch (err: any) {
     console.error("Create product error:", err);
@@ -548,6 +554,7 @@ export const updateProduct = async (req: Request, res: Response) => {
     productDetails,
     is_active,
     variant_specifications,
+    tags
   } = req.body;
 
   try {
@@ -583,9 +590,26 @@ export const updateProduct = async (req: Request, res: Response) => {
         seoKeyword,
         seoDescription,
         productDetails,
+        
+        
       },
+        include: { tags: true },
     });
+if (Array.isArray(tags)) {
+      const existingTags = updatedProduct.tags.map(t => t.id);
+      const newTagIds = tags.filter((tagId: number) => !existingTags.includes(tagId));
 
+      if (newTagIds.length > 0) {
+        await prisma.product.update({
+          where: { id },
+          data: {
+            tags: {
+              connect: newTagIds.map(tagId => ({ id: tagId })),
+            },
+          },
+        });
+      }
+    }
     if (Array.isArray(variant_specifications)) {
       await prisma.productSpecification.deleteMany({ where: { productId: id } });
       await prisma.productSpecification.createMany({
