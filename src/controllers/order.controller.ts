@@ -770,10 +770,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
     const customerNameFromAddress = order.address?.fullName || 'Guest';
     const customerFirstName = order.user.profile?.firstName || customerNameFromAddress?.split(' ')?.[0] || 'Guest';
     const customerLastName = order.user.profile?.lastName || customerNameFromAddress?.split(' ')?.slice(1).join(' ') || '';
-if (!order.isVisible) {
-  return res.status(200).json({ message: 'Order is not yet visible' }); // or 204 No Content
-}
-    const invoiceResponse = {
+ const invoiceResponse = {
       message: '',
       total_pages: 1,
       current_page: 1,
