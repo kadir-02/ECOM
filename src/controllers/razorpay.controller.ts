@@ -14,11 +14,15 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
     .digest('hex');
 
   const isValid = signature === expectedSignature;
+  console.log("signature", signature);
+  console.log("expectedSignature", expectedSignature)
+  console.log("body", body)
 
   let event: any;
 
   try {
     event = JSON.parse(body);
+    console.log("event", event)
   } catch (err) {
     console.error('🔴 Failed to parse webhook body:', err);
     res.status(400).json({ message: 'Invalid body' });
@@ -27,6 +31,9 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
 
   const razorpayOrderId = event?.payload?.payment?.entity?.order_id || null;
   const razorpayPaymentId = event?.payload?.payment?.entity?.id || null; // ✅ Transaction ID
+
+  console.log("razorpayOrderId", razorpayOrderId);
+  console.log("razorpayPaymentId", razorpayPaymentId)
 
   // ✅ Log to database
   try {
