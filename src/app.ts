@@ -42,7 +42,8 @@ import aboutComponentRoutes from './routes/AboutUs/aboutUsComponent.routes';
 import storeRoutes from './routes/StoreAddress/store.route';
 import abandonedCartRoutes from './routes/Abandoned/abandonedCartSetting.route';
 import paymentServiceRoutes from './routes/PaymentService/paymentService.route';
-import razorpayWebhookRoutes from './routes/razorpay.route'
+import razorpayWebhookRoutes from './routes/razorpay.route';
+import abandonedRoutes from './routes/Abandoned/abandoned.route'
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.use('/abandoned-cart-setting', abandonedCartRoutes);
 app.use('/payment-service', paymentServiceRoutes);
 app.use('/pincode', pincodeRoutes);
 app.use('/coupon', couponRoutes);
+app.use('/abandoned',abandonedRoutes)
 app.use('/frontend/testimonial',TestimonialRoutes)
 app.use('/connect/', contactRoutes);
 app.use('/newsletter', newsLetterRoutes);

@@ -54,6 +54,7 @@ model User {
   addresses      Address[]
   discountCodes  DiscountCode[]
   notifications  Notification[]
+  abandonedCartItems         AbandonedCartItem[]
 }
 
 model Profile {
@@ -137,6 +138,7 @@ model Product {
   cartItems      CartItem[]
   orderItems     OrderItem[]
   tags          ProductTag[] @relation("ProductTags")
+  abandonedCartItems         AbandonedCartItem[]
 }
 
 model ProductSpecification {
@@ -187,6 +189,7 @@ model ProductVariant {
   images     VariantImage[]
   cartItems  CartItem[]
   orderItems OrderItem[]
+  abandonedCartItems         AbandonedCartItem[]
 }
 
 model VariantImage {
@@ -211,6 +214,9 @@ model Cart {
   lastReminderAt    DateTime?
   discountCodes     DiscountCode[]
   couponRedemptions CouponRedemption[]
+  discountedAbandonedTotal   Float?
+
+  abandonedCartItems         AbandonedCartItem[]
 }
 
 model CartItem {
@@ -717,4 +723,20 @@ model RazorpayWebhookLog {
   receivedAt   DateTime  @default(now())
   signature    String
   isValid      Boolean
+}
+
+model AbandonedCartItem {
+  id          Int             @id @default(autoincrement())
+  cartId      Int
+  userId      Int
+  productId   Int?
+  variantId   Int?
+  quantity    Int
+  discount    Int             // percentage
+  createdAt   DateTime        @default(now())
+
+  cart        Cart            @relation(fields: [cartId], references: [id])
+  user        User            @relation(fields: [userId], references: [id])
+  product     Product?        @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
 }

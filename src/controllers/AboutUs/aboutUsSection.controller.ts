@@ -35,6 +35,8 @@ export const getAllAboutUsSections = async (req: Request, res: Response) => {
         sequence_number: component.sequence_number,
         title: component.title,
         description: component.description,
+        heading:component.heading,
+        sub_heading:component.sub_heading,
         image: component.image,
         is_active: component.is_active,
         created_by: component.created_by,
