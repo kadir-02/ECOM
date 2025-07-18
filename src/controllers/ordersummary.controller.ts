@@ -59,7 +59,7 @@ if (matchingEntry) {
   if (allShippingRates.length > 0) {
     shippingRate = allShippingRates[0].inter_state_rate;
   } else {
-    return res
+     res
       .status(404)
       .json({ message: "No shipping rate configured in the system" });
   }
