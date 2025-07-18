@@ -225,23 +225,22 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
   }
 };
 
-
 export const getUsersSpecificAbandonedItems = async (req: Request, res: Response) => {
   const userId = (req as any).user?.userId;
 
   if (!userId) {
-    res.status(401).json({ message: 'Unauthorized' });
+    res.status(401).json({ success: false, message: 'Unauthorized' });
     return;
   }
 
   try {
-    // Get user's cart (to get the cart ID)
+    // Get user's cart
     const cart = await prisma.cart.findUnique({
       where: { userId },
     });
 
     if (!cart) {
-      res.json({ cart: null });
+      res.json({ success: true, cart: { id: null, items: [] } });
       return;
     }
 
@@ -271,12 +270,7 @@ export const getUsersSpecificAbandonedItems = async (req: Request, res: Response
       },
     });
 
-    if (abandonedItems.length === 0) {
-      res.json({ cart: null });
-      return;
-    }
-
-    // Return items shaped like your /cart endpoint
+    // Format items like your /cart endpoint
     const items = abandonedItems.map(item => ({
       id: item.productId,
       productId: item.productId,
@@ -287,13 +281,14 @@ export const getUsersSpecificAbandonedItems = async (req: Request, res: Response
     }));
 
     res.json({
+      success: true,
       cart: {
         id: cart.id,
-        items,
+        items: items,
       },
     });
   } catch (error) {
     console.error("❌ Error fetching abandoned cart items:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
