@@ -6,8 +6,8 @@ import { authenticate } from '../../middlewares/authenticate';
 
 const router = Router();
 
+router.use(authenticate,authorizeAdmin)
 router.get('/', getAllShippingRates);
-// router.use(authenticate,authorizeAdmin)
 router.post('/', createShippingRate);
 router.patch('/:id/', updateShippingRate);
 router.delete('/:id/', deleteShippingRate);

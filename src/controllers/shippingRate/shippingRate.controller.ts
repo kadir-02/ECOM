@@ -34,9 +34,9 @@ export const createShippingRate = async (req: Request, res: Response) => {
 export const getAllShippingRates = async (_req: Request, res: Response) => {
   try {
     const rates = await prisma.shippingRate.findMany({
-      where: {
-        is_active: true,
-      },
+    //   where: {
+    //     is_active: true,
+    //   },
     });
     res.status(200).json({success:true,rates});
   } catch (error) {
