@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../db/prisma";
 import { sendAbandonedCartEmail } from "../../email/abandonedMail";
 
-export const getAllAbandonedCartSettings = async (
+export const testAbandonedcontroller = async (
   req: Request,
   res: Response
 ) => {
@@ -28,8 +28,6 @@ export const getAllAbandonedCartSettings = async (
     for (const cart of cartItems) {
       const userEmail = cart.user.email;
       const userId = cart.user.id;
-
-      console.log("email", userEmail, userId, cartItems)
 
       if (!userEmail || cart.items.length === 0) continue;
 

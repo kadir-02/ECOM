@@ -62,7 +62,9 @@ export const deleteCouponCode = async (req: Request, res: Response) => {
        return
     }
 
-    // Delete the coupon
+    await prisma.couponRedemption.deleteMany({
+      where: { couponId: couponId },
+    });
     await prisma.couponCode.delete({
       where: { id: couponId },
     });
