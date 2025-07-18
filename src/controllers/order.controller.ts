@@ -760,11 +760,13 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       res.status(404).json({ message: 'Order not found' });
       return
     }
-    if (!order.isVisible) {
-   res.status(200).json({ message: 'Order is not yet visible' }); // or 204 No Content
+  if (
+  order.payment?.method === 'RAZORPAY' &&
+  !order.isVisible
+) {
+   res.status(403).json({ message: 'Order is not yet visible. Please wait until payment is confirmed.' });
    return
 }
-
     const finalAmount = order.finalAmount ?? (order.totalAmount - (order.discountAmount || 0));
 
     const customerNameFromAddress = order.address?.fullName || 'Guest';
