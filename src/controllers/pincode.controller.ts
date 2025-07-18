@@ -130,24 +130,48 @@ export const updatePincode = async (req: Request, res: Response) => {
       zipcode,
       estimated_delivery_days,
       is_active,
-      updated_by,
     }: PincodePayload = req.body;
-    const user = await getUserNameFromToken(req)
+
+    const user = await getUserNameFromToken(req);
+
+    const data: any = {};
+
+    if (city) data.city = city;
+    if (state) data.state = state;
+    if (typeof is_active !== 'undefined') data.isActive = is_active;
+    if (estimated_delivery_days != null) data.estimatedDeliveryDays = Number(estimated_delivery_days);
+    if (zipcode != null) {
+      const zip = Number(zipcode);
+
+      // Check for duplicate zipcode
+      const existingZip = await prisma.pincode.findFirst({
+        where: {
+          zipcode: zip,
+          NOT: { id },
+        },
+      });
+
+      if (existingZip) {
+         res.status(400).json({
+          success: false,
+          message: 'Zipcode already exists',
+        });
+        return;
+      }
+
+      data.zipcode = zip;
+    }
+
+    data.updatedBy = user || 'System';
+
     const updated = await prisma.pincode.update({
       where: { id },
-      data: {
-        city,
-        state,
-        zipcode,
-        estimatedDeliveryDays: estimated_delivery_days,
-        isActive: is_active,
-        updatedBy: user || 'System',
-      },
+      data,
     });
 
-    res.json(updated);
-  } catch (err) {
-    console.error(err);
+    res.json({ success: true, pincode: updated });
+  } catch (err: any) {
+    console.error('Update pincode error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
