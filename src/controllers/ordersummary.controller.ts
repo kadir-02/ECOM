@@ -101,12 +101,3 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
 };
 
 
-// model ShippingRate {
-//   id                  Int     @id @default(autoincrement())
-//   state               String  @unique // e.g., "Maharashtra"
-//   intra_state_rate    Float   // For orders within this state
-//   inter_state_rate    Float   // For orders outside this state
-//   is_active           Boolean @default(true)
-//   created_at          DateTime @default(now())
-//   updated_at          DateTime @updatedAt
-// }

@@ -44,6 +44,7 @@ import abandonedCartRoutes from './routes/Abandoned/abandonedCartSetting.route';
 import paymentServiceRoutes from './routes/PaymentService/paymentService.route';
 import razorpayWebhookRoutes from './routes/razorpay.route';
 import abandonedRoutes from './routes/Abandoned/abandoned.route'
+import shippingRateRoutes from './routes/shippinratesRoutes/shippingRate.route'
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -58,10 +59,11 @@ app.use(express.json());
 
 // app.use('/verify-email', emailRoutes);
 app.use('/google-analytics', googleAnalyticsRoutes)
+app.use('/shippingrate',shippingRateRoutes)
 app.use('/homepage_statistics', counterRoutes)
 app.use('/product-tag', productTagRoutes)
 app.use('/tax', taxRoutes);
-app.use('/shipping-service', shippingRoutes);
+// app.use('/shipping-service', shippingRoutes);
 app.use('/about_us_section', aboutRoutes);
 app.use('/about_us_component', aboutComponentRoutes);
 app.use('/store', storeRoutes);
