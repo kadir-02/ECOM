@@ -10,10 +10,10 @@ import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
 import { createShiprocketShipment } from '../utils/createShipping';
 import Razorpay from "razorpay";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY,
-  key_secret: process.env.RAZORPAY_SECRET,
-});
+// const razorpay = new Razorpay({
+//   key_id: process.env.RAZORPAY_KEY,
+//   key_secret: process.env.RAZORPAY_SECRET,
+// });
 
 type OrderItemInput = {
   productId?: number;
@@ -42,6 +42,7 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     billingAddress,
     shippingAddress,
     cartId,
+    abandentDiscountAmount
   }: {
     items: OrderItemInput[];
     addressId: number;
@@ -57,7 +58,8 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
     discountCode?: string;
     billingAddress: string;
     shippingAddress: string;
-    cartId?: number
+    cartId?: number;
+    abandentDiscountAmount:number
   } = req.body;
 
   if (!userId) {
@@ -113,6 +115,27 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       res.status(400).json({ message: 'Invalid address ID' });
       return
     }
+     const razorpayService = await prisma.paymentService.findFirst({
+    where: {
+      name: 'Razorpay',
+      is_active: true,
+    },
+  });
+
+   let razorpayKeyId: string | null = null;
+
+const keyId = razorpayService?.razorpay_key_id || process.env.RAZORPAY_KEY;
+const keySecret = razorpayService?.razorpay_key_secret || process.env.RAZORPAY_SECRET;
+
+if (!keyId || !keySecret) {
+  res.status(500).json({ message: 'Razorpay credentials not configured in DB or ENV.' });
+  return;
+}
+
+const razorpay = new Razorpay({
+  key_id: keyId,
+  key_secret: keySecret,
+});
 const razorpayOrder = await razorpay.orders.create({
   amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
   currency: "INR",
@@ -135,6 +158,7 @@ const razorpayOrder = await razorpay.orders.create({
         shippingRate,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
+        abandentDiscountAmount,
         razorpayOrderId:razorpayOrder.id,
         items: {
           create: createItems,
@@ -193,22 +217,7 @@ const razorpayOrder = await razorpay.orders.create({
     }
 
     // Send order confirmation email
-    await sendOrderConfirmationEmail(
-      order.user.email,
-      order.user.profile?.firstName || 'Customer',
-      `COM-${order.id}`,
-      order.items.map((i) => ({
-        name: i.variant?.name || i.product?.name || 'Product',
-        quantity: i.quantity,
-        price: i.price,
-      })),
-    totalAmount,
-      order.payment?.method || 'N/A'
-    );
-
-    await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${totalAmount}`, 'ORDER');
-
-    await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
+  
 // const shippingService = await prisma.shippingService.findFirst({
 //   where: { name: 'Shiprocket', is_active: true },
 // });
@@ -242,7 +251,27 @@ const razorpayOrder = await razorpay.orders.create({
 //   receipt: `receipt_order_${Date.now()}`,
 // });
 
-    res.status(201).json({ ...order, razorpayid:razorpayOrder.id,totalAmount });
+    res.status(201).json({ razorpayid:razorpayOrder.id,totalAmount , 
+      id:order.id,
+      fullname:address.fullName,
+    razorpayKeyId:keyId});
+      await sendOrderConfirmationEmail(
+      order.user.email,
+      order.user.profile?.firstName || 'Customer',
+      `COM-${order.id}`,
+      order.items.map((i) => ({
+        name: i.variant?.name || i.product?.name || 'Product',
+        quantity: i.quantity,
+        price: i.price,
+      })),
+    totalAmount,
+      order.payment?.method || 'N/A'
+    );
+
+    await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${totalAmount}`, 'ORDER');
+
+    await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
+
   } catch (error) {
     console.error('Create order failed:', error);
     res.status(500).json({ message: 'Failed to create order', error });

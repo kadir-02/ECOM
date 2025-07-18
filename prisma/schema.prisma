@@ -277,6 +277,8 @@ model Order {
   shippingETA     String?
   shipment        Shipment?
 
+  abandentDiscountAmount Int?
+
   user             User               @relation(fields: [userId], references: [id])
   items            OrderItem[]
   payment          Payment?           @relation(fields: [paymentId], references: [id])
