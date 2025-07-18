@@ -258,6 +258,13 @@ export const getProducts = async (req: Request, res: Response) => {
     const minPrice = parseFloat(query.min as string);
     const maxPrice = parseFloat(query.max as string);
 
+    const tagIds = query.tags
+  ? Array.isArray(query.tags)
+    ? query.tags.map(Number)
+    : String(query.tags).split(',').map(Number)
+  : [];
+
+
     const whereClause: any = {
       isDeleted: false,
     };
@@ -281,6 +288,15 @@ export const getProducts = async (req: Request, res: Response) => {
     } else if (!isNaN(maxPrice)) {
       whereClause.sellingPrice = { lte: maxPrice };
     }
+
+    if (tagIds.length > 0) {
+  whereClause.tags = {
+    some: {
+      id: { in: tagIds },
+    },
+  };
+}
+
 
     const orderFieldMap: Record<string, string> = {
       selling_price: 'sellingPrice',
