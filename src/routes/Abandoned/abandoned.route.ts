@@ -9,9 +9,9 @@ import { testAbandonedcontroller } from '../../controllers/Abandoned/testAbandon
 
 const router = Router();
 
+router.get('/get', testAbandonedcontroller); 
 router.post('/apply-discount', authenticate, applyAbandonedCartDiscount);
 router.get('/get-discount', authenticate, getAbandonedCartDiscount); 
 router.get('/items', authenticate, getUsersSpecificAbandonedItems); 
-router.get('/get', authenticate, testAbandonedcontroller); 
 
 export default router;
