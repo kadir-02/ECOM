@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
 import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
 import { getUserNameFromToken } from '../../utils/extractName';
-import { formatReadableDate } from '../../utils/readableDate';
 
 // GET all components by section
 export const getComponentsBySection = async (req: Request, res: Response) => {
@@ -15,8 +14,8 @@ export const getComponentsBySection = async (req: Request, res: Response) => {
   res.json({
     results: components.map((c) => ({
       ...c,
-      created_at: formatReadableDate(c.created_at),
-      updated_at: formatReadableDate(c.updated_at),
+      created_at: c.created_at,
+      updated_at: c.updated_at,
     })),
   });
 };
@@ -85,8 +84,8 @@ export const createComponent = async (req: Request, res: Response) => {
       success: true,
       result: {
         ...component,
-        created_at: formatReadableDate(component.created_at),
-        updated_at: formatReadableDate(component.updated_at),
+        created_at: component.created_at,
+        updated_at: component.updated_at,
       },
     });
   } catch (err) {
@@ -173,8 +172,8 @@ export const updateComponent = async (req: Request, res: Response) => {
       message: 'Component updated',
       result: {
         ...updated,
-        created_at: formatReadableDate(updated.created_at),
-        updated_at: formatReadableDate(updated.updated_at),
+        created_at: updated.created_at,
+        updated_at: updated.updated_at,
       },
     });
   } catch (err) {

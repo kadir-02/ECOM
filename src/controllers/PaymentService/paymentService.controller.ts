@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
-import { formatReadableDate } from '../../utils/readableDate';
 import { getUserNameFromToken } from '../../utils/extractName';
 
 export const getAllPaymentServices = async (_req: Request, res: Response) => {
@@ -26,9 +25,9 @@ export const getAllPaymentServices = async (_req: Request, res: Response) => {
         url: service.url,
         is_active: service.is_active,
         created_by: service.created_by,
-        created_at: formatReadableDate(service.created_at),
+        created_at: service.created_at,
         updated_by: service.updated_by,
-        updated_at: formatReadableDate(service.updated_at),
+        updated_at: service.updated_at,
         start_date: service.start_date,
         end_date: service.end_date,
       };

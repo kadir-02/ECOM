@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
-import { formatReadableDate } from '../../utils/readableDate';
 import { verifyToken } from '../../utils/jwt';
 
 export const extractUserName = async (req: Request): Promise<string> => {
@@ -50,9 +49,9 @@ export const getHomepageStatistics = async (req: Request, res: Response) => {
       number: item.number,
       is_active: item.is_active,
       created_by: item.created_by,
-      created_at: formatReadableDate(item.created_at),
+      created_at: item.created_at,
       updated_by: item.updated_by,
-      updated_at: formatReadableDate(item.updated_at),
+      updated_at: item.updated_at,
     })),
   });
 };
@@ -113,9 +112,9 @@ export const updateHomepageStatistic = async (req: Request, res: Response) => {
       number: updated.number,
       is_active: updated.is_active,
       created_by: updated.created_by,
-      created_at: formatReadableDate(updated.created_at),
+      created_at: updated.created_at,
       updated_by: updated.updated_by,
-      updated_at: formatReadableDate(updated.updated_at),
+      updated_at: updated.updated_at
     },
   });
 };

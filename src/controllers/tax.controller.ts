@@ -1,7 +1,6 @@
 // src/controllers/tax.controller.ts
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
-import { formatReadableDate } from '../utils/readableDate';
 import { getUserNameFromToken } from '../utils/extractName';
 
 export const getAllTaxes = async (req: Request, res: Response) => {
@@ -26,9 +25,9 @@ export const getAllTaxes = async (req: Request, res: Response) => {
       percentage: tax.percentage.toFixed(1),
       is_active: tax.is_active,
       created_by: tax.created_by,
-      created_at: formatReadableDate(tax.created_at),
+      created_at: tax.created_at,
       updated_by: tax.updated_by,
-      updated_at: formatReadableDate(tax.updated_at),
+      updated_at: tax.updated_at,
     })),
   });
 };
@@ -55,9 +54,9 @@ export const createTax = async (req: Request, res: Response) => {
       percentage: newTax.percentage.toFixed(1),
       is_active: newTax.is_active,
       created_by: newTax.created_by,
-      created_at: formatReadableDate(newTax.created_at),
+      created_at: newTax.created_at,
       updated_by: newTax.updated_by,
-      updated_at: formatReadableDate(newTax.updated_at),
+      updated_at: newTax.updated_at,
     },
   });
 };
@@ -85,9 +84,9 @@ export const updateTax = async (req: Request, res: Response) => {
       percentage: updated.percentage.toFixed(1),
       is_active: updated.is_active,
       created_by: updated.created_by,
-      created_at: formatReadableDate(updated.created_at),
+      created_at: updated.created_at,
       updated_by: updated.updated_by,
-      updated_at: formatReadableDate(updated.updated_at),
+      updated_at: updated.updated_at,
     },
   });
 };

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import cloudinary from '../upload/cloudinary';
-import { formatReadableDate } from '../utils/readableDate';
 
 interface CloudinaryUploadResult {
   secure_url: string;
@@ -166,8 +165,8 @@ export const getAllWhyChooseUsItems = async (req: Request, res: Response) => {
 
     const formattedItems = items.map(item => ({
       ...item,
-      createdAt: formatReadableDate(item.createdAt),
-      updatedAt: formatReadableDate(item.updatedAt),
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     }));
 
     res.json({ success: true, items: formattedItems });
@@ -193,8 +192,8 @@ export const getWhyChooseUsItemById = async (req: Request, res: Response) => {
       success: true,
       item: {
         ...item,
-        createdAt: formatReadableDate(item.createdAt),
-        updatedAt: formatReadableDate(item.updatedAt),
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
       },
     });
   } catch (error) {

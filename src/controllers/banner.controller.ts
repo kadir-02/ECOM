@@ -4,7 +4,6 @@ import cloudinary from '../upload/cloudinary';
 import { Readable } from 'stream';
 import { MulterError } from 'multer';
 import { uploadToCloudinary } from '../utils/uploadToCloudinary';
-import { formatReadableDate } from '../utils/readableDate';
 
 
 export const getBanners = async (req: Request, res: Response) => {
@@ -52,8 +51,8 @@ export const getBanners = async (req: Request, res: Response) => {
     // 4. Format result
     const formatted = banners.map((banner) => ({
       ...banner,
-      createdAt: formatReadableDate(new Date(banner.createdAt)),
-      updatedAt: banner.updatedAt ? formatReadableDate(new Date(banner.updatedAt)) : null,
+      createdAt: banner.createdAt,
+      updatedAt: banner.updatedAt ? banner.updatedAt : null,
     }));
 
     res.json(formatted);

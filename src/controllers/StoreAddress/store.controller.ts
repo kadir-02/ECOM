@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
 import { getUserNameFromToken } from '../../utils/extractName';
-import { formatReadableDate } from '../../utils/readableDate';
 import { Prisma } from '@prisma/client';
 import * as fastcsv from 'fast-csv';
 import { uploadMemory } from '../../upload/multerCloudinary';
@@ -61,8 +60,8 @@ export const getAllStores = async (req: Request, res: Response) => {
       page_size: pageSize,
       results: results.map((store) => ({
         ...store,
-        created_at: formatReadableDate(store.created_at),
-        updated_at: formatReadableDate(store.updated_at),
+        created_at: store.created_at,
+        updated_at: store.updated_at,
       })),
     });
   } catch (error) {

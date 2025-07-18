@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
 import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
-import { formatReadableDate } from '../../utils/readableDate';
 import { getUserNameFromToken } from '../../utils/extractName';
 
 // GET all
@@ -27,8 +26,8 @@ export const getAllAboutUsSections = async (req: Request, res: Response) => {
       is_active: section.is_active,
       created_by: section.created_by,
       updated_by: section.updated_by,
-      created_at: formatReadableDate(section.created_at),
-      updated_at: formatReadableDate(section.updated_at),
+      created_at: section.created_at,
+      updated_at: section.updated_at,
 
       components: section.components.map((component: any) => ({
         id: component.id,
@@ -41,8 +40,8 @@ export const getAllAboutUsSections = async (req: Request, res: Response) => {
         is_active: component.is_active,
         created_by: component.created_by,
         updated_by: component.updated_by,
-        created_at: formatReadableDate(component.created_at),
-        updated_at: formatReadableDate(component.updated_at),
+        created_at: component.created_at,
+        updated_at: component.updated_at,
       })),
     }));
 
@@ -131,8 +130,8 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
       message: 'Section updated',
       result: {
         ...updated,
-        created_at: formatReadableDate(updated.created_at),
-        updated_at: formatReadableDate(updated.updated_at),
+        created_at: updated.created_at,
+        updated_at: updated.updated_at,
       },
     });
   } catch (err) {
@@ -216,8 +215,8 @@ export const createAboutUsSection = async (req: Request, res: Response) => {
       message: 'Section created successfully',
       result: {
         ...newSection,
-        created_at: formatReadableDate(newSection.created_at),
-        updated_at: formatReadableDate(newSection.updated_at),
+        created_at: newSection.created_at,
+        updated_at: newSection.updated_at,
       },
     });
   } catch (err) {

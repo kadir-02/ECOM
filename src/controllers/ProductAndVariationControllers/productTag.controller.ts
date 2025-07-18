@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import prisma from '../../db/prisma';
-import { formatReadableDate } from '../../utils/readableDate';
 import { verifyToken } from '../../utils/jwt';
 
 export const extractUserName = async (req: Request): Promise<string> => {
@@ -49,9 +48,9 @@ export const getAllProductTags = async (req: Request, res: Response) => {
       name: tag.name,
       is_active: tag.is_active,
       created_by: tag.created_by,
-      created_at: formatReadableDate(tag.created_at),
+      created_at: tag.created_at,
       updated_by: tag.updated_by,
-      updated_at: formatReadableDate(tag.updated_at),
+      updated_at: tag.updated_at,
     })),
   });
 };
@@ -77,9 +76,9 @@ export const createProductTag = async (req: Request, res: Response) => {
       name: newTag.name,
       is_active: newTag.is_active,
       created_by: newTag.created_by,
-      created_at: formatReadableDate(newTag.created_at),
+      created_at: newTag.created_at,
       updated_by: newTag.updated_by,
-      updated_at: formatReadableDate(newTag.updated_at),
+      updated_at: newTag.updated_at,
     },
   });
 };
@@ -106,9 +105,9 @@ export const updateProductTag = async (req: Request, res: Response) => {
       name: updated.name,
       is_active: updated.is_active,
       created_by: updated.created_by,
-      created_at: formatReadableDate(updated.created_at),
+      created_at: updated.created_at,
       updated_by: updated.updated_by,
-      updated_at: formatReadableDate(updated.updated_at),
+      updated_at: updated.updated_at,
     },
   });
 };

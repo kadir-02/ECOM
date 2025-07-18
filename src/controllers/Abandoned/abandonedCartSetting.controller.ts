@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import prisma  from '../../db/prisma';
-import { formatReadableDate } from '../../utils/readableDate';
 import { getUserNameFromToken } from '../../utils/extractName';
 
 export const getAllAbandonedCartSettings = async (req: Request, res: Response) => {
@@ -34,8 +33,8 @@ export const getAllAbandonedCartSettings = async (req: Request, res: Response) =
       page_size: pageSize,
       results: results.map((item) => ({
         ...item,
-        created_at: formatReadableDate(item.created_at),
-        updated_at: formatReadableDate(item.updated_at),
+        created_at: item.created_at,
+        updated_at: item.updated_at,
       })),
     });
   } catch (error) {
