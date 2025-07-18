@@ -37,7 +37,14 @@ export const sendAbandonedCartEmail = async (
         <tbody>${productListHtml}</tbody>
       </table>
       <div style="text-align:center;margin-top:20px;">
-        <p style="font-size:15px;">Complete your purchase now to claim these deals!</p>
+        <a 
+          href="https://cosmatics.chickenkiller.com/checkout?abandoned=true" 
+          style="display:inline-block;padding:12px 24px;background:#388e3c;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold;font-size:16px;"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Complete Your Purchase
+        </a>
       </div>
       <p style="font-size:13px;color:#555;text-align:center;margin-top:24px;">
         <strong>Note:</strong> Discounts apply only to these specific items and quantities.

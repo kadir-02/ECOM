@@ -216,6 +216,20 @@ const razorpayOrder = await razorpay.orders.create({
       }
     }
 
+    if (cartId && userId) {
+      try {
+        await prisma.abandonedCartItem.deleteMany({
+          where: {
+            cartId: cartId,
+            userId: userId,
+          },
+        });
+        console.log(`✅ Cleared abandoned cart items for cartId=${cartId}, userId=${userId}`);
+      } catch (err) {
+        console.error('Failed to clear abandoned cart items:', err);
+      }
+    }    
+
     // Send order confirmation email
   
 // const shippingService = await prisma.shippingService.findFirst({
