@@ -75,8 +75,8 @@ export const getPaginatedPincodes = async (req: Request, res: Response) => {
       is_active: p.isActive,
       created_by: p.createdBy,
       updated_by: p.updatedBy,
-      created_at: formatDate(p.createdAt),
-      updated_at: formatDate(p.updatedAt),
+      created_at: p.createdAt,
+      updated_at: p.updatedAt,
     }));
 
     res.json({
