@@ -1,13 +1,13 @@
-import { Request, Response } from 'express';
-import prisma from '../../db/prisma';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Request, Response } from "express";
+import prisma from "../../db/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const getAbandonedCartDiscount = async (req: Request, res: Response) => {
   const cartId = parseInt(req.query.cartId as string);
 
   if (!cartId) {
-     res.status(400).json({ message: 'Cart ID is required in query params' });
-     return;
+    res.status(400).json({ message: "Cart ID is required in query params" });
+    return;
   }
 
   try {
@@ -25,8 +25,8 @@ export const getAbandonedCartDiscount = async (req: Request, res: Response) => {
     });
 
     if (!cart) {
-       res.status(404).json({ message: 'Cart not found' });
-       return;
+      res.status(404).json({ message: "Cart not found" });
+      return;
     }
 
     const abandonedItems = await prisma.abandonedCartItem.findMany({
@@ -41,15 +41,15 @@ export const getAbandonedCartDiscount = async (req: Request, res: Response) => {
     });
 
     if (abandonedItems.length === 0) {
-       res.status(200).json({
+      res.status(200).json({
         success: true,
         totalDiscount: 0,
         discountedItems: [],
-        unmatchedItems: cart.items.map(item => ({
-          name: item.product?.name || item.variant?.name || 'Item',
+        unmatchedItems: cart.items.map((item) => ({
+          name: item.product?.name || item.variant?.name || "Item",
           quantity: item.quantity,
         })),
-        message: 'No abandoned items found for this cart.',
+        message: "No abandoned items found for this cart.",
       });
       return;
     }
@@ -58,22 +58,28 @@ export const getAbandonedCartDiscount = async (req: Request, res: Response) => {
     const unmatchedItems: any[] = [];
 
     for (const cartItem of cart.items) {
-      const match = abandonedItems.find((item:any) =>
-        item.productId === cartItem.productId &&
-        item.variantId === cartItem.variantId &&
-        item.quantity === cartItem.quantity
+      const match = abandonedItems.find(
+        (item: any) =>
+          item.productId === cartItem.productId &&
+          item.variantId === cartItem.variantId &&
+          item.quantity === cartItem.quantity
       );
 
       if (match) {
-        const rawPrice = cartItem.variant?.selling_price || cartItem.product?.sellingPrice || 0;
-        const price = typeof rawPrice === 'object' && 'toNumber' in rawPrice
-          ? rawPrice.toNumber()
-          : Number(rawPrice);
+        const rawPrice =
+          cartItem.variant?.selling_price ||
+          cartItem.product?.sellingPrice ||
+          0;
+        const price =
+          typeof rawPrice === "object" && "toNumber" in rawPrice
+            ? rawPrice.toNumber()
+            : Number(rawPrice);
 
-        const discountAmount = (price * cartItem.quantity * match.discount) / 100;
+        const discountAmount =
+          (price * cartItem.quantity * match.discount) / 100;
 
         discountedItems.push({
-          name: cartItem.product?.name || cartItem.variant?.name || 'Item',
+          name: cartItem.product?.name || cartItem.variant?.name || "Item",
           quantity: cartItem.quantity,
           price,
           discountPercent: match.discount,
@@ -81,36 +87,42 @@ export const getAbandonedCartDiscount = async (req: Request, res: Response) => {
         });
       } else {
         unmatchedItems.push({
-          name: cartItem.product?.name || cartItem.variant?.name || 'Item',
+          name: cartItem.product?.name || cartItem.variant?.name || "Item",
           quantity: cartItem.quantity,
         });
       }
     }
 
-    const totalDiscount = discountedItems.reduce((sum, item) => sum + item.discountAmount, 0);
+    const totalDiscount = discountedItems.reduce(
+      (sum, item) => sum + item.discountAmount,
+      0
+    );
 
-     res.status(200).json({
+    res.status(200).json({
       success: true,
       totalDiscount,
       discountedItems,
       unmatchedItems,
       message: unmatchedItems.length
-        ? 'Partial discount available for some items.'
-        : 'Full discount available.',
+        ? "Partial discount available for some items."
+        : "Full discount available.",
     });
     return;
   } catch (error) {
-    console.error('❌ Error fetching abandoned cart discount:', error);
-     res.status(500).json({ message: 'Internal server error' });
-     return;
+    console.error("❌ Error fetching abandoned cart discount:", error);
+    res.status(500).json({ message: "Internal server error" });
+    return;
   }
 };
 
-export const applyAbandonedCartDiscount = async (req: Request, res: Response) => {
+export const applyAbandonedCartDiscount = async (
+  req: Request,
+  res: Response
+) => {
   const { cartId } = req.body;
 
   if (!cartId) {
-    res.status(400).json({ message: 'Cart ID is required' });
+    res.status(400).json({ message: "Cart ID is required" });
     return;
   }
 
@@ -130,7 +142,7 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
     });
 
     if (!cart) {
-      res.status(404).json({ message: 'Cart not found' });
+      res.status(404).json({ message: "Cart not found" });
       return;
     }
 
@@ -147,14 +159,16 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
     });
 
     if (!abandonedItems.length) {
-      res.status(400).json({ message: 'No abandoned cart items found' });
+      res.status(400).json({ message: "No abandoned cart items found" });
       return;
     }
 
     // 3. Calculate subtotal (all items)
     const subtotal = cart.items.reduce((sum, item) => {
-      const rawPrice = item.variant?.selling_price ?? item.product?.sellingPrice ?? 0;
-      const price = rawPrice instanceof Decimal ? rawPrice.toNumber() : Number(rawPrice);
+      const rawPrice =
+        item.variant?.selling_price ?? item.product?.sellingPrice ?? 0;
+      const price =
+        rawPrice instanceof Decimal ? rawPrice.toNumber() : Number(rawPrice);
       return sum + price * item.quantity;
     }, 0);
 
@@ -171,8 +185,10 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
           item.quantity === cartItem.quantity
       );
 
-      const rawPrice = cartItem.variant?.selling_price ?? cartItem.product?.sellingPrice ?? 0;
-      const price = rawPrice instanceof Decimal ? rawPrice.toNumber() : Number(rawPrice);
+      const rawPrice =
+        cartItem.variant?.selling_price ?? cartItem.product?.sellingPrice ?? 0;
+      const price =
+        rawPrice instanceof Decimal ? rawPrice.toNumber() : Number(rawPrice);
       const quantity = cartItem.quantity;
 
       if (match) {
@@ -180,7 +196,7 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
         const discountAmount = (price * quantity * discountPercent) / 100;
 
         discountedItems.push({
-          name: cartItem.product?.name || cartItem.variant?.name || 'Item',
+          name: cartItem.product?.name || cartItem.variant?.name || "Item",
           quantity,
           price,
           discountPercent,
@@ -190,7 +206,7 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
         totalDiscount += discountAmount;
       } else {
         unmatchedItems.push({
-          name: cartItem.product?.name || cartItem.variant?.name || 'Item',
+          name: cartItem.product?.name || cartItem.variant?.name || "Item",
           quantity,
         });
       }
@@ -211,8 +227,8 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
     res.status(200).json({
       success: true,
       message: unmatchedItems.length
-        ? 'Partial discount applied. Some items do not qualify.'
-        : 'Discount applied successfully.',
+        ? "Partial discount applied. Some items do not qualify."
+        : "Discount applied successfully.",
       subtotal,
       totalDiscount,
       finalTotal,
@@ -220,75 +236,59 @@ export const applyAbandonedCartDiscount = async (req: Request, res: Response) =>
       unmatchedItems,
     });
   } catch (error) {
-    console.error('❌ Error applying abandoned cart discount:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("❌ Error applying abandoned cart discount:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const getUsersSpecificAbandonedItems = async (req: Request, res: Response) => {
-  const userId = (req as any).user?.userId;
+
+export const getUsersSpecificAbandonedItems = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const userId = req.query.userId;
 
   if (!userId) {
-    res.status(401).json({ success: false, message: 'Unauthorized' });
+    res.status(401).json({ success: false, message: "Unauthorized" });
     return;
   }
 
   try {
-    // Get user's cart
     const cart = await prisma.cart.findUnique({
-      where: { userId },
+      where: { userId: Number(userId) },
     });
 
     if (!cart) {
-      res.json({ success: true, cart: { id: null, items: [] } });
+      res.json({ success: true, items: [] });
       return;
     }
 
-    // Get all abandoned items for this cart
     const abandonedItems = await prisma.abandonedCartItem.findMany({
       where: {
-        userId,
+        userId: Number(userId),
         cartId: cart.id,
-      },
-      include: {
-        product: {
-          include: {
-            images: true,
-          },
-        },
-        variant: {
-          include: {
-            images: true,
-            product: {
-              select: {
-                name: true,
-                description: true,
-              },
-            },
-          },
-        },
       },
     });
 
-    // Format items like your /cart endpoint
-    const items = abandonedItems.map(item => ({
-      id: item.productId,
-      productId: item.productId,
-      variantId: item.variantId,
+    const items = abandonedItems.map((item) => ({
+      product: item.productId,
+      variant: item.variantId,
       quantity: item.quantity,
-      product: item.product,
-      variant: item.variant,
+      discount_given_in_percent: item.discount,
+      discount_for_single_unit: item.discount, // adjust if you have another field for actual discounted value
     }));
 
     res.json({
       success: true,
-      cart: {
-        id: cart.id,
-        items: items,
-      },
+      items,
     });
   } catch (error) {
     console.error("❌ Error fetching abandoned cart items:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      items: [],
+    });
   }
 };
+
