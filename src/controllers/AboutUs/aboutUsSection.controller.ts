@@ -81,6 +81,7 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
         success: false,
         message: `sequence_number is not positive`,
       });
+      return;
     }
     // 🔁 Check for duplicate sequence_number if changed
     if (sequence_number && Number(sequence_number) !== existing.sequence_number) {
@@ -174,6 +175,7 @@ export const createAboutUsSection = async (req: Request, res: Response) => {
         success: false,
         message: `sequence_number is not positive`,
       });
+      return;
     }
     // 🔍 Check for duplicate sequence_number
     const existing = await prisma.aboutUsSection.findFirst({

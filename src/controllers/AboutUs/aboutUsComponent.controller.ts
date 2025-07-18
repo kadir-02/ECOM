@@ -43,6 +43,7 @@ export const createComponent = async (req: Request, res: Response) => {
         success: false,
         message: `sequence_number is not positive`,
       });
+      return;
     }
     const duplicate = await prisma.aboutUsComponent.findFirst({
       where: {
@@ -121,6 +122,7 @@ export const updateComponent = async (req: Request, res: Response) => {
         success: false,
         message: `sequence_number is not positive`,
       });
+      return;
     }
     if (seqNum && seqNum !== existing.sequence_number) {
       const duplicate = await prisma.aboutUsComponent.findFirst({
