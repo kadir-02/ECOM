@@ -156,6 +156,67 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
 //   }
 // };
 
+// export const updateCouponCode = async (req: Request, res: Response) => {
+//   const { id } = req.params;
+//   const {
+//     name,
+//     code,
+//     discount,
+//     expiresAt,
+//     maxRedeemCount,
+//     show_on_homepage,
+//     is_active,
+//   } = req.body;
+
+//   if (!id) {
+//      res.status(400).json('Coupon ID is required');
+//      return
+//   }
+
+//   try {
+//     const couponId = parseInt(id);
+
+//     const existing = await prisma.couponCode.findUnique({
+//       where: { id: couponId },
+//     });
+
+//     if (!existing) {
+//        res.status(404).json('Coupon not found');
+//        return
+//     }
+
+//     const updatedCoupon = await prisma.couponCode.update({
+//       where: { id: couponId },
+//       data: {
+//         ...(name !== undefined && { name }),
+//         ...(code !== undefined && { code }),
+//         ...(discount !== undefined && { discount }),
+//         ...(expiresAt !== undefined && { expiresAt: new Date(expiresAt) }),
+//         ...(maxRedeemCount !== undefined && { maxRedeemCount }),
+//        ...(show_on_homepage !== undefined && { show_on_homepage: show_on_homepage == 'true' }),
+
+//        ...(is_active !== undefined && { is_active: is_active == 'true' }),
+
+//       },
+//     });
+
+//      res.status(200).json({"message":"coupon updated successfully",updatedCoupon});
+//      return
+
+//   } catch (error: any) {
+//     console.error('Update coupon error:', error);
+
+//     if (error.code === 'P2002') {
+//        res.status(409).json('Coupon code must be unique');
+//        return
+//     }
+
+//      res.status(500).json('Internal server error');
+     
+//   }
+// };
+
+
 export const updateCouponCode = async (req: Request, res: Response) => {
   const { id } = req.params;
   const {
@@ -169,8 +230,8 @@ export const updateCouponCode = async (req: Request, res: Response) => {
   } = req.body;
 
   if (!id) {
-     res.status(400).json('Coupon ID is required');
-     return
+    res.status(400).json('Coupon ID is required');
+    return;
   }
 
   try {
@@ -181,41 +242,39 @@ export const updateCouponCode = async (req: Request, res: Response) => {
     });
 
     if (!existing) {
-       res.status(404).json('Coupon not found');
-       return
+      res.status(404).json('Coupon not found');
+      return;
     }
+
+    const maxRedeemCountNum = maxRedeemCount !== undefined ? Number(maxRedeemCount) : undefined;
+    const isActiveBool = is_active !== undefined ? (is_active === 'true' || is_active === true) : undefined;
+    const showOnHomepageBool = show_on_homepage !== undefined ? (show_on_homepage === 'true' || show_on_homepage === true) : undefined;
 
     const updatedCoupon = await prisma.couponCode.update({
       where: { id: couponId },
       data: {
         ...(name !== undefined && { name }),
         ...(code !== undefined && { code }),
-        ...(discount !== undefined && { discount }),
+        ...(discount !== undefined && { discount: Number(discount) }),
         ...(expiresAt !== undefined && { expiresAt: new Date(expiresAt) }),
-        ...(maxRedeemCount !== undefined && { maxRedeemCount }),
-       ...(show_on_homepage !== undefined && { show_on_homepage: show_on_homepage == 'true' }),
-
-       ...(is_active !== undefined && { is_active: is_active == 'true' }),
-
+        ...(maxRedeemCountNum !== undefined && { maxRedeemCount: maxRedeemCountNum }),
+        ...(showOnHomepageBool !== undefined && { show_on_homepage: showOnHomepageBool }),
+        ...(isActiveBool !== undefined && { is_active: isActiveBool }),
       },
     });
 
-     res.status(200).json({"message":"coupon updated successfully",updatedCoupon});
-     return
-
+    res.status(200).json({ message: 'Coupon updated successfully', updatedCoupon });
   } catch (error: any) {
     console.error('Update coupon error:', error);
 
     if (error.code === 'P2002') {
-       res.status(409).json('Coupon code must be unique');
-       return
+      res.status(409).json('Coupon code must be unique');
+      return;
     }
 
-     res.status(500).json('Internal server error');
-     
+    res.status(500).json('Internal server error');
   }
 };
-
 
 // User: Get all active coupon codes (globally available)
 export const getUserCouponCodes = async (req: Request, res: Response) => {
