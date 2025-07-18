@@ -35,37 +35,36 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
     const isInterState = deliveryState !== companyState;
 
     // Fetch shipping rate for delivery state
-    const shippingRateEntry = await prisma.shippingRate.findFirst({
-      where: {
-        state: {
-          equals: deliveryState,
-          mode: "insensitive",
-        },
-        is_active: true,
-      },
-    });
+    // Fetch all shipping rate entries
+const allShippingRates = await prisma.shippingRate.findMany({
+  where: {
+    is_active: true,
+  },
+});
 
-    if (!shippingRateEntry) {
-       res.status(404).json({
-        message: `Shipping rate not configured for state: ${deliveryStateRaw}`,
-      });
-      return
-    }
+// Try to find matching state (case-insensitive)
+const matchingEntry = allShippingRates.find(
+  (entry) => entry.state.trim().toLowerCase() === deliveryState
+);
 
-    const shippingRate = isInterState
-      ? shippingRateEntry.inter_state_rate
-      : shippingRateEntry.intra_state_rate;
+let shippingRate = 0;
 
-    if (isTaxInclusive) {
-     res.status(200).json({
-        taxType: null,
-        taxPercentage: 0,
-        taxDetails: [],
-        shippingRate,
-        isTaxInclusive,
-      });
-       return 
-    }
+if (matchingEntry) {
+  shippingRate =
+    deliveryState === matchingEntry.state.trim().toLowerCase()
+      ? matchingEntry.intra_state_rate
+      : matchingEntry.inter_state_rate;
+} else {
+  // No match found: fallback to default interstate rate from any entry
+  if (allShippingRates.length > 0) {
+    shippingRate = allShippingRates[0].inter_state_rate;
+  } else {
+     res
+      .status(404)
+      .json({ message: "No shipping rate configured in the system" });
+  }
+}
+
 
     // Fetch tax rates if tax is exclusive
     const taxRates = await prisma.tax.findMany({
