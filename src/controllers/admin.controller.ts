@@ -197,6 +197,103 @@ export const deleteUserByAdmin = async (req: CustomRequest, res: Response) => {
   }
 };
 
+// export const getAllUsers = async (req: CustomRequest, res: Response) => {
+//   if (req.user?.role !== 'ADMIN') {
+//     res.status(403).json({ message: 'Access denied: Admins only' });
+//     return;
+//   }
+
+//   try {
+//     const {
+//       page = '1',
+//       page_size = '10',
+//       ordering,
+//       start_date,
+//       end_date,
+//     } = req.query;
+
+//     const pageNumber = parseInt(page as string, 10);
+//     const pageSize = parseInt(page_size as string, 10);
+
+//     if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
+//       res.status(400).json({
+//         success: false,
+//         message: 'Invalid page or page_size. Both must be positive integers.',
+//       });
+//       return;
+//     }
+
+//     const skip = (pageNumber - 1) * pageSize;
+
+//     const orderFieldMap: Record<string, any> = {
+//       email: { email: undefined },
+//       created_at: { createdAt: undefined },
+//       first_name: { profile: { firstName: undefined } },
+//       last_name: { profile: { lastName: undefined } },
+//     };
+
+//     let orderBy: any = { createdAt: 'desc' };
+
+//     if (ordering && typeof ordering === 'string') {
+//       const isDesc = ordering.startsWith('-');
+//       const rawField = isDesc ? ordering.slice(1) : ordering;
+//       const mappedField = orderFieldMap[rawField];
+
+//       if (!mappedField) {
+//         res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
+//         return;
+//       }
+
+//       if (typeof Object.values(mappedField)[0] === 'object') {
+//         // Nested relation ordering (e.g., profile.firstName)
+//         const nestedKey = Object.keys(mappedField)[0];
+//         const nestedField = Object.keys(mappedField[nestedKey])[0];
+//         orderBy = {
+//           [nestedKey]: {
+//             [nestedField]: isDesc ? 'desc' : 'asc',
+//           },
+//         };
+//       } else {
+//         const key = Object.keys(mappedField)[0];
+//         orderBy = { [key]: isDesc ? 'desc' : 'asc' };
+//       }
+//     }
+
+//     const where: any = { role: 'USER' };
+
+//     if (start_date || end_date) {
+//       where.createdAt = {};
+//       if (start_date) where.createdAt.gte = new Date(`${start_date}T00:00:00.000Z`);
+//       if (end_date) where.createdAt.lte = new Date(`${end_date}T23:59:59.999Z`);
+//     }
+
+//     const [users, totalCount] = await Promise.all([
+//       prisma.user.findMany({
+//         where,
+//         include: { profile: true },
+//         orderBy,
+//         skip,
+//         take: pageSize,
+//       }),
+//       prisma.user.count({ where }),
+//     ]);
+
+//     const sanitized = users.map(({ password, ...u }) => u);
+
+//     res.status(200).json({
+//       success: true,
+//       users: sanitized,
+//       total: totalCount,
+//       page: pageNumber,
+//       page_size: pageSize,
+//       total_pages: Math.ceil(totalCount / pageSize),
+//     });
+//   } catch (error) {
+//     console.error('Error fetching users:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// };
+
 export const getAllUsers = async (req: CustomRequest, res: Response) => {
   if (req.user?.role !== 'ADMIN') {
     res.status(403).json({ message: 'Access denied: Admins only' });
@@ -210,13 +307,14 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
       ordering,
       start_date,
       end_date,
+      search = '',
     } = req.query;
 
     const pageNumber = parseInt(page as string, 10);
     const pageSize = parseInt(page_size as string, 10);
 
     if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
-      res.status(400).json({
+       res.status(400).json({
         success: false,
         message: 'Invalid page or page_size. Both must be positive integers.',
       });
@@ -240,12 +338,11 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
       const mappedField = orderFieldMap[rawField];
 
       if (!mappedField) {
-        res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
-        return;
+         res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
+         return;
       }
 
       if (typeof Object.values(mappedField)[0] === 'object') {
-        // Nested relation ordering (e.g., profile.firstName)
         const nestedKey = Object.keys(mappedField)[0];
         const nestedField = Object.keys(mappedField[nestedKey])[0];
         orderBy = {
@@ -259,14 +356,28 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
       }
     }
 
-    const where: any = { role: 'USER' };
+    // Build WHERE clause
+    const where: any = {
+      role: 'USER',
+    };
 
+    // 🔍 Search support
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      where.OR = [
+        { email: { contains: search, mode: 'insensitive' } },
+        { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+        { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    // 📅 Date filtering
     if (start_date || end_date) {
       where.createdAt = {};
       if (start_date) where.createdAt.gte = new Date(`${start_date}T00:00:00.000Z`);
       if (end_date) where.createdAt.lte = new Date(`${end_date}T23:59:59.999Z`);
     }
 
+    // 📦 Fetch users and total count
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -293,7 +404,6 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 export const getAllAdmins = async (req: CustomRequest, res: Response) => {
   if (req.user?.role !== 'ADMIN') {

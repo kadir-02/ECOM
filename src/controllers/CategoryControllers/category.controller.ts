@@ -260,17 +260,24 @@ export const updateCategory = async (req: Request, res: Response) => {
 
   try {
     const data: any = {};
-    const existingSeq = await prisma.category.findFirst({
-      where: { sequence_number:  Number(sequence_number) },
-    });
-
-    if (existingSeq) {
-       res.status(400).json({
-        success: false,
-        message: "Sequence number already exists",
+    if (sequence_number) {
+      const existingSeq = await prisma.category.findFirst({
+        where: {
+          sequence_number: Number(sequence_number),
+          NOT: { id: Number(id) },
+        },
       });
-      return;
-    }
+
+      if (existingSeq) {
+        res.status(400).json({
+          success: false,
+          message: "Sequence number already exists",
+        });
+        return;
+      }
+
+    data.sequence_number = Number(sequence_number);
+  }
     console.log("is_active", is_active);
     if (name) data.name = name;
     if (typeof is_active !== "undefined") {
