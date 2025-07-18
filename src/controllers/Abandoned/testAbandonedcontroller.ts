@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../db/prisma";
+import { sendAbandonedCartEmail } from "../../email/abandonedMail";
 
 export const getAllAbandonedCartSettings = async (
   req: Request,
@@ -12,7 +13,7 @@ export const getAllAbandonedCartSettings = async (
     const cartItems = await prisma.cart.findMany({
       where: {
         id: Number(cartId),
-        userId: Number(userId)
+        userId: Number(userId),
       },
       include: {
         user: true,
@@ -20,9 +21,15 @@ export const getAllAbandonedCartSettings = async (
       },
     });
 
+    await prisma.abandonedCartItem.deleteMany({
+      where: { cartId: Number(cartId) },
+    });
+
     for (const cart of cartItems) {
       const userEmail = cart.user.email;
       const userId = cart.user.id;
+
+      console.log("email", userEmail, userId, cartItems)
 
       if (!userEmail || cart.items.length === 0) continue;
 
@@ -40,6 +47,21 @@ export const getAllAbandonedCartSettings = async (
           });
         })
       );
+
+      const products = abandonedItems.map((ai) => {
+        const match = cart.items.find(
+          (i) => i.productId === ai.productId && i.variantId === ai.variantId
+        );
+
+        return {
+          name: match?.product?.name || match?.variant?.name || "Cart Item",
+          quantity: ai.quantity,
+          discount: ai.discount,
+        };
+      });
+
+      await sendAbandonedCartEmail(userEmail, products);
+
       res.status(200).json({ status: true, response: abandonedItems });
     }
   } catch (error) {
