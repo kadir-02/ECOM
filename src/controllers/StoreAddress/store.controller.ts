@@ -17,6 +17,8 @@ export const getAllStores = async (req: Request, res: Response) => {
       ? req.query.is_active === 'true' || req.query.is_active === '1'
       : undefined;
 
+    const search = req.query.search ? String(req.query.search).trim() : undefined;
+
     // Ordering logic
     const orderingParam = (req.query.ordering as string) || 'id';
     const sortDirection: Prisma.SortOrder = orderingParam.startsWith('-') ? 'desc' : 'asc';
@@ -31,19 +33,25 @@ export const getAllStores = async (req: Request, res: Response) => {
         ? { [sortField]: sortDirection }
         : { id: 'asc' };
 
-    // Count total with optional filters
-    const total = await prisma.store.count({
-      where: {
-        ...(is_active !== undefined && { is_active }),
-      },
-    });
+    // Build the where filter object
+    const where: Prisma.StoreWhereInput = {
+      ...(is_active !== undefined && { is_active }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { state: { contains: search, mode: 'insensitive' } },
+          ...( /^\d+$/.test(search) ? [{ zipcode: Number(search) }] : [] ),
+        ],
+      }),
+    };
+    // Count total with filters
+    const total = await prisma.store.count({ where });
 
     const results = await prisma.store.findMany({
       skip,
       take: pageSize,
-      where: {
-        ...(is_active !== undefined && { is_active }),
-      },
+      where,
       orderBy,
     });
 
