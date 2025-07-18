@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../db/prisma";
-// import prisma from "../../db/prisma";
 
 export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
   const { pincode } = req.body;
 
   if (!pincode) {
-    res.status(400).json({ message: "Pincode is required" });
-    return;
+     res.status(400).json({ message: "Pincode is required" });
+     return
   }
 
   try {
@@ -17,41 +16,58 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
     });
 
     if (!pincodeEntry) {
-      res.status(404).json({ message: "Invalid pincode" });
-      return;
+       res.status(404).json({ message: "Invalid pincode" });
+       return
     }
 
-    const deliveryState = pincodeEntry.state;
+    const deliveryStateRaw = pincodeEntry.state;
+    const deliveryState = deliveryStateRaw.trim().toLowerCase();
 
     // Get company settings
     const companySettings = await prisma.companySettings.findFirst();
     if (!companySettings) {
-      res.status(500).json({ message: "Company settings not found" });
-      return;
+       res.status(500).json({ message: "Company settings not found" });
+       return
     }
 
+    const companyState = companySettings.company_state?.trim().toLowerCase();
     const isTaxInclusive = companySettings.is_tax_inclusive;
-    const isInterState =
-      deliveryState.trim().toLowerCase() !== companySettings.company_state?.trim().toLowerCase();
+    const isInterState = deliveryState !== companyState;
 
-    const shippingRate =
-      deliveryState.trim().toLowerCase() === companySettings.company_state?.trim().toLowerCase()
-        ? 50
-        : 100;
+    // Fetch shipping rate for delivery state
+    const shippingRateEntry = await prisma.shippingRate.findFirst({
+      where: {
+        state: {
+          equals: deliveryState,
+          mode: "insensitive",
+        },
+        is_active: true,
+      },
+    });
+
+    if (!shippingRateEntry) {
+       res.status(404).json({
+        message: `Shipping rate not configured for state: ${deliveryStateRaw}`,
+      });
+      return
+    }
+
+    const shippingRate = isInterState
+      ? shippingRateEntry.inter_state_rate
+      : shippingRateEntry.intra_state_rate;
 
     if (isTaxInclusive) {
-      // If tax is inclusive, do not return tax info
-       res.status(200).json({
+     res.status(200).json({
         taxType: null,
         taxPercentage: 0,
         taxDetails: [],
         shippingRate,
         isTaxInclusive,
       });
-      return
+       return 
     }
 
-    // If tax is exclusive, fetch and return tax details
+    // Fetch tax rates if tax is exclusive
     const taxRates = await prisma.tax.findMany({
       where: { is_active: true },
     });
@@ -61,24 +77,23 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
     let taxDetails: { name: string; percentage: number }[] = [];
 
     if (isInterState) {
-      const igst = taxRates.find((tax) => tax.name.toUpperCase() === "IGST");
+      const igst = taxRates.find((t) => t.name.toUpperCase() === "IGST");
       if (!igst) {
-        res.status(500).json({ message: "IGST tax rate not configured" });
-        return;
+         res.status(500).json({ message: "IGST tax rate not configured" });
+         return
       }
-
       taxType = "IGST";
       taxPercentage = igst.percentage;
       taxDetails = [{ name: igst.name, percentage: igst.percentage }];
     } else {
-      const cgst = taxRates.find((tax) => tax.name.toUpperCase() === "CGST");
-      const sgst = taxRates.find((tax) => tax.name.toUpperCase() === "SGST");
-
+      const cgst = taxRates.find((t) => t.name.toUpperCase() === "CGST");
+      const sgst = taxRates.find((t) => t.name.toUpperCase() === "SGST");
       if (!cgst || !sgst) {
-        res.status(500).json({ message: "CGST/SGST tax rates not configured" });
-        return;
+         res
+          .status(500)
+          .json({ message: "CGST/SGST tax rates not configured" });
+          return
       }
-
       taxType = "CGST+SGST";
       taxPercentage = cgst.percentage + sgst.percentage;
       taxDetails = [
@@ -87,7 +102,7 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
       ];
     }
 
-    res.status(200).json({
+   res.status(200).json({
       taxType,
       taxPercentage,
       taxDetails,
@@ -96,8 +111,6 @@ export const getOrderSummaryByPincode = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Order summary error:", error);
-    res.status(500).json({ message: "Internal server error", error });
+   res.status(500).json({ message: "Internal server error", error });
   }
 };
-
-
