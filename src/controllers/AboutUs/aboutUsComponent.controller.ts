@@ -41,7 +41,7 @@ export const createComponent = async (req: Request, res: Response) => {
     if (seqNum != null && seqNum <= 0) {
       res.status(400).json({
         success: false,
-        message: `sequence_number ${seqNum} is not positive`,
+        message: `sequence_number is not positive`,
       });
     }
     const duplicate = await prisma.aboutUsComponent.findFirst({
@@ -54,7 +54,7 @@ export const createComponent = async (req: Request, res: Response) => {
     if (duplicate) {
        res.status(400).json({
         success: false,
-        message: `Duplicate sequence_number ${seqNum} in the same section`,
+        message: `This sequence number already exists`,
       });
       return;
     }
@@ -119,7 +119,7 @@ export const updateComponent = async (req: Request, res: Response) => {
     if (seqNum != null && seqNum <= 0) {
       res.status(400).json({
         success: false,
-        message: `sequence_number ${seqNum} is not positive`,
+        message: `sequence_number is not positive`,
       });
     }
     if (seqNum && seqNum !== existing.sequence_number) {
@@ -134,7 +134,7 @@ export const updateComponent = async (req: Request, res: Response) => {
       if (duplicate) {
          res.status(400).json({
           success: false,
-          message: `Duplicate sequence_number ${seqNum} in the same section`,
+          message: `This sequence number already exists`,
         });
         return;
       }

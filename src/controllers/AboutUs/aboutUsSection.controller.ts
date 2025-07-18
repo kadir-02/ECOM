@@ -79,7 +79,7 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
     if (seq != null && seq <= 0) {
       res.status(400).json({
         success: false,
-        message: `sequence_number ${sequence_number} is not positive`,
+        message: `sequence_number is not positive`,
       });
     }
     // 🔁 Check for duplicate sequence_number if changed
@@ -94,7 +94,7 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
       if (duplicate) {
          res.status(400).json({
           success: false,
-          message: `Sequence number ${sequence_number} already exists in another section.`,
+          message: `This sequence number already exists`,
         });
         return;
       }
@@ -172,7 +172,7 @@ export const createAboutUsSection = async (req: Request, res: Response) => {
     if (seq != null && seq <= 0) {
       res.status(400).json({
         success: false,
-        message: `sequence_number ${sequence_number} is not positive`,
+        message: `sequence_number is not positive`,
       });
     }
     // 🔍 Check for duplicate sequence_number
@@ -183,7 +183,7 @@ export const createAboutUsSection = async (req: Request, res: Response) => {
     if (existing) {
        res.status(400).json({
         success: false,
-        message: `Sequence number ${sequence_number} is already used by another section.`,
+        message: `This sequence number already exists`,
       });
       return;
     }
