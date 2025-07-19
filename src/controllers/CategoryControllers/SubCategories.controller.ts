@@ -13,6 +13,14 @@ export const createSubcategory = async (req: Request, res: Response) => {
     return;
   }
 
+  if (isNaN(sequence_number) || sequence_number <= 0) {
+     res.status(400).json({
+      success: false,
+      message: "sequence_number must be a positive number",
+    });
+    return;
+  }
+
   try {
     // 1. Verify that the category exists
     const existingCategory = await prisma.category.findUnique({
@@ -25,6 +33,21 @@ export const createSubcategory = async (req: Request, res: Response) => {
       res.status(404).json({
         success: false,
         message: "Parent category not found",
+      });
+      return;
+    }
+
+    const duplicateSequence = await prisma.subcategory.findFirst({
+      where: {
+        categoryId: parent_category,
+        sequence_number: sequence_number,
+      },
+    });
+
+    if (duplicateSequence) {
+       res.status(400).json({
+        success: false,
+        message: "Sequence number already exists for this parent category",
       });
       return;
     }
@@ -127,6 +150,14 @@ export const updateSubCategory = async (req: Request, res: Response) => {
     return
   }
 
+  if (isNaN(sequence_number) || sequence_number <= 0) {
+     res.status(400).json({
+      success: false,
+      message: "sequence_number must be a positive number",
+    });
+    return;
+  }
+
   try {
     const subcategoryId = Number(id);
 
@@ -141,6 +172,22 @@ export const updateSubCategory = async (req: Request, res: Response) => {
         message: "Subcategory not found",
       });
       return
+    }
+
+    const duplicateSequence = await prisma.subcategory.findFirst({
+      where: {
+        categoryId: existingSubcategory.categoryId,
+        sequence_number: sequence_number,
+        NOT: { id: subcategoryId },
+      },
+    });
+
+    if (duplicateSequence) {
+       res.status(400).json({
+        success: false,
+        message: "Sequence number already exists for this sub category",
+      });
+      return;
     }
 
     let imageUrl = existingSubcategory.imageUrl;
