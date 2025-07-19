@@ -210,7 +210,7 @@ if (sequence_number !== undefined) {
       return;
     }
   if (duplicate) {
-     res.status(409).json({
+     res.status(400).json({
       success: false,
       message: "Sequence number already exists in section",
     });
