@@ -36,9 +36,29 @@ export const createTax = async (req: Request, res: Response) => {
   const { name, percentage, is_active } = req.body;
   const created_by = await getUserNameFromToken(req);
 
+    const normalizedName = name.trim().toUpperCase();
+
+  // Check if tax with the same name exists (case-insensitive match)
+  const existing = await prisma.tax.findFirst({
+    where: {
+      name: {
+        equals: normalizedName,
+        mode: 'insensitive',
+      },
+    },
+  });
+
+  if (existing) {
+    res.status(409).json({
+      success: false,
+      message: `Tax with this name already exists.`,
+    });
+     return
+  }
+
   const newTax = await prisma.tax.create({
     data: {
-      name,
+      name:normalizedName,
       percentage: parseFloat(percentage),
       is_active,
       created_by,

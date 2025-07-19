@@ -185,6 +185,25 @@ export const updateGalleryItem = async (req: Request, res: Response) => {
         return
       }
     }
+const finalSection = section || existing.section;
+
+if (sequence_number !== undefined) {
+  const duplicate = await prisma.galleryItem.findFirst({
+    where: {
+      section: finalSection,
+      sequence_number: String(sequence_number),
+      NOT: { id },
+    },
+  });
+
+  if (duplicate) {
+     res.status(409).json({
+      success: false,
+      message: `Sequence number "${sequence_number}" already exists in section "${finalSection}".`,
+    });
+    return
+  }
+}
 
     const updated = await prisma.galleryItem.update({
       where: { id },
