@@ -15,8 +15,79 @@ export interface PincodePayload {
   updated_by?: string;
 }
 
-export const formatDate = (date: Date): string =>
-  dayjs(date).format('dddd, DD MMMM YYYY, hh:mmA');
+
+// export const getPaginatedPincodes = async (req: Request, res: Response) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const pageSize = parseInt(req.query.page_size as string) || 10;
+//     const skip = (page - 1) * pageSize;
+
+//     const isActiveParam = req.query.is_active;
+//     const isActive =
+//       typeof isActiveParam === 'string'
+//         ? isActiveParam.toLowerCase() === 'true'
+//           ? true
+//           : isActiveParam.toLowerCase() === 'false'
+//           ? false
+//           : undefined
+//         : undefined;
+
+//         const search = req.query.search?.toString().trim();
+//           const whereClause: any = {};
+//      if (isActive !== undefined) {
+//       whereClause.isActive = isActive;
+//     }
+
+//    if (search) {
+//   const searchInt = parseInt(search);
+//   const orConditions: any[] = [
+//     { city: { contains: search, mode: 'insensitive' } },
+//     { state: { contains: search, mode: 'insensitive' } },
+//   ];
+
+//   if (!isNaN(searchInt)) {
+//     orConditions.push({ zipcode: searchInt });
+//   }
+
+//   whereClause.OR = orConditions;
+// }
+
+
+
+//     const [totalCount, pincodes] = await Promise.all([
+//       prisma.pincode.count({ where: whereClause }),
+//       prisma.pincode.findMany({
+//         where: whereClause,
+//         skip,
+//         take: pageSize,
+//         orderBy: { id: 'desc' },
+//       }),
+//     ]);
+
+//     const results = pincodes.map((p) => ({
+//       id: p.id,
+//       city: p.city,
+//       state: p.state,
+//       zipcode: p.zipcode,
+//       estimated_delivery_days: p.estimatedDeliveryDays,
+//       is_active: p.isActive,
+//       created_by: p.createdBy,
+//       updated_by: p.updatedBy,
+//       created_at: p.createdAt,
+//       updated_at: p.updatedAt,
+//     }));
+
+//     res.json({
+//       total_pages: Math.ceil(totalCount / pageSize),
+//       current_page: page,
+//       page_size: pageSize,
+//       results,
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// };
 
 export const getPaginatedPincodes = async (req: Request, res: Response) => {
   try {
@@ -28,45 +99,32 @@ export const getPaginatedPincodes = async (req: Request, res: Response) => {
     const isActive =
       typeof isActiveParam === 'string'
         ? isActiveParam.toLowerCase() === 'true'
-          ? true
-          : isActiveParam.toLowerCase() === 'false'
-          ? false
-          : undefined
         : undefined;
 
-        const search = req.query.search?.toString().trim();
-          const whereClause: any = {};
-     if (isActive !== undefined) {
+    const search = req.query.search?.toString().trim();
+    const whereClause: any = {};
+
+    if (typeof isActive === 'boolean') {
       whereClause.isActive = isActive;
     }
 
-   if (search) {
-  const searchInt = parseInt(search);
-  const orConditions: any[] = [
-    { city: { contains: search, mode: 'insensitive' } },
-    { state: { contains: search, mode: 'insensitive' } },
-  ];
+    // Fetch all matching records (before search filter)
+    const allPincodes = await prisma.pincode.findMany({
+      where: whereClause,
+      orderBy: { id: 'desc' },
+    });
 
-  if (!isNaN(searchInt)) {
-    orConditions.push({ zipcode: searchInt });
-  }
+    // Manual filtering for partial search (including partial zipcode)
+    const filtered = allPincodes.filter((p) => {
+      const cityMatch = p.city.toLowerCase().includes(search?.toLowerCase() || '');
+      const stateMatch = p.state.toLowerCase().includes(search?.toLowerCase() || '');
+      const zipMatch = p.zipcode.toString().includes(search || '');
+      return search ? cityMatch || stateMatch || zipMatch : true;
+    });
 
-  whereClause.OR = orConditions;
-}
+    const paginated = filtered.slice(skip, skip + pageSize);
 
-
-
-    const [totalCount, pincodes] = await Promise.all([
-      prisma.pincode.count({ where: whereClause }),
-      prisma.pincode.findMany({
-        where: whereClause,
-        skip,
-        take: pageSize,
-        orderBy: { id: 'desc' },
-      }),
-    ]);
-
-    const results = pincodes.map((p) => ({
+    const results = paginated.map((p) => ({
       id: p.id,
       city: p.city,
       state: p.state,
@@ -80,7 +138,7 @@ export const getPaginatedPincodes = async (req: Request, res: Response) => {
     }));
 
     res.json({
-      total_pages: Math.ceil(totalCount / pageSize),
+      total_pages: Math.ceil(filtered.length / pageSize),
       current_page: page,
       page_size: pageSize,
       results,
