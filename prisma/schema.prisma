@@ -80,6 +80,7 @@ model Category {
   is_active       Boolean       @default(true)
   seo_title       String?
   seo_description String?
+  slug            String? 
 }
 
 model Subcategory {
@@ -94,6 +95,7 @@ model Subcategory {
   banner          String?
   imageUrl        String?
   publicId        String?
+  slug            String?
 
   @@unique([name, categoryId])
 }
