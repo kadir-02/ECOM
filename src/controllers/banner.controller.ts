@@ -82,6 +82,13 @@ export const createBanner = async (req: Request, res: Response) => {
       return;
     }
 
+    if (isNaN(sequence_number) || sequence_number <= 0) {
+       res.status(400).json({
+        error: 'sequence_number must be a positive number.',
+      });
+      return;
+    }
+
     const existing = await prisma.homepageBanner.findFirst({
       where: {
         sequence_number: Number(sequence_number),
@@ -198,6 +205,30 @@ export const updateBanner = async (req: Request, res: Response) => {
         error: 'Missing required fields: heading, sequence_number, buttonText, and buttonLink are required.',
       });
       return
+    }
+
+    const seq = Number(sequence_number);
+    if (isNaN(seq) || seq <= 0) {
+       res.status(400).json({
+        error: 'sequence_number must be a positive number.',
+      });
+      return;
+    }
+
+    const bannerId = Number(id);
+
+    const duplicate = await prisma.homepageBanner.findFirst({
+      where: {
+        sequence_number: seq,
+        NOT: { id: bannerId },
+      },
+    });
+
+    if (duplicate) {
+       res.status(400).json({
+        error: 'A banner with this sequence_number already exists.',
+      });
+      return;
     }
 
     let imageUrl: string | undefined;

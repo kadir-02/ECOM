@@ -491,9 +491,9 @@ if (search) {
         is_active: !user.isDeleted,
         category: 1,
         last_login: '',
-        date_joined: formatDate(user.createdAt),
+        date_joined: user.createdAt,
         created_by: createdBy || null,
-        updated_at: formatDate(user.createdAt),
+        updated_at: user.createdAt,
         updated_by: createdBy || null,
         category_name: 'Admin',
       };

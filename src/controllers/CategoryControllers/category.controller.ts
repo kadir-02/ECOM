@@ -9,6 +9,15 @@ export const createCategory = async (req: Request, res: Response) => {
   
 
   try {
+
+    if(sequence_number<=0){
+      res.status(400).json({
+          success: false,
+          message: "Sequence number must be positive",
+        });
+      return;
+    }
+
      const existingSeq = await prisma.category.findFirst({
       where: { sequence_number:  Number(sequence_number) },
     });
@@ -260,6 +269,15 @@ export const updateCategory = async (req: Request, res: Response) => {
 
   try {
     const data: any = {};
+
+    if(sequence_number<=0){
+      res.status(400).json({
+          success: false,
+          message: "Sequence number must be positive",
+        });
+      return;
+    }
+
     if (sequence_number) {
       const existingSeq = await prisma.category.findFirst({
         where: {
