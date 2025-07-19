@@ -115,32 +115,45 @@ export const createOrder = async (req: CustomRequest, res: Response) => {
       res.status(400).json({ message: 'Invalid address ID' });
       return
     }
-     const razorpayService = await prisma.paymentService.findFirst({
+    
+     let razorpayOrderId: string | null = null;
+let razorpayKeyId: string | null = null;
+
+if (paymentMethod.toUpperCase() === 'RAZORPAY') {
+  const razorpayService = await prisma.paymentService.findFirst({
     where: {
       name: 'Razorpay',
       is_active: true,
     },
   });
 
-   let razorpayKeyId: string | null = null;
+  const keyId = razorpayService?.razorpay_key_id || process.env.RAZORPAY_KEY;
+  const keySecret = razorpayService?.razorpay_key_secret || process.env.RAZORPAY_SECRET;
 
-const keyId = razorpayService?.razorpay_key_id || process.env.RAZORPAY_KEY;
-const keySecret = razorpayService?.razorpay_key_secret || process.env.RAZORPAY_SECRET;
+  if (!keyId || !keySecret) {
+    res.status(500).json({ message: 'Razorpay credentials not configured in DB or ENV.' });
+    return;
+  }
 
-if (!keyId || !keySecret) {
-  res.status(500).json({ message: 'Razorpay credentials not configured in DB or ENV.' });
-  return;
+  const razorpay = new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
+
+  const razorpayOrder = await razorpay.orders.create({
+    amount: Math.round(totalAmount * 100),
+    currency: "INR",
+    receipt: `receipt_order_${Date.now()}`,
+    notes: {
+      userId: userId.toString(),
+      addressId: addressId.toString(),
+      cartId: cartId?.toString() || '',
+    },
+  });
+
+  razorpayOrderId = razorpayOrder.id;
+  razorpayKeyId = keyId;
 }
-
-const razorpay = new Razorpay({
-  key_id: keyId,
-  key_secret: keySecret,
-});
-const razorpayOrder = await razorpay.orders.create({
-  amount: Math.round(totalAmount * 100), // Razorpay expects amount in paise
-  currency: "INR",
-  receipt: `receipt_order_${Date.now()}`,
-});
     const order = await prisma.order.create({
       data: {
         userId,
@@ -159,8 +172,8 @@ const razorpayOrder = await razorpay.orders.create({
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         abandentDiscountAmount,
-        razorpayOrderId:razorpayOrder.id,
-        items: {
+        razorpayOrderId: razorpayOrderId,      
+          items: {
           create: createItems,
         },
       },
@@ -265,10 +278,14 @@ const razorpayOrder = await razorpay.orders.create({
 //   receipt: `receipt_order_${Date.now()}`,
 // });
 
-    res.status(201).json({ razorpayid:razorpayOrder.id,totalAmount , 
+    res.status(201).json({ totalAmount , 
       id:order.id,
       fullname:address.fullName,
-    razorpayKeyId:keyId});
+...(razorpayOrderId && {
+    razorpayid: razorpayOrderId,
+    razorpayKeyId: razorpayKeyId,
+  }),
+  });
       await sendOrderConfirmationEmail(
       order.user.email,
       order.user.profile?.firstName || 'Customer',
