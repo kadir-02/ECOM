@@ -210,13 +210,14 @@ export const deleteUserByAdmin = async (req: CustomRequest, res: Response) => {
 //       ordering,
 //       start_date,
 //       end_date,
+//       search = '',
 //     } = req.query;
 
 //     const pageNumber = parseInt(page as string, 10);
 //     const pageSize = parseInt(page_size as string, 10);
 
 //     if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
-//       res.status(400).json({
+//        res.status(400).json({
 //         success: false,
 //         message: 'Invalid page or page_size. Both must be positive integers.',
 //       });
@@ -240,12 +241,11 @@ export const deleteUserByAdmin = async (req: CustomRequest, res: Response) => {
 //       const mappedField = orderFieldMap[rawField];
 
 //       if (!mappedField) {
-//         res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
-//         return;
+//          res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
+//          return;
 //       }
 
 //       if (typeof Object.values(mappedField)[0] === 'object') {
-//         // Nested relation ordering (e.g., profile.firstName)
 //         const nestedKey = Object.keys(mappedField)[0];
 //         const nestedField = Object.keys(mappedField[nestedKey])[0];
 //         orderBy = {
@@ -259,14 +259,28 @@ export const deleteUserByAdmin = async (req: CustomRequest, res: Response) => {
 //       }
 //     }
 
-//     const where: any = { role: 'USER' };
+//     // Build WHERE clause
+//     const where: any = {
+//       role: 'USER',
+//     };
 
+//     // 🔍 Search support
+//     if (search && typeof search === 'string' && search.trim() !== '') {
+//       where.OR = [
+//         { email: { contains: search, mode: 'insensitive' } },
+//         { profile: { firstName: { contains: search, mode: 'insensitive' } } },
+//         { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+//       ];
+//     }
+
+//     // 📅 Date filtering
 //     if (start_date || end_date) {
 //       where.createdAt = {};
 //       if (start_date) where.createdAt.gte = new Date(`${start_date}T00:00:00.000Z`);
 //       if (end_date) where.createdAt.lte = new Date(`${end_date}T23:59:59.999Z`);
 //     }
 
+//     // 📦 Fetch users and total count
 //     const [users, totalCount] = await Promise.all([
 //       prisma.user.findMany({
 //         where,
@@ -301,6 +315,41 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
   }
 
   try {
+    const { id } = req.query;
+
+    // 👉 Fetch single user by ID, return in same structure as paginated
+    if (id) {
+      const numericId = Number(id);
+      if (isNaN(numericId)) {
+        res.status(400).json({ message: 'Invalid user ID' });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: numericId },
+        include: { profile: true },
+      });
+
+      if (!user || user.role !== 'USER') {
+        res.status(404).json({ message: 'User not found' });
+        return;
+      }
+
+      const { password, ...sanitizedUser } = user;
+
+      // 🔁 Wrap in array and mimic pagination
+      res.status(200).json({
+        success: true,
+        users: [sanitizedUser],
+        total: 1,
+        page: 1,
+        page_size: 1,
+        total_pages: 1,
+      });
+      return;
+    }
+
+    // 👉 Paginated fetch
     const {
       page = '1',
       page_size = '10',
@@ -314,7 +363,7 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
     const pageSize = parseInt(page_size as string, 10);
 
     if (isNaN(pageNumber) || isNaN(pageSize) || pageNumber < 1 || pageSize < 1) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Invalid page or page_size. Both must be positive integers.',
       });
@@ -338,8 +387,8 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
       const mappedField = orderFieldMap[rawField];
 
       if (!mappedField) {
-         res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
-         return;
+        res.status(400).json({ message: `Invalid ordering field: ${rawField}` });
+        return;
       }
 
       if (typeof Object.values(mappedField)[0] === 'object') {
@@ -356,28 +405,25 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
       }
     }
 
-    // Build WHERE clause
-    const where: any = {
-      role: 'USER',
-    };
+    const where: any = { role: 'USER' };
 
-    // 🔍 Search support
-    if (search && typeof search === 'string' && search.trim() !== '') {
+    const searchParam = Array.isArray(search) ? search[0] : search;
+    const searchStr = typeof searchParam === 'string' ? searchParam.trim() : '';
+
+    if (searchStr) {
       where.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-        { profile: { firstName: { contains: search, mode: 'insensitive' } } },
-        { profile: { lastName: { contains: search, mode: 'insensitive' } } },
+        { email: { contains: searchStr, mode: 'insensitive' } },
+        { profile: { firstName: { contains: searchStr, mode: 'insensitive' } } },
+        { profile: { lastName: { contains: searchStr, mode: 'insensitive' } } },
       ];
     }
 
-    // 📅 Date filtering
     if (start_date || end_date) {
       where.createdAt = {};
       if (start_date) where.createdAt.gte = new Date(`${start_date}T00:00:00.000Z`);
       if (end_date) where.createdAt.lte = new Date(`${end_date}T23:59:59.999Z`);
     }
 
-    // 📦 Fetch users and total count
     const [users, totalCount] = await Promise.all([
       prisma.user.findMany({
         where,
