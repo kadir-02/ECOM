@@ -17,6 +17,11 @@ export const createWhyChooseUsItem = async (req: Request, res: Response) => {
   }
 
   try {
+    const seqTest=Number(sequenceNumber)
+    if (isNaN(seqTest) || seqTest <= 0) {
+       res.status(400).json({ message: 'Sequence number must be a positive number.' });
+       return;
+    }
 
     const sequenceStr = String(sequenceNumber); 
 
@@ -73,6 +78,12 @@ export const updateWhyChooseUsItem = async (req: Request, res: Response) => {
     if (!existing) {
       res.status(404).json({ message: 'Item not found' });
       return;
+    }
+
+    const seqTest=Number(sequenceNumber)
+    if (isNaN(seqTest) || seqTest <= 0) {
+       res.status(400).json({ message: 'Sequence number must be a positive number.' });
+       return;
     }
 
     const sequenceStr = String(sequenceNumber);
