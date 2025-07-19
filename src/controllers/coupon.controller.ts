@@ -286,27 +286,24 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
        return;
     }
 
-    const activeCodes = await prisma.couponCode.findMany({
-      where: {
-        code: {
-          not: {
-            startsWith: 'ABND-',
-          },
-        },
-        expiresAt: {
-          gt: new Date(),
-        },
-        redeemCount: {
-          lt: prisma.couponCode.fields.maxRedeemCount,
-        },
-        is_active: true,
+   const coupons = await prisma.couponCode.findMany({
+  where: {
+    is_active: true,
+    expiresAt: {
+      gt: new Date(),
+    },
+    redemptions: {
+      none: {
+        cartId: Number(cartId), 
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    },
+  },
+  orderBy: {
+    createdAt: 'desc',
+  },
+});
 
-    res.status(200).json({ success: true, data: activeCodes });
+    res.status(200).json({ success: true, coupons });
   } catch (error) {
     console.error('Get user coupon codes error:', error);
     res.status(500).json({ message: 'Internal server error' });

@@ -862,6 +862,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   total_before_discount: order.totalAmount,
    final_payable_amount: order.totalAmount,
   final_total: order.totalAmount, // fallback if finalAmount not stored
+   abandentDiscountAmount:order. abandentDiscountAmount ||"",
 
   order_status: order.status,
   invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
@@ -1104,7 +1105,14 @@ if (order.shippingRate && order.shippingRate > 0) {
     .text('Shipping:', tableLeft + 310, y, { width: 80, align: 'right' })
     .text(order.shippingRate.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
 }
-
+if(order.abandentDiscountAmount && order.abandentDiscountAmount > 0){
+   y += 18;
+  doc
+    .fillColor('black')
+    .font(labelFont)
+    .text('Shipping:', tableLeft + 310, y, { width: 80, align: 'right' })
+    .text(order.abandentDiscountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+}
 y += 25;
 doc
   .font(labelFont)
