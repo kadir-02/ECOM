@@ -261,6 +261,62 @@ export const getCategoryById = async (req: Request, res: Response) => {
 };
 
 
+// Get Category BY SLUG
+export const getCategoryByCategorySlug = async (
+  req: Request,
+  res: Response
+) => {
+  const { slug } = req.params;
+
+  try {
+    // Find the category first
+    const category = await prisma.category.findFirst({
+      where: {
+        slug: String(slug),
+      },
+    });
+
+    // Find the subcategory if the category is not found or return null
+    const subCategory = await prisma.subcategory.findFirst({
+      where: {
+        slug: String(slug),
+      },
+    });
+
+    // Check if category and subcategory are found
+    if (!category && !subCategory) {
+      res
+        .status(404)
+        .json({
+          success: false,
+          message: "Category or Subcategory not found.",
+        });
+      return;
+    }
+
+    // Return the data found (either category, subcategory, or both)
+    if (category) {
+      res.status(200).json({
+        success: true,
+        data: category,
+      });
+      return;
+    }
+
+    if (subCategory) {
+      res.status(200).json({
+        success: true,
+        data: subCategory,
+      });
+      return;
+    }
+  } catch (error: any) {
+    console.error("Error fetching category or subcategory:", error);
+    res.status(500).json({ success: false, message: error.message });
+    return;
+  }
+};
+
 
 // UPDATE CATEGORY
 export const updateCategory = async (req: Request, res: Response) => {

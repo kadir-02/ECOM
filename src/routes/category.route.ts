@@ -8,6 +8,7 @@ import {
   restoreCategory,
   getCategoryById,
   getFrontendCategories,
+  getCategoryByCategorySlug,
 } from '../controllers/CategoryControllers/category.controller';
 
 import subcategoryRoutes from './subcategory.route';
@@ -21,6 +22,7 @@ const router = Router();
 router.get('/', getAllCategories);
 router.get('/frontend', getFrontendCategories);
 router.get('/id', getCategoryById);
+router.get('/getCategory/:slug', getCategoryByCategorySlug);
 router.use('/subcategory', subcategoryRoutes);
 // Nested subcategory routes
 
