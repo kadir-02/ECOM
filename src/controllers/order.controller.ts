@@ -1086,14 +1086,33 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
         .text('Discount:', tableLeft + 310, y, { width: 80, align: 'right' })
         .text(discountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
     }
+    if (order.taxAmount && order.taxAmount > 0) {
+  y += 18;
+  doc
+    .fillColor('black')
+    .font(labelFont)
+    .text(`Tax (${order.taxType || ''} - ${order.appliedTaxRate || 0}%) :`, tableLeft + 200, y, { width: 190, align: 'right' })
+    .text(order.taxAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+}
 
-    y += 25;
-    doc
-      .font(labelFont)
-      .fontSize(13)
-      .fillColor(primaryColor)
-      .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
-      .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+// Shipping Rate
+if (order.shippingRate && order.shippingRate > 0) {
+  y += 18;
+  doc
+    .fillColor('black')
+    .font(labelFont)
+    .text('Shipping:', tableLeft + 310, y, { width: 80, align: 'right' })
+    .text(order.shippingRate.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+}
+
+y += 25;
+doc
+  .font(labelFont)
+  .fontSize(13)
+  .fillColor(primaryColor)
+  .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
+  .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
+
 
     // ====== FOOTER ======
     doc
