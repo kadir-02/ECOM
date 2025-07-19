@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import fs from 'fs';
 import * as fastcsv from 'fast-csv';
 import { getUserNameFromToken } from '../utils/extractName';
+import { Prisma } from '@prisma/client';
 
 export interface PincodePayload {
   city: string;
@@ -157,9 +158,10 @@ export const createPincode = async (req: Request, res: Response) => {
       zipcode,
       estimated_delivery_days,
       is_active,
-      created_by,
     }: PincodePayload = req.body;
-    const user = await getUserNameFromToken(req)
+
+    const user = await getUserNameFromToken(req);
+
     const newPincode = await prisma.pincode.create({
       data: {
         city,
@@ -172,10 +174,26 @@ export const createPincode = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(newPincode);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
+     res.status(201).json(newPincode);
+     return;
+  } catch (err: any) {
+    console.error('Error creating pincode:', err);
+
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002' &&
+      Array.isArray(err.meta?.target) &&
+      err.meta.target.includes('zipcode')
+    ) {
+       res.status(409).json({
+        error: 'Pincode already exists',
+        field: 'zipcode',
+      });
+      return;
+    }
+
+     res.status(500).json({ error: 'Internal server error' });
+     return;
   }
 };
 
