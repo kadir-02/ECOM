@@ -15,6 +15,14 @@ export const addHeaderData = async (req: Request, res: Response) => {
     return;
   }
 
+  if (isNaN(sequence_number) || sequence_number <= 0) {
+    res.status(400).json({
+      success: false,
+      message: "Sequence number must be a positive number",
+    });
+    return;
+  }
+
   try {
     const checkSequence = await prisma.header.findUnique({
       where: {
@@ -107,6 +115,14 @@ export const updateHeaderData = async (req: Request, res: Response) => {
     is_active === undefined
   ) {
     res.status(400).json({ success: false, message: "Invalid JSON" });
+    return;
+  }
+
+  if (isNaN(sequence_number) || sequence_number <= 0) {
+    res.status(400).json({
+      success: false,
+      message: "Sequence number must be a positive number",
+    });
     return;
   }
 
