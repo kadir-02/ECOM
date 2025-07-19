@@ -11,7 +11,7 @@ import { authorizeAdmin } from '../middlewares/authorizaAdmin';
 const router = Router();
 
 router.get('/', getAllTaxes);
-router.use(authenticate,authorizeAdmin)
+// router.use(authenticate,authorizeAdmin)
 router.post('/', createTax);
 router.patch('/:id/', updateTax);
 router.delete('/:id/', deleteTax);
