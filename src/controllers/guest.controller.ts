@@ -16,6 +16,12 @@ export const guestCheckout = async (req: Request, res: Response) => {
     items,
     totalAmount,
     paymentMethod,
+    subtotal,
+    taxType,
+    taxAmount,
+    appliedTaxRate,
+    isTaxInclusive,
+    shippingRate,
   }: {
     email: string;
     address: {
@@ -35,6 +41,12 @@ export const guestCheckout = async (req: Request, res: Response) => {
     }[];
     totalAmount: number;
     paymentMethod: string;
+    subtotal: number;
+    taxType:string;
+    taxAmount:number;
+    appliedTaxRate:number;
+    isTaxInclusive:boolean;
+    shippingRate:number
   } = req.body;
 
   try {
@@ -133,6 +145,12 @@ const razorpay = new Razorpay({
         userId: guestUser.id,
         addressId: savedAddress.id,
         totalAmount,
+          subtotal,
+    taxType,
+    taxAmount,
+    appliedTaxRate,
+    isTaxInclusive,
+    shippingRate,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         razorpayOrderId,
