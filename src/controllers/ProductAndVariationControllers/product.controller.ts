@@ -451,6 +451,46 @@ const totalCount = await prisma.product.count({
 });
 
 const totalPages = Math.ceil(totalCount / limit);
+const priceRange = await prisma.product.aggregate({
+  where: {
+    ...whereClause,
+    ...(search
+      ? {
+          OR: [
+            {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+            {
+              basePrice: {
+                equals: isNaN(Number(search)) ? undefined : Number(search),
+              },
+            },
+            {
+              sellingPrice: {
+                equals: isNaN(Number(search)) ? undefined : Number(search),
+              },
+            },
+            {
+              category: {
+                is: {
+                  name: {
+                    contains: search,
+                    mode: 'insensitive',
+                  },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  },
+  _min: { sellingPrice: true },
+  _max: { sellingPrice: true },
+});
+
 
   res.status(200).json({
   success: true,
@@ -458,6 +498,8 @@ const totalPages = Math.ceil(totalCount / limit);
   totalCount,
   totalPages,
   currentPage: page,
+  minPrice: priceRange._min.sellingPrice ?? 0,
+maxPrice: priceRange._max.sellingPrice ?? 0,
   products: transformed,
 });
   } catch (error: any) {
