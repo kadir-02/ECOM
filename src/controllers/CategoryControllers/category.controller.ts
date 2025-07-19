@@ -3,6 +3,12 @@ import prisma from "../../db/prisma";
 import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
 
 // CREATE CATEGORY
+export const generateCategorySlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-") 
+    .replace(/^-+|-+$/g, "");     
+};
 export const createCategory = async (req: Request, res: Response) => {
   console.log(req.body)
   const { name, sequence_number, is_active ,seo_title, seo_description } = req.body;
@@ -29,6 +35,8 @@ export const createCategory = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    const slug = generateCategorySlug(name);
 
     let imageUrl: string | undefined;
     let banner: string | undefined;
@@ -61,6 +69,7 @@ export const createCategory = async (req: Request, res: Response) => {
       data: {
         name,
         sequence_number: Number(sequence_number),
+         slug,
         imageUrl,
         banner,
         publicId,
