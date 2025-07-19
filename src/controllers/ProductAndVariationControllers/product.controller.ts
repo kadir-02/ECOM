@@ -268,7 +268,24 @@ export const getProducts = async (req: Request, res: Response) => {
     const whereClause: any = {
       isDeleted: false,
     };
+const categorySlug = query.category_slug as string | undefined;
 
+// ✅ If category_slug is provided, get its ID and filter by it
+if (categorySlug) {
+  const category = await prisma.category.findFirst({
+    where: { slug: categorySlug },
+  });
+
+  if (!category) {
+     res.status(404).json({
+      success: false,
+      message: `Category with slug "${categorySlug}" not found`,
+    });
+    return
+  }
+
+  whereClause.categoryId = category.id;
+}
    if (categoryIds.length > 0) {
   whereClause.categoryId = { in: categoryIds };
 }
