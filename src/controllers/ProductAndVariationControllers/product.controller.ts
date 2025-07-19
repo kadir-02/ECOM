@@ -270,21 +270,30 @@ export const getProducts = async (req: Request, res: Response) => {
     };
 const categorySlug = query.category_slug as string | undefined;
 
-// ✅ If category_slug is provided, get its ID and filter by it
 if (categorySlug) {
+  // Try finding in categories first
   const category = await prisma.category.findFirst({
     where: { slug: categorySlug },
   });
 
-  if (!category) {
-     res.status(404).json({
-      success: false,
-      message: `Category with slug "${categorySlug}" not found`,
+  if (category) {
+    whereClause.categoryId = category.id;
+  } else {
+    // If not found in category, check in subcategory
+    const subcategory = await prisma.subcategory.findFirst({
+      where: { slug: categorySlug },
     });
-    return
-  }
 
-  whereClause.categoryId = category.id;
+    if (subcategory) {
+      whereClause.subcategoryId = subcategory.id;
+    } else {
+     res.status(404).json({
+        success: false,
+        message: `No category or subcategory found with slug "${categorySlug}"`,
+      });
+       return 
+    }
+  }
 }
    if (categoryIds.length > 0) {
   whereClause.categoryId = { in: categoryIds };

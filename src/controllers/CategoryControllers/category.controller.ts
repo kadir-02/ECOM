@@ -36,7 +36,21 @@ export const createCategory = async (req: Request, res: Response) => {
       return;
     }
 
-    const slug = generateCategorySlug(name);
+   let baseSlug = generateCategorySlug(name);
+    let slug = baseSlug;
+    let count = 1;
+
+    while (true) {
+      const existingSlug = await prisma.category.findFirst({
+        where: { slug },
+      });
+
+      if (!existingSlug) break;
+
+      slug = `${baseSlug}-${count}`;
+      count++;
+    }
+
 
     let imageUrl: string | undefined;
     let banner: string | undefined;

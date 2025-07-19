@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../db/prisma";
 import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
+import { generateCategorySlug } from "./category.controller";
 
 export const createSubcategory = async (req: Request, res: Response) => {
   const { name, sequence_number, isDeleted, parent_category } = req.body;
@@ -51,6 +52,20 @@ export const createSubcategory = async (req: Request, res: Response) => {
       });
       return;
     }
+       let baseSlug = generateCategorySlug(name);
+    let slug = baseSlug;
+    let count = 1;
+
+    while (true) {
+      const existingSlug = await prisma.subcategory.findFirst({
+        where: { slug },
+      });
+
+      if (!existingSlug) break;
+
+      slug = `${baseSlug}-${count}`;
+      count++;
+    }
 
     // 2. Upload image and banner
     let imageUrl: string | undefined;
@@ -88,6 +103,7 @@ export const createSubcategory = async (req: Request, res: Response) => {
         name,
         sequence_number: Number(sequence_number),
         categoryId: Number(parent_category),
+        slug,
         imageUrl,
         banner,
         publicId,
