@@ -39,8 +39,8 @@ export const createSubcategory = async (req: Request, res: Response) => {
 
     const duplicateSequence = await prisma.subcategory.findFirst({
       where: {
-        categoryId: parent_category,
-        sequence_number: sequence_number,
+        categoryId: Number(parent_category),
+        sequence_number: Number(sequence_number),
       },
     });
 
@@ -138,19 +138,134 @@ export const getSubcategoryByCategoryId = async (
   }
 };
 
+// export const updateSubCategory = async (req: Request, res: Response) => {
+//   const { name, sequence_number, isDeleted } = req.body;
+//   const { id } = req.params;
+
+//   if (!name || !sequence_number) {
+//      res.status(400).json({
+//       success: false,
+//       message: "Name and sequence_number are required",
+//     });
+//     return
+//   }
+
+//   if (isNaN(sequence_number) || sequence_number <= 0) {
+//      res.status(400).json({
+//       success: false,
+//       message: "sequence_number must be a positive number",
+//     });
+//     return;
+//   }
+
+//   try {
+//     const subcategoryId = Number(id);
+
+//     // 1. Check if subcategory exists
+//     const existingSubcategory = await prisma.subcategory.findUnique({
+//       where: { id: subcategoryId },
+//     });
+
+//     if (!existingSubcategory) {
+//        res.status(404).json({
+//         success: false,
+//         message: "Subcategory not found",
+//       });
+//       return
+//     }
+
+//     const duplicateSequence = await prisma.subcategory.findFirst({
+//       where: {
+//         categoryId: existingSubcategory.categoryId,
+//         sequence_number: sequence_number,
+//         NOT: { id: subcategoryId },
+//       },
+//     });
+
+//     if (duplicateSequence) {
+//        res.status(400).json({
+//         success: false,
+//         message: "Sequence number already exists for this sub category",
+//       });
+//       return;
+//     }
+
+//     let imageUrl = existingSubcategory.imageUrl;
+//     let banner = existingSubcategory.banner;
+//     let publicId = existingSubcategory.publicId;
+
+//     // 2. Handle image update
+//     if (req.files && "image" in req.files) {
+//       const imageFile = Array.isArray(req.files["image"])
+//         ? req.files["image"][0]
+//         : req.files["image"];
+//       const result = await uploadToCloudinary(
+//         imageFile.buffer,
+//         "subcategories/image"
+//       );
+//       imageUrl = result.secure_url;
+//       publicId = result.public_id;
+//     }
+
+//     // 3. Handle banner update
+//     if (req.files && "banner" in req.files) {
+//       const bannerFile = Array.isArray(req.files["banner"])
+//         ? req.files["banner"][0]
+//         : req.files["banner"];
+//       const result = await uploadToCloudinary(
+//         bannerFile.buffer,
+//         "subcategories/banner"
+//       );
+//       banner = result.secure_url;
+//     }
+
+//     // 4. Perform update
+//     const updatedSubcategory = await prisma.subcategory.update({
+//       where: { id: subcategoryId },
+//       data: {
+//         name,
+//         sequence_number: Number(sequence_number),
+//         isDeleted:
+//           typeof isDeleted !== "undefined"
+//             ? isDeleted === "true" || isDeleted === true
+//             : existingSubcategory.isDeleted,
+//         imageUrl,
+//         banner,
+//         publicId,
+//       },
+//     });
+
+//      res.status(200).json({
+//       success: true,
+//       message: "Subcategory updated",
+//       subcategory: updatedSubcategory,
+//     });
+//   } catch (error: any) {
+//     console.error("Update subcategory error:", error);
+//      res.status(500).json({
+//       success: false,
+//       message: error.message || "Error updating subcategory",
+//     });
+//   }
+// };
+
 export const updateSubCategory = async (req: Request, res: Response) => {
   const { name, sequence_number, isDeleted } = req.body;
   const { id } = req.params;
 
+  const sequenceNum = Number(sequence_number);
+  const subcategoryId = Number(id);
+
+  // Validate inputs
   if (!name || !sequence_number) {
      res.status(400).json({
       success: false,
       message: "Name and sequence_number are required",
     });
-    return
+    return;
   }
 
-  if (isNaN(sequence_number) || sequence_number <= 0) {
+  if (isNaN(sequenceNum) || sequenceNum <= 0) {
      res.status(400).json({
       success: false,
       message: "sequence_number must be a positive number",
@@ -159,8 +274,6 @@ export const updateSubCategory = async (req: Request, res: Response) => {
   }
 
   try {
-    const subcategoryId = Number(id);
-
     // 1. Check if subcategory exists
     const existingSubcategory = await prisma.subcategory.findUnique({
       where: { id: subcategoryId },
@@ -171,13 +284,14 @@ export const updateSubCategory = async (req: Request, res: Response) => {
         success: false,
         message: "Subcategory not found",
       });
-      return
+      return;
     }
 
+    // 2. Check for duplicate sequence number within the same category
     const duplicateSequence = await prisma.subcategory.findFirst({
       where: {
         categoryId: existingSubcategory.categoryId,
-        sequence_number: sequence_number,
+        sequence_number: sequenceNum,
         NOT: { id: subcategoryId },
       },
     });
@@ -194,11 +308,12 @@ export const updateSubCategory = async (req: Request, res: Response) => {
     let banner = existingSubcategory.banner;
     let publicId = existingSubcategory.publicId;
 
-    // 2. Handle image update
+    // 3. Handle image update
     if (req.files && "image" in req.files) {
       const imageFile = Array.isArray(req.files["image"])
         ? req.files["image"][0]
         : req.files["image"];
+
       const result = await uploadToCloudinary(
         imageFile.buffer,
         "subcategories/image"
@@ -207,11 +322,12 @@ export const updateSubCategory = async (req: Request, res: Response) => {
       publicId = result.public_id;
     }
 
-    // 3. Handle banner update
+    // 4. Handle banner update
     if (req.files && "banner" in req.files) {
       const bannerFile = Array.isArray(req.files["banner"])
         ? req.files["banner"][0]
         : req.files["banner"];
+
       const result = await uploadToCloudinary(
         bannerFile.buffer,
         "subcategories/banner"
@@ -219,12 +335,12 @@ export const updateSubCategory = async (req: Request, res: Response) => {
       banner = result.secure_url;
     }
 
-    // 4. Perform update
+    // 5. Update subcategory
     const updatedSubcategory = await prisma.subcategory.update({
       where: { id: subcategoryId },
       data: {
         name,
-        sequence_number: Number(sequence_number),
+        sequence_number: sequenceNum,
         isDeleted:
           typeof isDeleted !== "undefined"
             ? isDeleted === "true" || isDeleted === true
@@ -240,14 +356,17 @@ export const updateSubCategory = async (req: Request, res: Response) => {
       message: "Subcategory updated",
       subcategory: updatedSubcategory,
     });
+    return;
   } catch (error: any) {
     console.error("Update subcategory error:", error);
      res.status(500).json({
       success: false,
       message: error.message || "Error updating subcategory",
     });
+    return;
   }
 };
+
 
 export const deleteSubcategory = async (req: Request, res: Response) => {
   const { id } = req.params;
