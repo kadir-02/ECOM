@@ -26,6 +26,13 @@ export const createGalleryItem = async (req: Request, res: Response) => {
       });
       return;
     }
+      const seqTest=Number(sequence_number)
+  if (seqTest <= 0) {
+       res.status(400).json({
+        error: 'sequence_number must be a positive number.',
+      });
+      return;
+    }
 
     if (section) {
       const type = await prisma.galleryType.findUnique({
@@ -195,11 +202,17 @@ if (sequence_number !== undefined) {
       NOT: { id },
     },
   });
-
+  const seqTest=Number(sequence_number)
+  if ( seqTest <= 0) {
+       res.status(400).json({
+        error: 'sequence_number must be a positive number.',
+      });
+      return;
+    }
   if (duplicate) {
      res.status(409).json({
       success: false,
-      message: `Sequence number "${sequence_number}" already exists in section "${finalSection}".`,
+      message: "Sequence number already exists in section",
     });
     return
   }

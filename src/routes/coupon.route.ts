@@ -18,14 +18,13 @@ router.post('/user-coupon', authenticate, getUserCouponCodes);
 router.post('/redeem', authenticate, redeemCouponCode);
 
 // router.get('/discounts/:id', authenticate, getCouponCodeById);
+router.get('/discounts', authenticate, getAllCouponCodes);
 
 router.post('/', authenticate, authorizeAdmin, createCouponCode);
 
 router.patch('/update/:id', updateCouponCode);
 
 router.delete('/discounts/:id', authenticate, authorizeAdmin, deleteCouponCode);
-
-router.get('/discounts', authenticate, getAllCouponCodes);
 
 
 export default router;
