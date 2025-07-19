@@ -58,6 +58,8 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
     return
   }
 
+  console.log("event.event", event.event, razorpayOrderId)
+
   // ✅ Handle valid webhook
   if (event.event === 'payment.captured' && razorpayOrderId) {
     try {
@@ -68,12 +70,12 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
           status: 'CONFIRMED',
         },
       });
-
+      console.log("order", order)
       if(!order) {
         res.status(400).json({error: "order payment not get"})
       }
 
-      await prisma.payment.updateMany({
+      const paymentRes = await prisma.payment.updateMany({
         where: {
           id: Number(order.paymentId)
         },
@@ -83,7 +85,7 @@ export const razorpayWebhookHandler = async (req: Request, res: Response) => {
         }
       })
 
-      console.log(`✅ Order updated after payment capture: ${razorpayOrderId}`);
+      console.log(`✅ Order updated after payment capture: ${razorpayOrderId} ${paymentRes}`);
     } catch (err) {
       console.error('🔴 Failed to update order:', err);
     }
