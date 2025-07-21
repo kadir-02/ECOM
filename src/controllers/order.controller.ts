@@ -314,21 +314,42 @@ if (paymentMethod.toUpperCase() === 'RAZORPAY') {
 };
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
-  const { orderId } = req.params;
-  const { status } = req.body;
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-  const order = await prisma.order.update({
-    where: { id: Number(orderId) },
-    data: { status },
-    include: {
-      user: true,
-    },
-  });
+    const order = await prisma.order.update({
+      where: { id: Number(orderId) },
+      data: { status },
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
+        },
+      },
+    });
 
-  await sendNotification(order.userId, `Your order #${order.id} status has been updated to ${order.status}. at ${dayjs().format('DD/MM/YYYY, hh:mmA')}`, 'ORDER');
+    await sendNotification(
+      order.userId,
+      `Your order #${order.id} status has been updated to ${order.status}. at ${dayjs().format('DD/MM/YYYY, hh:mmA')}`,
+      'ORDER'
+    );
 
-  res.json(order);
+    await sendOrderStatusUpdateEmail(
+      order.user.email,
+      order.user.profile?.firstName || 'Customer',
+      order.id,
+      order.status
+    );
+
+    res.json(order);
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update order status.' });
+  }
 };
+
 
 // Get orders for admin
 // export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
@@ -698,6 +719,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       res.status(404).json({ message: 'Order not found' });
       return
     }
+
   if (
   order.payment?.method === 'RAZORPAY' &&
   !order.isVisible
@@ -705,6 +727,17 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
    res.status(403).json({ message: 'Order is not yet visible. Please wait until payment is confirmed.' });
    return
 }
+ let discountPercentage = null;
+    if (order.discountCode) {
+      const coupon = await prisma.couponCode.findUnique({
+        where: { code: order.discountCode },
+        select: { discount: true },
+      });
+
+      if (coupon) {
+        discountPercentage = coupon.discount;
+      }
+    }
     const finalAmount = order.finalAmount ?? (order.totalAmount - (order.discountAmount || 0));
 
     const customerNameFromAddress = order.address?.fullName || 'Guest';
@@ -735,6 +768,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   tax_inclusive: order.isTaxInclusive,
   tax_amount: order.taxAmount || 0,
   shippingRate :order.  shippingRate ,
+  discountPercentage,
   discount: order.discountAmount || 0,
   discount_coupon_code: order.discountCode || '',
   total_before_discount: order.totalAmount,

@@ -286,22 +286,25 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
        return;
     }
 
-   const coupons = await prisma.couponCode.findMany({
-  where: {
-    is_active: true,
-    expiresAt: {
-      gt: new Date(),
-    },
-    redemptions: {
-      none: {
-        cartId: Number(cartId), 
+    const coupons = await prisma.couponCode.findMany({
+      where: {
+        is_active: true,
+        expiresAt: {
+          gt: new Date(),
+        },
+        redemptions: {
+          none: {
+            AND: [
+              { cartId: Number(cartId) },
+              { NOT: { orderId: null } }, // means order has been placed
+            ],
+          },
+        },
       },
-    },
-  },
-  orderBy: {
-    createdAt: 'desc',
-  },
-});
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
     res.status(200).json({ success: true, coupons });
   } catch (error) {

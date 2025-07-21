@@ -4,6 +4,8 @@ import prisma from '../db/prisma';
 import { OrderStatus, PaymentStatus, AddressType } from '@prisma/client';
 import Razorpay from 'razorpay';
 import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
+import { sendOrderConfirmationEmail } from '../email/sendOrderConfirmationEmail';
+import { profile } from 'console';
 
 // const razorpay = new Razorpay({
 //   key_id: process.env.RAZORPAY_KEY,
@@ -204,11 +206,36 @@ const razorpay = new Razorpay({
     },
     address: true,
     payment: true,
+    user:{
+      include:{
+        profile:true
+      }
+    }
   },
     });
     
+
     await sendOrderStatusUpdateEmail(req?.body?.email, order?.address?.fullName || 'Customer', order.id, order.status);
-    
+  
+    const customerName =
+  order.user.profile?.firstName && order.user.profile?.lastName
+    ? `${order.user.profile.firstName} ${order.user.profile.lastName}`
+    : order.address?.fullName || 'Customer';
+  await sendOrderConfirmationEmail(
+  order.user.email,
+customerName,
+  `COM-${order.id}`,
+ order.items.map((i) => ({
+  name: i.variant
+    ? `${i.variant.product?.name || 'Product'} - ${i.variant.name}`
+    : i.product?.name || 'Product',
+  quantity: i.quantity,
+  price: i.price,
+})),
+  totalAmount,
+  order.payment?.method || 'N/A'
+);
+
     res.status(201).json({ message: 'Guest order placed successfully', order ,razorpayOrderId,razorpayKeyId});
 
   } catch (error: any) {
