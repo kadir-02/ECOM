@@ -287,25 +287,24 @@ export const getUserCouponCodes = async (req: Request, res: Response) => {
     }
 
     const coupons = await prisma.couponCode.findMany({
-      where: {
-        is_active: true,
-        expiresAt: {
-          gt: new Date(),
-        },
-        redemptions: {
-          none: {
-            AND: [
-              { cartId: Number(cartId) },
-              { NOT: { orderId: null } }, // means order has been placed
-            ],
-          },
+       where: {
+    is_active: true,
+    expiresAt: {
+      gt: new Date(),
+    },
+    redemptions: {
+      none: {
+        cartId: Number(cartId),
+        orderId: {
+          not: null,
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
+    },
+  },
+  orderBy: {
+    createdAt: 'desc',
+  },
+});
     res.status(200).json({ success: true, coupons });
   } catch (error) {
     console.error('Get user coupon codes error:', error);
@@ -381,16 +380,17 @@ if (alreadyRedeemed) {
         discount: coupon.discount,
       },
     });
+    return
   }
 }
 
 // 5. Create the redemption entry (safe to do now)
-// await prisma.couponRedemption.create({
-//   data: {
-//     couponId: coupon.id,
-//     cartId: cartId,
-//   },
-// });
+await prisma.couponRedemption.create({
+  data: {
+    couponId: coupon.id,
+    cartId: cartId,
+  },
+});
 
 
      res.status(200).json({
