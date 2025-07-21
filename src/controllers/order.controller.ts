@@ -314,21 +314,42 @@ if (paymentMethod.toUpperCase() === 'RAZORPAY') {
 };
 
 export const updateOrderStatus = async (req: Request, res: Response) => {
-  const { orderId } = req.params;
-  const { status } = req.body;
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-  const order = await prisma.order.update({
-    where: { id: Number(orderId) },
-    data: { status },
-    include: {
-      user: true,
-    },
-  });
+    const order = await prisma.order.update({
+      where: { id: Number(orderId) },
+      data: { status },
+      include: {
+        user: {
+          include: {
+            profile: true,
+          },
+        },
+      },
+    });
 
-  await sendNotification(order.userId, `Your order #${order.id} status has been updated to ${order.status}. at ${dayjs().format('DD/MM/YYYY, hh:mmA')}`, 'ORDER');
+    await sendNotification(
+      order.userId,
+      `Your order #${order.id} status has been updated to ${order.status}. at ${dayjs().format('DD/MM/YYYY, hh:mmA')}`,
+      'ORDER'
+    );
 
-  res.json(order);
+    await sendOrderStatusUpdateEmail(
+      order.user.email,
+      order.user.profile?.firstName || 'Customer',
+      order.id,
+      order.status
+    );
+
+    res.json(order);
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update order status.' });
+  }
 };
+
 
 // Get orders for admin
 // export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
