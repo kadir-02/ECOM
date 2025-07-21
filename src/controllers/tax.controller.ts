@@ -49,7 +49,7 @@ export const createTax = async (req: Request, res: Response) => {
   });
 
   if (existing) {
-    res.status(409).json({
+    res.status(400).json({
       success: false,
       message: `Tax with this name already exists.`,
     });
