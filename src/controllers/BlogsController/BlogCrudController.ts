@@ -160,9 +160,8 @@ export const updateBlog = async (req: Request, res: Response) => {
       seofocuskeywordjoints,
     } = req.body;
 
-    console.log("blogId", blogId)
 
-    if (!blogId ) {
+    if (!blogId) {
       res.status(400).json({
         success: false,
         message: "Invalid blog ID.",
@@ -376,12 +375,14 @@ export const getBlogs = async (req: Request, res: Response) => {
       page_size = "10",
       ordering,
       search = "",
+      tag_id
     } = req.query as {
       is_active?: string;
       page?: string;
       page_size?: string;
       ordering?: string;
       search?: string;
+      tag_id?: string;
     };
 
     const pageNumber = parseInt(page);
@@ -392,6 +393,7 @@ export const getBlogs = async (req: Request, res: Response) => {
 
     const where: any = {
       ...(is_active !== undefined && { is_active: is_active === "true" }),
+      ...(tag_id !== undefined && {product_tag_id : Number(tag_id)}),
       ...(search && {
         OR: [
           { title: { contains: search, mode: "insensitive" } },
@@ -414,8 +416,16 @@ export const getBlogs = async (req: Request, res: Response) => {
         skip,
         take,
         include: {
-          tagjoints: true,
-          seofocuskeywordjoints: true,
+          tagjoints: {
+            include: {
+              frontend_blogtag: true,
+            },
+          },
+          seofocuskeywordjoints: {
+            include: {
+              seo_focus_keyword: true,
+            },
+          },
         },
       }),
       prisma.frontend_blog.count({ where }),
@@ -423,10 +433,10 @@ export const getBlogs = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: blogs,
       total,
       page: pageNumber,
       page_size: pageSizeNumber,
+      data: blogs,
     });
     return;
   } catch (error: any) {

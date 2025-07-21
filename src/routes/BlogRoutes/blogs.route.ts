@@ -15,12 +15,14 @@ import { authenticate } from "../../middlewares/authenticate";
 import { authorizeAdmin } from "../../middlewares/authorizaAdmin";
 import { createblog, deleteBlog, getBlogs, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
 import { uploadMemory } from "../../upload/multerCloudinary";
+import { getSingleBlogInfo } from "../../controllers/BlogsController/singleBlogInfoController";
 
 const router = Router();
 
 router.get("/tag", getAllSeoTags);
 router.get("/keyword", getAllSeoKeywords);
 router.get("/", getBlogs);
+router.get("/content/:slug", getSingleBlogInfo);
 
 //  Only Admin Access
 router.use(authenticate, authorizeAdmin);
