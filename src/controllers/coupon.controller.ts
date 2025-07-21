@@ -382,12 +382,12 @@ if (alreadyRedeemed) {
 }
 
 // 5. Create the redemption entry (safe to do now)
-await prisma.couponRedemption.create({
-  data: {
-    couponId: coupon.id,
-    cartId: cartId,
-  },
-});
+// await prisma.couponRedemption.create({
+//   data: {
+//     couponId: coupon.id,
+//     cartId: cartId,
+//   },
+// });
 
 
      res.status(200).json({

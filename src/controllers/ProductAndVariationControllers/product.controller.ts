@@ -255,7 +255,11 @@ export const getProducts = async (req: Request, res: Response) => {
   : query.category
   ? [Number(query.category)]
   : [];
-    const subcategoryId = parseInt(query.subcategory as string);
+   const subcategoryIds = Array.isArray(query.subcategory)
+  ? query.subcategory.map(Number)
+  : query.subcategory
+  ? [Number(query.subcategory)]
+  : [];
     const minPrice = parseFloat(query.min as string);
     const maxPrice = parseFloat(query.max as string);
 
@@ -299,8 +303,9 @@ if (categorySlug) {
    if (categoryIds.length > 0) {
   whereClause.categoryId = { in: categoryIds };
 }
-    if (!isNaN(subcategoryId)) whereClause.subcategoryId = subcategoryId;
-    if (!isNaN(id)) whereClause.id = id;
+if (subcategoryIds.length > 0) {
+  whereClause.subcategoryId = { in: subcategoryIds };
+}    if (!isNaN(id)) whereClause.id = id;
 
     if (parent === 'true') whereClause.subcategoryId = null;
     if (is_active !== undefined) whereClause.isActive = is_active === 'true';
