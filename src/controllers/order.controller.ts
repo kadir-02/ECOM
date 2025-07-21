@@ -948,11 +948,20 @@ export const getOrdersForAdmin = async (req: CustomRequest, res: Response) => {
         items: {
           include: {
             product: true,
-            variant: true,
+            variant: {
+              include :{
+                product:true,
+              }
+            },
           },
         },
         payment: true,
         address: true,
+        user : {
+          include :{
+            profile : true,
+          }
+        }
       },
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
