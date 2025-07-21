@@ -171,6 +171,35 @@ export const getAllCategories = async (req: Request, res: Response) => {
   }
 };
 
+//here in subcat isDelete condition is reverse because in frontend done like that
+export const getFrontendCategories = async (_req: Request, res: Response) => {
+  try {
+    const categories = await prisma.category.findMany({
+      where: { is_active: true , isDeleted: false },
+      include: { subcategories: {
+          where: { isDeleted: true },
+          orderBy: { sequence_number: 'asc' },
+        }, },
+      orderBy: { sequence_number: "asc" },
+    });
+    // Add `parent_name` and `parent_slug` to each subcategory
+    const categoriesWithParent = categories.map((category) => ({
+      ...category,
+      subcategories: category.subcategories.map((sub) => ({
+        ...sub,
+        parent_name: category.name,
+        parent_slug: category.slug,
+      })),
+    }));
+    res.status(200).json({ success: true, categories:categoriesWithParent });
+  } catch (error) {
+    console.error("Get categories error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error retrieving categories" });
+  }
+};
+
 // export const getFrontendCategories = async (_req: Request, res: Response) => {
 //   try {
 //     const categories = await prisma.category.findMany({
@@ -186,42 +215,6 @@ export const getAllCategories = async (req: Request, res: Response) => {
 //       .json({ success: false, message: "Error retrieving categories" });
 //   }
 // };
-
-// GET CATEGORY BY ID
-
-export const getFrontendCategories = async (_req: Request, res: Response) => {
-  try {
-    const categories = await prisma.category.findMany({
-      where: { is_active: true, isDeleted: false },
-      include: {
-        subcategories: {
-          where: { isDeleted: false },
-          include: {
-            category: {
-              select: { name: true, slug: true },
-            },
-          },
-        },
-      },
-      orderBy: { sequence_number: "asc" },
-    });
-
-    for (const category of categories) {
-      category.subcategories = category.subcategories.map((sub: any) => ({
-        ...sub,
-        parent_name: sub.category?.name || null,
-        parent_slug: sub.category?.slug || null,
-      }));
-    }
-
-    res.status(200).json({ success: true, categories });
-  } catch (error) {
-    console.error("Get categories error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error retrieving categories" });
-  }
-};
 
 
 export const getCategoryById = async (req: Request, res: Response) => {
