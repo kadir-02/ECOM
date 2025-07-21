@@ -248,6 +248,7 @@ export const getProducts = async (req: Request, res: Response) => {
     const is_active = query.is_active;
     const parent = query.parent;
     const id = parseInt(query.id as string);
+    const newArrival = query.newArrival;
 
     const categoryIds = Array.isArray(query.category)
   ? query.category.map(Number)
@@ -303,6 +304,7 @@ if (categorySlug) {
 
     if (parent === 'true') whereClause.subcategoryId = null;
     if (is_active !== undefined) whereClause.isActive = is_active === 'true';
+    if (newArrival === 'true') whereClause.isNewArrival = true
 
     if (!isNaN(minPrice) && !isNaN(maxPrice)) {
       whereClause.sellingPrice = {
