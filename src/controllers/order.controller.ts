@@ -9,6 +9,10 @@ import { sendNotification } from '../utils/notification';
 import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
 import { createShiprocketShipment } from '../utils/createShipping';
 import Razorpay from "razorpay";
+import path from 'path';
+import ejs from 'ejs';
+
+import puppeteer from 'puppeteer';
 
 // const razorpay = new Razorpay({
 //   key_id: process.env.RAZORPAY_KEY,
@@ -568,150 +572,24 @@ export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response
                 category: true,
               },
             },
-            variant: {
-              include: {
-                images: true,
-              },
-            },
+           variant: {
+      include: {
+        images: true,
+        product: {             // ✅ Add this
+          include: {
+            images: true,
+            category: true,
+          },
+        },
+      },
+    },
           },
         },
         payment: true,
         address: true,
         user: true, // include user details (optional, for admin view)
       },
-      // Get orders for admin
-      // export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
-      //   const {
-      //     search,
-      //     page = 1,
-      //     page_size = 10,
-      //     ordering = 'desc',
-      //     order_status,
-      //     start_date,
-      //     end_date,
-      //   } = req.query;
-
-      //   const isAdmin = req.user?.role === 'ADMIN';
-
-      //   if (!isAdmin) {
-      //     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
-      //     return
-      //   }
-
-      //   const pageNum = parseInt(page as string);
-      //   const pageSizeNum = parseInt(page_size as string);
-      //   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
-
-      //   try {
-      //     const whereConditions: any = {};
-
-      //     if (search) {
-      //       const searchStr = search.toString();
-      //       const orConditions: any[] = [];
-
-      //       if (!isNaN(Number(searchStr))) {
-      //         orConditions.push({ id: Number(searchStr) });
-      //       }
-
-      //       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-      //       if (validStatuses.includes(searchStr)) {
-      //         orConditions.push({ status: searchStr });
-      //       }
-
-      //       orConditions.push({
-      //         OR: [
-      //           {
-      //             user: {
-      //               OR: [
-      //                 { email: { contains: searchStr, mode: 'insensitive' } },
-      //                 {
-      //                   profile: {
-      //                     OR: [
-      //                       { firstName: { contains: searchStr, mode: 'insensitive' } },
-      //                       { lastName: { contains: searchStr, mode: 'insensitive' } },
-      //                     ],
-      //                   },
-      //                 },
-      //               ],
-      //             },
-      //           },
-      //           {
-      //             // guest orders: search by address fullName or phone (replace with your fields)
-      //             address: {
-      //               OR: [
-      //                 { fullName: { contains: searchStr, mode: 'insensitive' } },
-      //                 { phone: { contains: searchStr, mode: 'insensitive' } },
-      //               ],
-      //             },
-      //           },
-      //         ],
-      //       });
-
-      //       whereConditions.OR = orConditions;
-      //     }
-
-
-      //     if (order_status) {
-      //       whereConditions.status = order_status;
-      //     }
-
-      //     if (start_date && end_date) {
-      //       const startDate = new Date(start_date as string);
-      //       const endDate = new Date(end_date as string);
-
-      //       // Increment endDate by 1 day for exclusive upper bound
-      //       endDate.setDate(endDate.getDate() + 1);
-
-      //       whereConditions.createdAt = {
-      //         gte: startDate,
-      //         lt: endDate,
-      //       };
-      //     }
-
-      //     const totalCount = await prisma.order.count({ where: whereConditions });
-
-      //     const orders = await prisma.order.findMany({
-      //       where: whereConditions,
-      //       include: {
-      //         items: {
-      //           include: {
-      //             product: {
-      //               include: {
-      //                 images: true,
-      //                 category: true,
-      //               },
-      //             },
-      //             variant: {
-      //               include: {
-      //                 images: true,
-      //               },
-      //             },
-      //           },
-      //         },
-      //         payment: true,
-      //         address: true,
-      //         user: true, // include user details (optional, for admin view)
-      //       },
-      //       orderBy: { createdAt: sortOrder },
-      //       skip: (pageNum - 1) * pageSizeNum,
-      //       take: pageSizeNum,
-      //     });
-
-      //     res.json({
-      //       success: true,
-      //       result: orders,
-      //       pagination: {
-      //         total: totalCount,
-      //         current_page: pageNum,
-      //         page_size: pageSizeNum,
-      //         total_pages: Math.ceil(totalCount / pageSizeNum),
-      //       },
-      //     });
-      //   } catch (error) {
-      //     console.error('Admin fetch orders failed:', error);
-      //     res.status(500).json({ message: 'Failed to fetch admin orders', error });
-      //   }
-      // };
+    
       orderBy: { createdAt: sortOrder },
       skip: (pageNum - 1) * pageSizeNum,
       take: pageSizeNum,
@@ -807,7 +685,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
         items: {
           include: {
             product: { include: { category: true, images: true, } },
-            variant: { include: { images: true } },
+            variant: { include: { images: true , product:true } },
           },
         },
         user: { include: { profile: true } },
@@ -862,6 +740,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   total_before_discount: order.totalAmount,
    final_payable_amount: order.totalAmount,
   final_total: order.totalAmount, // fallback if finalAmount not stored
+   abandentDiscountAmount:order. abandentDiscountAmount ||"",
 
   order_status: order.status,
   invoice_url: `/order/invoice?id=COM-${order.id}-${customerFirstName}`,
@@ -880,7 +759,9 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
             return {
               id: item.id,
               variant_id: item.variantId || null,
-              name: item.variant?.name || item.product?.name || 'Unnamed Product',
+             name: item.variant
+  ? `${item.variant.product?.name || 'Unnamed'} - ${item.variant.name}`
+  : item.product?.name || 'Unnamed Product',
               SKU: `SKU-${item.variantId || item.productId || item.id}`,
               unit_price: item.price,
               quantity: item.quantity,
@@ -902,20 +783,8 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
 // PDF invoice generator endpoint
 export const generateInvoicePDF = async (req: Request, res: Response) => {
   try {
-    const orderIdStr = req.query.id as string;
-
-    if (!orderIdStr || !orderIdStr.includes('-')) {
-      res.status(400).send('Invalid invoice ID format');
-      return;
-    }
-
-    const parts = orderIdStr.split('-');
-    const orderId = Number(parts[1]);
-
-    if (isNaN(orderId)) {
-      res.status(400).send('Invalid order ID');
-      return;
-    }
+    const idStr = req.query.id as string;
+    const orderId = Number(idStr?.split("-")[1]);
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -923,8 +792,8 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
         user: { include: { profile: true } },
         items: {
           include: {
-            product: { include: { category: true } },
-            variant: { include: { images: true } },
+            product: true,
+            variant: true,
           },
         },
         address: true,
@@ -932,185 +801,70 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
       },
     });
 
-    if (!order) {
-      res.status(404).send('Order not found');
-      return;
-    }
+    if (!order){
+     
+     res.status(404).send("Order not found");
+     return
+     }
+      
 
     const subtotal = order.subtotal ?? order.items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
+    const company = await prisma.companySettings.findFirst();
 
-    const discountAmount = order.discountAmount ?? 0;
-    const finalAmount = subtotal - discountAmount;
+if (!company) {
+   res.status(500).send("Company settings not found");
+   return
+}
 
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=invoice-${order.id}.pdf`);
-
-    doc.pipe(res);
-
-    // ====== COLORS & STYLES ======
-    const primaryColor = '#007bff';
-    const headerBgColor = '#e9ecef';
-    const rowAltColor = '#f8f9fa';
-    const labelFont = 'Helvetica-Bold';
-    const valueFont = 'Helvetica';
-
-    // ====== TITLE ======
-    doc
-      .fillColor(primaryColor)
-      .font(labelFont)
-      .fontSize(26)
-      .text('INVOICE', { align: 'center' });
-
-    // ====== CUSTOMER & ORDER INFO ======
-    const sectionTop = 100;
-    const leftX = 50;
-    const rightX = 320;
-    const lineSpacing = 18;
-
-    // Helper
-    const drawLabel = (label: string, value: string, x: number, y: number, maxWidth = 200) => {
-      doc
-        .font(labelFont)
-        .fontSize(11)
-        .fillColor('black')
-        .text(label, x, y);
-      doc
-        .font(valueFont)
-        .fontSize(11)
-        .fillColor('black')
-        .text(value || '-', x, y + 13, { width: maxWidth });
+    const data = {
+      invoiceId: `COM-${order.id}-${order.user.profile?.firstName || 'USER'}`,
+      customerName: `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`,
+      email: order.user.email,
+      phone: order.address?.phone,
+      address: `${order.address?.addressLine}, ${order.address?.city}, ${order.address?.state} - ${order.address?.pincode}`,
+      items: order.items.map(item => ({
+        name: item.variant?.name || item.product?.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+      })),
+      subtotal,
+      discountAmount: order.discountAmount ?? 0,
+      abandentDiscountAmount: order.abandentDiscountAmount ?? 0,
+      taxType: order.taxType || '',
+      taxAmount: order.taxAmount ?? 0,
+      appliedTaxRate: order.appliedTaxRate ?? 0,
+      shippingRate: order.shippingRate ?? 0,
+      finalAmount:
+        subtotal - (order.discountAmount ?? 0) - (order.abandentDiscountAmount ?? 0) + (order.taxAmount ?? 0) + (order.shippingRate ?? 0),
+      createdAt: new Date(order.createdAt).toLocaleString(),
+      logoUrl: company.logo,
+  companyName: company.description || 'Your Company',
+  companyEmail: company.email,
+  companyPhone: company.phone,
+  companyAddress: company.address,
     };
 
-    // Left column (Customer Info)
-    let yLeft = sectionTop;
-    drawLabel('Customer:', `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`, leftX, yLeft);
-    yLeft += lineSpacing * 2;
+    const html = await ejs.renderFile(path.join(__dirname, '../views/invoice.ejs'), data);
 
-    drawLabel('Email:', order.user.email, leftX, yLeft);
-    yLeft += lineSpacing * 2;
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    drawLabel('Phone:', order.address?.phone || '-', leftX, yLeft);
-    yLeft += lineSpacing * 2;
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
 
-    const address = formatAddress(order.address) || '-';
-    doc
-      .font(labelFont)
-      .fontSize(11)
-      .text('Address:', leftX, yLeft);
-    doc
-      .font(valueFont)
-      .fontSize(11)
-      .text(doc.heightOfString(address, { width: 220 }) > 30 ? address.slice(0, 100) + '...' : address, leftX, yLeft + 13, { width: 220 });
-    yLeft += lineSpacing * 3;
+    await browser.close();
 
-    // Right column (Order Info)
-    let yRight = sectionTop;
-    const customerName = order.user.profile?.firstName?.trim() || 'USER';
-
-    drawLabel('Invoice ID:', `COM-${order.id}-${customerName}`, rightX, yRight);
-    yRight += lineSpacing * 2;
-
-    drawLabel('Date:', new Date(order.createdAt).toLocaleString(), rightX, yRight);
-    yRight += lineSpacing * 2;
-
-    drawLabel('Payment Method:', order.payment?.method || 'N/A', rightX, yRight);
-    yRight += lineSpacing * 2;
-
-    drawLabel('Order Status:', order.status || '-', rightX, yRight);
-    yRight += lineSpacing * 2;
-
-    // ====== TABLE HEADER ======
-    const tableTop = Math.max(yLeft, yRight) + 30;
-    const tableLeft = 50;
-    const tableWidth = 500;
-    const rowHeight = 25;
-
-    doc
-      .rect(tableLeft, tableTop, tableWidth, rowHeight)
-      .fill(headerBgColor);
-
-    doc
-      .fillColor(primaryColor)
-      .font(labelFont)
-      .fontSize(12)
-      .text('Item', tableLeft + 10, tableTop + 7)
-      .text('Qty', tableLeft + 230, tableTop + 7, { width: 40, align: 'right' })
-      .text('Unit Price', tableLeft + 310, tableTop + 7, { width: 80, align: 'right' })
-      .text('Total', tableLeft + 410, tableTop + 7, { width: 80, align: 'right' });
-
-    // ====== TABLE ROWS ======
-    let y = tableTop + rowHeight;
-    doc.font(valueFont).fontSize(11);
-
-    order.items.forEach((item, index) => {
-      if (index % 2 === 0) {
-        doc.rect(tableLeft, y, tableWidth, rowHeight).fill(rowAltColor);
-      }
-
-      const name = item.variant?.name?.trim() || item.product?.name?.trim() || 'Unnamed Product';
-      const qty = item.quantity;
-      const unitPrice = item.price;
-      const total = qty * unitPrice;
-
-      doc
-        .fillColor('black')
-        .text(name, tableLeft + 10, y + 7, { width: 200, ellipsis: true })
-        .text(qty.toString(), tableLeft + 230, y + 7, { width: 40, align: 'right' })
-        .text(unitPrice.toFixed(2), tableLeft + 310, y + 7, { width: 80, align: 'right' })
-        .text(total.toFixed(2), tableLeft + 410, y + 7, { width: 80, align: 'right' });
-
-      y += rowHeight;
-    });
-
-    // Table border
-    doc.strokeColor(primaryColor).lineWidth(1).rect(tableLeft, tableTop, tableWidth, y - tableTop).stroke();
-
-    // ====== TOTALS ======
-    y += 20;
-
-    doc
-      .font(labelFont)
-      .fillColor('black')
-      .text('Subtotal:', tableLeft + 310, y, { width: 80, align: 'right' })
-      .text(subtotal.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
-
-    if (discountAmount > 0) {
-      y += 18;
-      doc
-        .fillColor('red')
-        .text('Discount:', tableLeft + 310, y, { width: 80, align: 'right' })
-        .text(discountAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
-    }
-
-    y += 25;
-    doc
-      .font(labelFont)
-      .fontSize(13)
-      .fillColor(primaryColor)
-      .text('Final Total:', tableLeft + 310, y, { width: 80, align: 'right' })
-      .text(finalAmount.toFixed(2), tableLeft + 410, y, { width: 80, align: 'right' });
-
-    // ====== FOOTER ======
-    doc
-      .fontSize(10)
-      .fillColor('gray')
-      .text('Thank you for your purchase!', tableLeft, 770, { align: 'center', width: tableWidth });
-
-    doc.end();
-
-
-
-  } catch (error) {
-    console.error('Invoice PDF generation failed:', error);
-    res.status(500).send('Failed to generate invoice PDF');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename=invoice-${order.id}.pdf`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    res.status(500).send('Failed to generate invoice');
   }
 };
-
 
 export const getOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const {

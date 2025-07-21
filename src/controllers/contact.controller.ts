@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import prisma from '../db/prisma'; // adjust path
 import { Prisma } from '@prisma/client';
+import { sendContactConfirmationToUser } from '../email/contactUser';
+import { sendContactAlertToAdmin } from '../email/contactAdmin';
 
 function formatDate(date: Date): string {
   const options: Intl.DateTimeFormatOptions = {
@@ -63,8 +65,8 @@ export const getContactRequests = async (req: Request, res: Response) => {
 
     const formatted = records.map((rec) => ({
       id: rec.id,
-      created_at: formatDate(rec.created_at),
-      updated_at: formatDate(rec.updated_at),
+      created_at: rec.created_at,
+      updated_at: rec.updated_at,
       name: rec.name,
       email: rec.email,
       phone_number: rec.phone_number,
@@ -109,8 +111,8 @@ export const getContactRequestById = async (req: Request, res: Response) => {
 
     res.json({
       ...contact,
-      created_at: formatDate(contact.created_at),
-      updated_at: formatDate(contact.updated_at),
+      created_at: contact.created_at,
+      updated_at: contact.updated_at,
     });
   } catch (error: any) {
     console.error('Error fetching contact request by ID:', error);
@@ -163,6 +165,51 @@ export const deleteContactRequest = async (req: Request, res: Response) => {
   }
 };
 
+// export const createContactRequest = async (req: Request, res: Response) => {
+//   const customReq = req as CustomRequest;
+
+//   const {
+//     name,
+//     email,
+//     phone_number,
+//     city,
+//     state,
+//     country,
+//     own_retail_space,
+//     subject,
+//     message,
+//   } = req.body;
+
+//   if (!name || !email || !phone_number) {
+//     res.status(400).json({ message: 'Name, email and phone number are required' });
+//     return;
+//   }
+
+//   try {
+//     const newContact = await prisma.contactRequest.create({
+//       data: {
+//         name,
+//         email,
+//         phone_number,
+//         city: city || null,
+//         state: state || null,
+//         country: country || null,
+//         own_retail_space: own_retail_space ?? null,
+//         subject: subject || null,
+//         message: message || null,
+//         contacted_the_customer: false,
+//         reply_given: null,
+//         updated_by: customReq.user?.profile?.firstName || '',
+//       },
+//     });
+
+//     res.status(201).json({ message: 'Contact request created', contact: newContact });
+//   } catch (error: any) {
+//     console.error('Error creating contact request:', error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// };
+
 export const createContactRequest = async (req: Request, res: Response) => {
   const customReq = req as CustomRequest;
 
@@ -200,6 +247,26 @@ export const createContactRequest = async (req: Request, res: Response) => {
         updated_by: customReq.user?.profile?.firstName || '',
       },
     });
+
+    // Send confirmation to user
+    await sendContactConfirmationToUser(email, name);
+
+    // Get all admin users
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN', isDeleted: false },
+      select: { email: true },
+    });
+
+    // Send alert to all admins
+    for (const admin of admins) {
+      await sendContactAlertToAdmin(
+        admin.email,
+        name,
+        email,
+        subject,
+        message
+      );
+    }
 
     res.status(201).json({ message: 'Contact request created', contact: newContact });
   } catch (error: any) {

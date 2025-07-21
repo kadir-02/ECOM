@@ -171,13 +171,49 @@ export const getAllCategories = async (req: Request, res: Response) => {
   }
 };
 
+// export const getFrontendCategories = async (_req: Request, res: Response) => {
+//   try {
+//     const categories = await prisma.category.findMany({
+//       where: { is_active: true , isDeleted: false },
+//       include: { subcategories: true },
+//       orderBy: { sequence_number: "asc" },
+//     });
+//     res.status(200).json({ success: true, categories });
+//   } catch (error) {
+//     console.error("Get categories error:", error);
+//     res
+//       .status(500)
+//       .json({ success: false, message: "Error retrieving categories" });
+//   }
+// };
+
+// GET CATEGORY BY ID
+
 export const getFrontendCategories = async (_req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
-      where: { is_active: true , isDeleted: false },
-      include: { subcategories: true },
+      where: { is_active: true, isDeleted: false },
+      include: {
+        subcategories: {
+          where: { isDeleted: false },
+          include: {
+            category: {
+              select: { name: true, slug: true },
+            },
+          },
+        },
+      },
       orderBy: { sequence_number: "asc" },
     });
+
+    for (const category of categories) {
+      category.subcategories = category.subcategories.map((sub: any) => ({
+        ...sub,
+        parent_name: sub.category?.name || null,
+        parent_slug: sub.category?.slug || null,
+      }));
+    }
+
     res.status(200).json({ success: true, categories });
   } catch (error) {
     console.error("Get categories error:", error);
@@ -187,7 +223,7 @@ export const getFrontendCategories = async (_req: Request, res: Response) => {
   }
 };
 
-// GET CATEGORY BY ID
+
 export const getCategoryById = async (req: Request, res: Response) => {
   const { category, page = "1" } = req.query;
 
