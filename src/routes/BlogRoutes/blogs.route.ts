@@ -13,7 +13,7 @@ import {
 } from "../../controllers/BlogsController/seoKeywordsControllers";
 import { authenticate } from "../../middlewares/authenticate";
 import { authorizeAdmin } from "../../middlewares/authorizaAdmin";
-import { createblog, deleteBlog, getBlogs, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
+import { createblog, deleteBlog, getBlogs, toggleBlogActiveStatus, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
 import { uploadMemory } from "../../upload/multerCloudinary";
 
 const router = Router();
@@ -31,6 +31,7 @@ const imageUpload = uploadMemory.fields([
 
 router.post("/", imageUpload, createblog);
 router.patch("/:id", imageUpload, updateBlog);
+router.patch("/toggle/:id", toggleBlogActiveStatus);
 router.delete("/:id", deleteBlog);
 
 router.post("/tag", createSeoTag);

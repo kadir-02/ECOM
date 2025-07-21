@@ -313,6 +313,53 @@ export const updateBlog = async (req: Request, res: Response) => {
   }
 };
 
+export const toggleBlogActiveStatus = async (req: Request, res: Response) => {
+  try {
+    const blogId = parseInt(req.params.id);
+    const { is_active } = req.body;
+
+    if (!blogId || typeof is_active === "undefined") {
+       res.status(400).json({
+        success: false,
+        message: "Invalid blog ID or missing is_active value.",
+      });
+      return;
+    }
+
+    const existingBlog = await prisma.frontend_blog.findUnique({
+      where: { id: blogId },
+    });
+
+    if (!existingBlog) {
+       res.status(404).json({
+        success: false,
+        message: "Blog not found.",
+      });
+      return;
+    }
+
+    const updatedBlog = await prisma.frontend_blog.update({
+      where: { id: blogId },
+      data: {
+        is_active: is_active === "true" || is_active === true,
+        updated_by: await getUserNameFromToken(req),
+      },
+    });
+
+     res.status(200).json({
+      success: true,
+      message: `Blog ${is_active ? "activated" : "deactivated"} successfully.`,
+      blog: updatedBlog,
+    });
+  } catch (error: any) {
+    console.error("Toggle is_active error:", error);
+     res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
 export const deleteBlog = async (req: Request, res: Response) => {
   try {
     const blogId = parseInt(req.params.id);
