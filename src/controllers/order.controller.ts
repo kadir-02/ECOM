@@ -849,7 +849,10 @@ if (!company) {
 
     const html = await ejs.renderFile(path.join(__dirname, '../views/invoice.ejs'), data);
 
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
+    });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
