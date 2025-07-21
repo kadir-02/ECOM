@@ -31,14 +31,15 @@ export const createSeoKeyword = async (req: Request, res: Response) => {
 };
 
 export const updateSeoKeyword = async (req: Request, res: Response) => {
-  const { name, is_active, id } = req.body;
+  const { name, is_active } = req.body;
+  const { id } = req.params;
 
   try {
     const username = await getUserNameFromToken(req);
 
     const keyword = await prisma.frontend_blogseofocuskeyword.update({
       where: {
-        id,
+        id: Number(id),
       },
       data: {
         name,

@@ -31,14 +31,15 @@ export const createSeoTag = async (req: Request, res: Response) => {
 };
 
 export const updateSeoTag = async (req: Request, res: Response) => {
-  const { name, is_active, id } = req.body;
+  const { name, is_active } = req.body;
+  const { id } = req.params;
 
   try {
     const username = await getUserNameFromToken(req);
 
     const tag = await prisma.frontend_blogtag.update({
       where: {
-        id,
+        id: Number(id),
       },
       data: {
         name,

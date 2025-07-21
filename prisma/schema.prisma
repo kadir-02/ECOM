@@ -556,7 +556,8 @@ model ProductTag {
   created_at     DateTime        @default(now())
   updated_at     DateTime        @updatedAt
   products       Product[]       @relation("ProductTags")
-  frontend_blogs frontend_blog[] @relation("BlogProductTag")
+  // Reverse relation
+  blogs          frontend_blog[] @relation("BlogProductTag")
 }
 
 model Tax {
@@ -774,20 +775,17 @@ model frontend_blog {
   seo_title            String   @db.VarChar(100)
 
   // Relations
-  product_productTag ProductTag? @relation("BlogProductTag", fields: [product_tag_id], references: [id])
-
+  product_productTag   ProductTag? @relation("BlogProductTag", fields: [product_tag_id], references: [id])
   seofocuskeywordjoints frontend_blogandseofocuskeywordjoint[]
   tagjoints             frontend_blogandtagjoint[]
 }
 
 model frontend_blogandseofocuskeywordjoint {
-  id         Int       @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   is_active  Boolean
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
   blog_id    Int
-  created_by String
-  updated_by String
   keyword_id Int
 
   // Relations
@@ -801,17 +799,15 @@ model frontend_blogandtagjoint {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   blog_id    Int
-  created_by String
-  updated_by String
   tag_id     Int
 
   // Relations
   frontend_blog    frontend_blog    @relation(fields: [blog_id], references: [id])
-  frontend_blogtag frontend_blogtag @relation(fields: [tag_id], references: [id], map: "frontend_blogandtagjoint_tag_id_e5497b49_fk_frontend_blogtag_id")
+  frontend_blogtag frontend_blogtag @relation(fields: [tag_id], references: [id])
 }
 
 model frontend_blogseofocuskeyword {
-  id         Int   @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   is_active  Boolean
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -826,9 +822,9 @@ model frontend_blogseofocuskeyword {
 model frontend_blogtag {
   id         Int      @id @default(autoincrement())
   is_active  Boolean
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  name       String    @db.VarChar(100)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  name       String   @db.VarChar(100)
   created_by String
   updated_by String
 
