@@ -20,10 +20,7 @@ export const createSeoTag = async (req: Request, res: Response) => {
     res.status(201).json({
       success: true,
       message: "Tag created",
-      tag: {
-        ...tag,
-        id: tag.id.toString(), // Convert BigInt to string
-      },
+      tag
     });
   } catch (error: any) {
     res.status(500).json({
@@ -34,14 +31,15 @@ export const createSeoTag = async (req: Request, res: Response) => {
 };
 
 export const updateSeoTag = async (req: Request, res: Response) => {
-  const { name, is_active, id } = req.body;
+  const { name, is_active } = req.body;
+  const { id } = req.params;
 
   try {
     const username = await getUserNameFromToken(req);
 
     const tag = await prisma.frontend_blogtag.update({
       where: {
-        id,
+        id: Number(id),
       },
       data: {
         name,
@@ -69,7 +67,7 @@ export const deleteSeoTag = async (req: Request, res: Response) => {
   try {
     const tag = await prisma.frontend_blogtag.delete({
       where: {
-        id: BigInt(id),
+        id: Number(id),
       },
     });
 

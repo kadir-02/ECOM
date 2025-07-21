@@ -13,21 +13,32 @@ import {
 } from "../../controllers/BlogsController/seoKeywordsControllers";
 import { authenticate } from "../../middlewares/authenticate";
 import { authorizeAdmin } from "../../middlewares/authorizaAdmin";
+import { createblog, deleteBlog, getBlogs, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
+import { uploadMemory } from "../../upload/multerCloudinary";
 
 const router = Router();
 
 router.get("/tag", getAllSeoTags);
 router.get("/keyword", getAllSeoKeywords);
+router.get("/", getBlogs);
 
 //  Only Admin Access
 router.use(authenticate, authorizeAdmin);
 
+const imageUpload = uploadMemory.fields([
+  { name: 'image', maxCount: 1 },
+]);
+
+router.post("/", imageUpload, createblog);
+router.patch("/:id", imageUpload, updateBlog);
+router.delete("/:id", deleteBlog);
+
 router.post("/tag", createSeoTag);
-router.patch("/tag", updateSeoTag);
-router.delete("/tag", deleteSeoTag);
+router.patch("/tag/:id", updateSeoTag);
+router.delete("/tag/:id", deleteSeoTag);
 
 router.post("/keyword", createSeoKeyword);
-router.patch("/keyword", updateSeoKeyword);
-router.delete("/keyword", deleteSeoKeyword);
+router.patch("/keyword/:id", updateSeoKeyword);
+router.delete("/keyword/:id", deleteSeoKeyword);
 
 export default router;
