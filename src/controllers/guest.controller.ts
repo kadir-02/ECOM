@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { OrderStatus, PaymentStatus, AddressType } from '@prisma/client';
 import Razorpay from 'razorpay';
+import { sendOrderStatusUpdateEmail } from '../email/orderStatusMail';
 
 // const razorpay = new Razorpay({
 //   key_id: process.env.RAZORPAY_KEY,
@@ -205,7 +206,9 @@ const razorpay = new Razorpay({
     payment: true,
   },
     });
-
+    
+    await sendOrderStatusUpdateEmail(req?.body?.email, order?.address?.fullName || 'Customer', order.id, order.status);
+    
     res.status(201).json({ message: 'Guest order placed successfully', order ,razorpayOrderId,razorpayKeyId});
 
   } catch (error: any) {
