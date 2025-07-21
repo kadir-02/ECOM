@@ -27,9 +27,18 @@ export const getAllProductTags = async (req: Request, res: Response) => {
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.page_size as string) || 10;
   const skip = (page - 1) * pageSize;
+    const isActiveQuery = req.query.is_active;
+  const isActive =
+    isActiveQuery === 'true' ? true :
+    isActiveQuery === 'false' ? false :
+    undefined;
+
+      const whereClause = isActive !== undefined ? { is_active: isActive } : {};
+
 
   const [tags, totalCount] = await Promise.all([
     prisma.productTag.findMany({
+      where: whereClause,
       skip,
       take: pageSize,
       orderBy: { updated_at: 'desc' },
