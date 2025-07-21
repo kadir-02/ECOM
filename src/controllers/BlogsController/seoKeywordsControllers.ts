@@ -66,7 +66,7 @@ export const deleteSeoKeyword = async (req: Request, res: Response) => {
   try {
     const keyword = await prisma.frontend_blogseofocuskeyword.delete({
       where: {
-        id: BigInt(id),
+        id: Number(id),
       },
     });
 

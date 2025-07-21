@@ -20,10 +20,7 @@ export const createSeoTag = async (req: Request, res: Response) => {
     res.status(201).json({
       success: true,
       message: "Tag created",
-      tag: {
-        ...tag,
-        id: tag.id.toString(), // Convert BigInt to string
-      },
+      tag
     });
   } catch (error: any) {
     res.status(500).json({
@@ -69,7 +66,7 @@ export const deleteSeoTag = async (req: Request, res: Response) => {
   try {
     const tag = await prisma.frontend_blogtag.delete({
       where: {
-        id: BigInt(id),
+        id: Number(id),
       },
     });
 
