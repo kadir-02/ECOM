@@ -719,6 +719,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
       res.status(404).json({ message: 'Order not found' });
       return
     }
+
   if (
   order.payment?.method === 'RAZORPAY' &&
   !order.isVisible
@@ -726,6 +727,17 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
    res.status(403).json({ message: 'Order is not yet visible. Please wait until payment is confirmed.' });
    return
 }
+ let discountPercentage = null;
+    if (order.discountCode) {
+      const coupon = await prisma.couponCode.findUnique({
+        where: { code: order.discountCode },
+        select: { discount: true },
+      });
+
+      if (coupon) {
+        discountPercentage = coupon.discount;
+      }
+    }
     const finalAmount = order.finalAmount ?? (order.totalAmount - (order.discountAmount || 0));
 
     const customerNameFromAddress = order.address?.fullName || 'Guest';
@@ -756,6 +768,7 @@ export const getSingleOrder = async (req: CustomRequest, res: Response) => {
   tax_inclusive: order.isTaxInclusive,
   tax_amount: order.taxAmount || 0,
   shippingRate :order.  shippingRate ,
+  discountPercentage,
   discount: order.discountAmount || 0,
   discount_coupon_code: order.discountCode || '',
   total_before_discount: order.totalAmount,

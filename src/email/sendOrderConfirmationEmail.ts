@@ -23,6 +23,7 @@ export const sendOrderConfirmationEmail = async (
     </tr>
   `).join('');
     const customerFirstName = customerName?.split(' ')[0] || 'Customer';
+
   const invoiceUrl = `https://cosmaticadmin.twilightparadox.com/order/invoice?id=COM-${orderId}-${customerFirstName}`;
 
   const html = `
