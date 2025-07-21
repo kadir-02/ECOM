@@ -45,6 +45,7 @@ import paymentServiceRoutes from './routes/PaymentService/paymentService.route';
 import razorpayWebhookRoutes from './routes/razorpay.route';
 import abandonedRoutes from './routes/Abandoned/abandoned.route'
 import shippingRateRoutes from './routes/shippinratesRoutes/shippingRate.route'
+import blogRoutes from './routes/BlogRoutes/blogs.route'
 // import emailRoutes from './routes/email.route';
 
 dotenv.config();
@@ -95,6 +96,7 @@ app.use('/header', headerRoutes);
 app.use('/company-settings',companyRoutes)
 app.use('/gallerytype',gallerytypeRoutes)
 app.use('/galleryitem',galleryitemRoutes)
+app.use('/blog',blogRoutes)
 app.use('/', dashboardRoutes);
 
 

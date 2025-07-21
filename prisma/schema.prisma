@@ -38,23 +38,23 @@ enum NotificationType {
 }
 
 model User {
-  id             Int            @id @default(autoincrement())
-  email          String         @unique
-  password       String?
-  isGuest        Boolean        @default(false)
-  profile        Profile?       @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  profileId      Int?           @unique
-  createdAt      DateTime       @default(now())
-  role           Role           @default(USER)
-  resetOTP       String?
-  resetOTPExpiry DateTime?
-  isDeleted      Boolean        @default(false)
-  cart           Cart?
-  orders         Order[]
-  addresses      Address[]
-  discountCodes  DiscountCode[]
-  notifications  Notification[]
-  abandonedCartItems         AbandonedCartItem[]
+  id                 Int                 @id @default(autoincrement())
+  email              String              @unique
+  password           String?
+  isGuest            Boolean             @default(false)
+  profile            Profile?            @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId          Int?                @unique
+  createdAt          DateTime            @default(now())
+  role               Role                @default(USER)
+  resetOTP           String?
+  resetOTPExpiry     DateTime?
+  isDeleted          Boolean             @default(false)
+  cart               Cart?
+  orders             Order[]
+  addresses          Address[]
+  discountCodes      DiscountCode[]
+  notifications      Notification[]
+  abandonedCartItems AbandonedCartItem[]
 }
 
 model Profile {
@@ -80,7 +80,7 @@ model Category {
   is_active       Boolean       @default(true)
   seo_title       String?
   seo_description String?
-  slug            String? 
+  slug            String?
 }
 
 model Subcategory {
@@ -121,26 +121,26 @@ model Product {
   categoryId             Int
   subcategoryId          Int?
 
-  length         String? @db.VarChar(15)
-  width          String? @db.VarChar(15)
-  weight         String? @db.VarChar(15)
+  length         String?  @db.VarChar(15)
+  width          String?  @db.VarChar(15)
+  weight         String?  @db.VarChar(15)
   height         Decimal?
-  slug           String? @db.VarChar(50)
-  sequenceNumber Int?    @db.SmallInt
+  slug           String?  @db.VarChar(50)
+  sequenceNumber Int?     @db.SmallInt
   seoTitle       String?
   seoKeyword     String?
   seoDescription String?
   productDetails String?
 
-  category       Category               @relation(fields: [categoryId], references: [id])
-  subcategory    Subcategory?           @relation(fields: [subcategoryId], references: [id])
-  images         ProductImage[]
-  variants       ProductVariant[]
-  specifications ProductSpecification[]
-  cartItems      CartItem[]
-  orderItems     OrderItem[]
-  tags          ProductTag[] @relation("ProductTags")
-  abandonedCartItems         AbandonedCartItem[]
+  category           Category               @relation(fields: [categoryId], references: [id])
+  subcategory        Subcategory?           @relation(fields: [subcategoryId], references: [id])
+  images             ProductImage[]
+  variants           ProductVariant[]
+  specifications     ProductSpecification[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  tags               ProductTag[]           @relation("ProductTags")
+  abandonedCartItems AbandonedCartItem[]
 }
 
 model ProductSpecification {
@@ -187,11 +187,11 @@ model ProductVariant {
   createdAt                                    DateTime @default(now())
   isDeleted                                    Boolean  @default(false)
 
-  product    Product        @relation(fields: [productId], references: [id])
-  images     VariantImage[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  abandonedCartItems         AbandonedCartItem[]
+  product            Product             @relation(fields: [productId], references: [id])
+  images             VariantImage[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  abandonedCartItems AbandonedCartItem[]
 }
 
 model VariantImage {
@@ -206,19 +206,19 @@ model VariantImage {
 }
 
 model Cart {
-  id                Int                @id @default(autoincrement())
-  userId            Int                @unique
-  user              User               @relation(fields: [userId], references: [id])
-  items             CartItem[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  reminderCount     Int                @default(0)
-  lastReminderAt    DateTime?
-  discountCodes     DiscountCode[]
-  couponRedemptions CouponRedemption[]
-  discountedAbandonedTotal   Float?
+  id                       Int                @id @default(autoincrement())
+  userId                   Int                @unique
+  user                     User               @relation(fields: [userId], references: [id])
+  items                    CartItem[]
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  reminderCount            Int                @default(0)
+  lastReminderAt           DateTime?
+  discountCodes            DiscountCode[]
+  couponRedemptions        CouponRedemption[]
+  discountedAbandonedTotal Float?
 
-  abandonedCartItems         AbandonedCartItem[]
+  abandonedCartItems AbandonedCartItem[]
 }
 
 model CartItem {
@@ -286,8 +286,8 @@ model Order {
   payment          Payment?           @relation(fields: [paymentId], references: [id])
   address          Address?           @relation(fields: [addressId], references: [id])
   couponRedemption CouponRedemption[]
-  isVisible        Boolean     @default(false)
-  razorpayOrderId  String?     @unique 
+  isVisible        Boolean            @default(false)
+  razorpayOrderId  String?            @unique
 }
 
 model OrderItem {
@@ -548,14 +548,15 @@ model HomepageStatistic {
 }
 
 model ProductTag {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
-  is_active  Boolean  @default(true)
-  created_by String
-  updated_by String
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  products Product[] @relation("ProductTags")
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  is_active      Boolean         @default(true)
+  created_by     String
+  updated_by     String
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+  products       Product[]       @relation("ProductTags")
+  frontend_blogs frontend_blog[] @relation("BlogProductTag")
 }
 
 model Tax {
@@ -718,39 +719,119 @@ model Shipment {
   order Order @relation(fields: [orderId], references: [id])
 }
 
-
 model RazorpayWebhookLog {
-  id           Int      @id @default(autoincrement())
-  event        String
-  orderId      String?   // Razorpay Order ID
-  payload      Json
-  receivedAt   DateTime  @default(now())
-  signature    String
-  isValid      Boolean
+  id         Int      @id @default(autoincrement())
+  event      String
+  orderId    String? // Razorpay Order ID
+  payload    Json
+  receivedAt DateTime @default(now())
+  signature  String
+  isValid    Boolean
 }
 
 model AbandonedCartItem {
-  id          Int             @id @default(autoincrement())
-  cartId      Int
-  userId      Int
-  productId   Int?
-  variantId   Int?
-  quantity    Int
-  discount    Int             // percentage
-  createdAt   DateTime        @default(now())
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  userId    Int
+  productId Int?
+  variantId Int?
+  quantity  Int
+  discount  Int // percentage
+  createdAt DateTime @default(now())
 
-  cart        Cart            @relation(fields: [cartId], references: [id])
-  user        User            @relation(fields: [userId], references: [id])
-  product     Product?        @relation(fields: [productId], references: [id])
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  cart    Cart            @relation(fields: [cartId], references: [id])
+  user    User            @relation(fields: [userId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 }
 
 model ShippingRate {
-  id                  Int     @id @default(autoincrement())
-  state               String  @unique // e.g., "Maharashtra"
-  intra_state_rate    Float   // For orders within this state
-  inter_state_rate    Float   // For orders outside this state
-  is_active           Boolean @default(true)
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  state            String   @unique // e.g., "Maharashtra"
+  intra_state_rate Float // For orders within this state
+  inter_state_rate Float // For orders outside this state
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+}
+
+model frontend_blog {
+  id                   Int      @id @default(autoincrement())
+  is_active            Boolean
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+  title                String   @db.VarChar(100)
+  slug                 String   @db.VarChar(150)
+  content              String
+  image                String?  @db.VarChar(100)
+  created_by           String
+  updated_by           String
+  product_tag_id       Int?
+  author               String   @db.VarChar(200)
+  publish_date         DateTime @db.Date
+  image_alternate_text String?  @db.VarChar(100)
+  seo_metadata         String?
+  seo_title            String   @db.VarChar(100)
+
+  // Relations
+  product_productTag ProductTag? @relation("BlogProductTag", fields: [product_tag_id], references: [id])
+
+  seofocuskeywordjoints frontend_blogandseofocuskeywordjoint[]
+  tagjoints             frontend_blogandtagjoint[]
+}
+
+model frontend_blogandseofocuskeywordjoint {
+  id         Int       @id @default(autoincrement())
+  is_active  Boolean
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  blog_id    Int
+  created_by String
+  updated_by String
+  keyword_id Int
+
+  // Relations
+  frontend_blog     frontend_blog                @relation(fields: [blog_id], references: [id])
+  seo_focus_keyword frontend_blogseofocuskeyword @relation(fields: [keyword_id], references: [id])
+}
+
+model frontend_blogandtagjoint {
+  id         Int      @id @default(autoincrement())
+  is_active  Boolean
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  blog_id    Int
+  created_by String
+  updated_by String
+  tag_id     Int
+
+  // Relations
+  frontend_blog    frontend_blog    @relation(fields: [blog_id], references: [id])
+  frontend_blogtag frontend_blogtag @relation(fields: [tag_id], references: [id], map: "frontend_blogandtagjoint_tag_id_e5497b49_fk_frontend_blogtag_id")
+}
+
+model frontend_blogseofocuskeyword {
+  id         Int   @id @default(autoincrement())
+  is_active  Boolean
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  name       String   @db.VarChar(100)
+  created_by String
+  updated_by String
+
+  // Reverse Relation
+  frontend_blogandseofocuskeywordjoint frontend_blogandseofocuskeywordjoint[]
+}
+
+model frontend_blogtag {
+  id         Int      @id @default(autoincrement())
+  is_active  Boolean
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  name       String    @db.VarChar(100)
+  created_by String
+  updated_by String
+
+  // Reverse Relation
+  frontend_blogandtagjoint frontend_blogandtagjoint[]
 }
