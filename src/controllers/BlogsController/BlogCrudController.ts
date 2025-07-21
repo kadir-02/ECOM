@@ -111,15 +111,16 @@ export const createblog = async (req: Request, res: Response) => {
           create: validTagIds.map((tagId) => ({
             tag_id: tagId,
             is_active: true,
-            // updated_by: username,
+            created_by: username,
+            updated_by: username,
           })),
         },
         seofocuskeywordjoints: {
           create: validKeywordIds.map((keywordId) => ({
             keyword_id: keywordId,
             is_active: true,
-            // created_by: username,
-            // updated_by: username,
+            created_by: username,
+            updated_by: username,
           })),
         },
       },
@@ -279,16 +280,16 @@ export const updateBlog = async (req: Request, res: Response) => {
           create: validTagIds.map((tag_id) => ({
             tag_id,
             is_active: true,
-            // created_by: username,
-            // updated_by: username,
+            created_by: username,
+            updated_by: username,
           })),
         },
         seofocuskeywordjoints: {
           create: validKeywordIds.map((keyword_id) => ({
             keyword_id,
             is_active: true,
-            // created_by: username,
-            // updated_by: username,
+            created_by: username,
+            updated_by: username,
           })),
         },
       },
@@ -314,7 +315,7 @@ export const updateBlog = async (req: Request, res: Response) => {
 
 export const toggleBlogActiveStatus = async (req: Request, res: Response) => {
   try {
-    const blogId = parseInt(req.params.id);
+    const blogId = parseInt(req.params.blogId); // Ensure this matches route param
     const { is_active } = req.body;
 
     if (!blogId || typeof is_active === "undefined") {
@@ -334,25 +335,28 @@ export const toggleBlogActiveStatus = async (req: Request, res: Response) => {
         success: false,
         message: "Blog not found.",
       });
-      return;
+      return
     }
+
+    const toBoolean = (val: any): boolean =>
+      typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
 
     const updatedBlog = await prisma.frontend_blog.update({
       where: { id: blogId },
       data: {
-        is_active: is_active === "true" || is_active === true,
+        is_active: toBoolean(is_active),
         updated_by: await getUserNameFromToken(req),
       },
     });
 
-     res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: `Blog ${is_active ? "activated" : "deactivated"} successfully.`,
+      message: `Blog ${toBoolean(is_active) ? "activated" : "deactivated"} successfully.`,
       blog: updatedBlog,
     });
   } catch (error: any) {
     console.error("Toggle is_active error:", error);
-     res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message || "Internal Server Error",
     });

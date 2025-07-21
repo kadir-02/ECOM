@@ -33,7 +33,7 @@ const imageUpload = uploadMemory.fields([
 
 router.post("/", imageUpload, createblog);
 router.patch("/:id", imageUpload, updateBlog);
-router.patch("/toggle/:id", toggleBlogActiveStatus);
+router.patch("/toggle/:blogId", toggleBlogActiveStatus);
 router.delete("/:id", deleteBlog);
 
 router.post("/tag", createSeoTag);
