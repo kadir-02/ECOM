@@ -22,6 +22,8 @@ export const guestCheckout = async (req: Request, res: Response) => {
     appliedTaxRate,
     isTaxInclusive,
     shippingRate,
+    billingAddress,
+    shippingAddress,
   }: {
     email: string;
     address: {
@@ -46,29 +48,56 @@ export const guestCheckout = async (req: Request, res: Response) => {
     taxAmount:number;
     appliedTaxRate:number;
     isTaxInclusive:boolean;
-    shippingRate:number
+    shippingRate:number;
+     billingAddress: string;
+    shippingAddress: string;
   } = req.body;
 
   try {
     // Validate items
-    const createItems = items.map((item, idx) => {
-      const hasProduct = typeof item.productId === 'number';
-      const hasVariant = typeof item.variantId === 'number';
+const createItems = await Promise.all(
+  items.map(async (item, idx) => {
+    const hasProduct = typeof item.productId === 'number';
+    const hasVariant = typeof item.variantId === 'number';
 
-      if (!hasProduct && !hasVariant) {
-        throw new Error(`Item ${idx + 1}: Must have either productId or variantId.`);
-      }
-      if (hasProduct && hasVariant) {
-        throw new Error(`Item ${idx + 1}: Cannot have both productId and variantId.`);
-      }
+    if (!hasProduct && !hasVariant) {
+      throw new Error(`Item ${idx + 1}: Must have either productId or variantId.`);
+    }
+
+    if (hasProduct && hasVariant) {
+      throw new Error(`Item ${idx + 1}: Cannot have both productId and variantId.`);
+    }
+
+    if (hasVariant) {
+      const variant = await prisma.productVariant.findUnique({
+        where: { id: item.variantId! },
+        include: { product: true },
+      });
+      if (!variant) throw new Error(`Variant ID ${item.variantId} not found`);
 
       return {
-        productId: hasProduct ? item.productId : null,
-        variantId: hasVariant ? item.variantId : null,
+        productId: null,
+        variantId: item.variantId,
         quantity: item.quantity,
         price: item.price,
+        // name: `${variant.product.name} - ${variant.name}`, // Optional if needed in response
       };
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId! },
     });
+    if (!product) throw new Error(`Product ID ${item.productId} not found`);
+
+    return {
+      productId: item.productId,
+      variantId: null,
+      quantity: item.quantity,
+      price: item.price,
+      // name: product.name, // Optional if needed in response
+    };
+  })
+);
 
     // Find or create guest user
     let guestUser = await prisma.user.findFirst({
@@ -151,6 +180,8 @@ const razorpay = new Razorpay({
     appliedTaxRate,
     isTaxInclusive,
     shippingRate,
+    billingAddress,
+    shippingAddress,
         status: OrderStatus.PENDING,
         paymentId: payment.id,
         razorpayOrderId,
@@ -159,10 +190,20 @@ const razorpay = new Razorpay({
         },
       },
       include: {
-        items: true,
-        address: true,
-        payment: true,
+      
+     items: {
+      include: {
+        product: true,
+        variant: {
+          include: {
+            product: true, // this gives you variant name AND product name
+          },
+        },
       },
+    },
+    address: true,
+    payment: true,
+  },
     });
 
     res.status(201).json({ message: 'Guest order placed successfully', order ,razorpayOrderId,razorpayKeyId});
