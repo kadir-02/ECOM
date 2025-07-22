@@ -913,7 +913,11 @@ export const userOrderHistory = async (req: CustomRequest, res: Response) => {
         items: {
           include: {
             product: true,
-            variant: true,
+            variant: {
+              include : {
+                product:true,
+              }
+            }
           },
         },
         payment: true,
