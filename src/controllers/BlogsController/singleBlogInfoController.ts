@@ -23,7 +23,7 @@ export const getSingleBlogInfo = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(500).json({
+    res.status(200).json({
       success: false,
       message: "Blog Data fetch sucessfully",
       data: blog,
