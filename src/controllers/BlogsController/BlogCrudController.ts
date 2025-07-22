@@ -111,16 +111,16 @@ export const createblog = async (req: Request, res: Response) => {
           create: validTagIds.map((tagId) => ({
             tag_id: tagId,
             is_active: true,
-            created_by: username,
-            updated_by: username,
+            // created_by: username,
+            // updated_by: username,
           })),
         },
         seofocuskeywordjoints: {
           create: validKeywordIds.map((keywordId) => ({
             keyword_id: keywordId,
             is_active: true,
-            created_by: username,
-            updated_by: username,
+            // created_by: username,
+            // updated_by: username,
           })),
         },
       },
@@ -280,16 +280,16 @@ export const updateBlog = async (req: Request, res: Response) => {
           create: validTagIds.map((tag_id) => ({
             tag_id,
             is_active: true,
-            created_by: username,
-            updated_by: username,
+            // created_by: username,
+            // updated_by: username,
           })),
         },
         seofocuskeywordjoints: {
           create: validKeywordIds.map((keyword_id) => ({
             keyword_id,
             is_active: true,
-            created_by: username,
-            updated_by: username,
+            // created_by: username,
+            // updated_by: username,
           })),
         },
       },
