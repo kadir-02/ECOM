@@ -11,11 +11,13 @@ export const getDashboard = async (req: Request, res: Response) => {
   const { user_id, start_date, end_date } = req.body;
  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // 5.5 hours in ms
 
-const start = new Date(new Date(start_date).getTime() - IST_OFFSET);
-start.setUTCHours(0, 0, 0, 0);
+const startIST = new Date(start_date);
+startIST.setHours(0, 0, 0, 0);
+const start = new Date(startIST.getTime() - IST_OFFSET);
 
-const end = new Date(new Date(end_date).getTime() - IST_OFFSET);
-end.setUTCHours(23, 59, 59, 999);
+const endIST = new Date(end_date);
+endIST.setHours(23, 59, 59, 999);
+const end = new Date(endIST.getTime() - IST_OFFSET);
 
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     res.status(400).json({ message: 'Invalid date format' });
