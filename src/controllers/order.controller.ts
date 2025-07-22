@@ -185,7 +185,11 @@ if (paymentMethod.toUpperCase() === 'RAZORPAY') {
         items: {
           include: {
             product: true,
-            variant: true,
+            variant :{
+              include :{
+                product:true,
+              }
+            }
           },
         },
         payment: true,
@@ -291,17 +295,22 @@ if (paymentMethod.toUpperCase() === 'RAZORPAY') {
   }),
   });
       await sendOrderConfirmationEmail(
-      order.user.email,
-      order.user.profile?.firstName || 'Customer',
-      `COM-${order.id}`,
-      order.items.map((i) => ({
-        name: i.variant?.name || i.product?.name || 'Product',
-        quantity: i.quantity,
-        price: i.price,
-      })),
-    totalAmount,
-      order.payment?.method || 'N/A'
-    );
+  order.user.email,
+  order.user.profile?.firstName || 'Customer',
+  `COM-${order.id}`,
+  order.items.map((i) => {
+    const productName =
+      i.variant?.product?.name || i.product?.name || 'Unnamed Product';
+    const variantLabel = i.variant?.name ? ` (${i.variant.name})` : '';
+    return {
+      name: productName + variantLabel,
+      quantity: i.quantity,
+      price: i.price,
+    };
+  }),
+  totalAmount,
+  order.payment?.method || 'N/A'
+);
 
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${totalAmount}`, 'ORDER');
 
@@ -904,7 +913,11 @@ export const userOrderHistory = async (req: CustomRequest, res: Response) => {
         items: {
           include: {
             product: true,
-            variant: true,
+            variant: {
+              include : {
+                product:true,
+              }
+            }
           },
         },
         payment: true,
