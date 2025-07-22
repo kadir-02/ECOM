@@ -133,7 +133,8 @@
         <p><strong>Name:</strong> <%= customerName %></p>
         <p><strong>Email:</strong> <%= email %></p>
         <p><strong>Phone:</strong> <%= phone %></p>
-        <p><strong>Address:</strong> <%= address %></p>
+        <p><strong>Billing Address:</strong> <%= billingAddress %></p>
+<p><strong>Shipping Address:</strong> <%= shippingAddress %></p>
       </div>
 
       <div class="info-block">
@@ -174,7 +175,13 @@
       <tbody>
         <% items.forEach(item => { %>
           <tr>
-            <td><%= item.name %></td>
+           <td>
+  <%= item.name %>
+  <% if (item.variantName) { %>
+    <div style="font-size: 12px; color: gray;">(<%= item.variantName %>)</div>
+  <% } %>
+</td>
+
             <td><%= item.quantity %></td>
             <td><%= item.unitPrice.toFixed(2) %></td>
             <td><%= (item.unitPrice * item.quantity).toFixed(2) %></td>

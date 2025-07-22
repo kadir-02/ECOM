@@ -350,141 +350,6 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
   }
 };
 
-
-// Get orders for admin
-// export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
-//   const {
-//     search,
-//     page = 1,
-//     page_size = 10,
-//     ordering = 'desc',
-//     order_status,
-//     start_date,
-//     end_date,
-//   } = req.query;
-
-//   const isAdmin = req.user?.role === 'ADMIN';
-
-//   if (!isAdmin) {
-//     res.status(403).json({ message: "Access denied. Only admins can view all orders." });
-//     return
-//   }
-
-//   const pageNum = parseInt(page as string);
-//   const pageSizeNum = parseInt(page_size as string);
-//   const sortOrder = ordering === 'asc' ? 'asc' : 'desc';
-
-//   try {
-//     const whereConditions: any = {};
-
-//     if (search) {
-//       const searchStr = search.toString();
-//       const orConditions: any[] = [];
-
-//       if (!isNaN(Number(searchStr))) {
-//         orConditions.push({ id: Number(searchStr) });
-//       }
-
-//       const validStatuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-//       if (validStatuses.includes(searchStr)) {
-//         orConditions.push({ status: searchStr });
-//       }
-
-//       orConditions.push({
-//         OR: [
-//           {
-//             user: {
-//               OR: [
-//                 { email: { contains: searchStr, mode: 'insensitive' } },
-//                 {
-//                   profile: {
-//                     OR: [
-//                       { firstName: { contains: searchStr, mode: 'insensitive' } },
-//                       { lastName: { contains: searchStr, mode: 'insensitive' } },
-//                     ],
-//                   },
-//                 },
-//               ],
-//             },
-//           },
-//           {
-//             // guest orders: search by address fullName or phone (replace with your fields)
-//             address: {
-//               OR: [
-//                 { fullName: { contains: searchStr, mode: 'insensitive' } },
-//                 { phone: { contains: searchStr, mode: 'insensitive' } },
-//               ],
-//             },
-//           },
-//         ],
-//       });
-
-//       whereConditions.OR = orConditions;
-//     }
-
-
-//     if (order_status) {
-//       whereConditions.status = order_status;
-//     }
-
-//     if (start_date && end_date) {
-//       const startDate = new Date(start_date as string);
-//       const endDate = new Date(end_date as string);
-
-//       // Increment endDate by 1 day for exclusive upper bound
-//       endDate.setDate(endDate.getDate() + 1);
-
-//       whereConditions.createdAt = {
-//         gte: startDate,
-//         lt: endDate,
-//       };
-//     }
-
-//     const totalCount = await prisma.order.count({ where: whereConditions });
-
-//     const orders = await prisma.order.findMany({
-//       where: whereConditions,
-//       include: {
-//         items: {
-//           include: {
-//             product: {
-//               include: {
-//                 images: true,
-//                 category: true,
-//               },
-//             },
-//             variant: {
-//               include: {
-//                 images: true,
-//               },
-//             },
-//           },
-//         },
-//         payment: true,
-//         address: true,
-//         user: true, // include user details (optional, for admin view)
-//       },
-//       orderBy: { createdAt: sortOrder },
-//       skip: (pageNum - 1) * pageSizeNum,
-//       take: pageSizeNum,
-//     });
-
-//     res.json({
-//       success: true,
-//       result: orders,
-//       pagination: {
-//         total: totalCount,
-//         current_page: pageNum,
-//         page_size: pageSizeNum,
-//         total_pages: Math.ceil(totalCount / pageSizeNum),
-//       },
-//     });
-//   } catch (error) {
-//     console.error('Admin fetch orders failed:', error);
-//     res.status(500).json({ message: 'Failed to fetch admin orders', error });
-//   }
-// };
-
 // Get orders for admin
 export const getAllUserOrdersForAdmin = async (req: CustomRequest, res: Response) => {
   const {
@@ -827,7 +692,13 @@ export const generateInvoicePDF = async (req: Request, res: Response) => {
         items: {
           include: {
             product: true,
-            variant: true,
+            variant :{
+              include : {
+
+                product:true,
+              }
+            
+            }
           },
         },
         address: true,
@@ -858,12 +729,16 @@ if (!company) {
       customerName: `${order.user.profile?.firstName || ''} ${order.user.profile?.lastName || ''}`,
       email: order.user.email,
       phone: order.address?.phone,
+      billingAddress: order.billingAddress ?? "N/A",
+  shippingAddress: order.shippingAddress ?? "N/A",
       address: `${order.address?.addressLine}, ${order.address?.city}, ${order.address?.state} - ${order.address?.pincode}`,
-      items: order.items.map(item => ({
-        name: item.variant?.name || item.product?.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-      })),
+  items: order.items.map(item => ({
+  name: item.variant?.product?.name || item.product?.name || "Unnamed Product",
+  variantName: item.variant?.name || "",
+  quantity: item.quantity,
+  unitPrice: item.price,
+})),
+
       subtotal,
       discountAmount: order.discountAmount ?? 0,
       abandentDiscountAmount: order.abandentDiscountAmount ?? 0,
@@ -871,8 +746,7 @@ if (!company) {
       taxAmount: order.taxAmount ?? 0,
       appliedTaxRate: order.appliedTaxRate ?? 0,
       shippingRate: order.shippingRate ?? 0,
-      finalAmount:
-        subtotal - (order.discountAmount ?? 0) - (order.abandentDiscountAmount ?? 0) + (order.taxAmount ?? 0) + (order.shippingRate ?? 0),
+      finalAmount: order.totalAmount,
       createdAt: new Date(order.createdAt).toLocaleString(),
       logoUrl: company.logo,
   companyName: company.description || 'Your Company',
