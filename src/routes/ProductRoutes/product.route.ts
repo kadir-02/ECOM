@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { authenticate } from '../../middlewares/authenticate';
 import { authorizeAdmin } from '../../middlewares/authorizaAdmin';
-import { createProduct, deleteProduct, getProducts, getProductsFilter, toggleProductStatus, updateProduct, updateProductSequence } from '../../controllers/ProductAndVariationControllers/product.controller';
+import { createProduct, deleteProduct, getProducts, getProductsFilter, toggleProductStatus, updateProduct, updateProductSequence, uploadProductsFromSheet } from '../../controllers/ProductAndVariationControllers/product.controller';
 import productImageRoutes from './productImage.routes'
 import productSpecRoutes from './productSpecification.route'
 import variantRoutes from '../ProductRoutes/variant.route';
 import { getBestSellingProducts, getNewArrivalProducts, getProductBySlug } from '../../controllers/ProductAndVariationControllers/productFilters.controller';
+import { uploadCsv } from '../../upload/multerCsv';
 
 const router = Router({ mergeParams: true });
 
@@ -26,6 +27,11 @@ router.post('/', createProduct);
 router.patch('/update-sequence', updateProductSequence);
 router.patch('/:id', updateProduct);
 router.delete('/:id', deleteProduct);
+router.post(
+  "/upload-csv",
+  uploadCsv.single("file"),
+  uploadProductsFromSheet
+);
 // router.delete('/:id', deleteProduct);
 // router.patch('/deactivate/:id', softDeleteProduct);
 // router.patch('/restore/:id', restoreProduct);
