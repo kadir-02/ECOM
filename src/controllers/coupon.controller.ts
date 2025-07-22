@@ -88,7 +88,11 @@ export const getAllCouponCodes = async (req: Request, res: Response) => {
         not: {
           startsWith: 'ABND-', // 👈 Exclude abandoned cart codes
         },
+        
       },
+       expiresAt: {
+    gte: new Date(), // ✅ Filter out expired coupons
+  }
     };
 
     if (is_active === "true") whereClause.is_active = true;
