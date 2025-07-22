@@ -111,6 +111,7 @@ export const createblog = async (req: Request, res: Response) => {
           create: validTagIds.map((tagId) => ({
             tag_id: tagId,
             is_active: true,
+            // created_by: username,
             // updated_by: username,
           })),
         },
@@ -160,9 +161,8 @@ export const updateBlog = async (req: Request, res: Response) => {
       seofocuskeywordjoints,
     } = req.body;
 
-    console.log("blogId", blogId)
 
-    if (!blogId ) {
+    if (!blogId) {
       res.status(400).json({
         success: false,
         message: "Invalid blog ID.",
@@ -313,6 +313,56 @@ export const updateBlog = async (req: Request, res: Response) => {
   }
 };
 
+export const toggleBlogActiveStatus = async (req: Request, res: Response) => {
+  try {
+    const blogId = parseInt(req.params.blogId); // Ensure this matches route param
+    const { is_active } = req.body;
+
+    if (!blogId || typeof is_active === "undefined") {
+       res.status(400).json({
+        success: false,
+        message: "Invalid blog ID or missing is_active value.",
+      });
+      return;
+    }
+
+    const existingBlog = await prisma.frontend_blog.findUnique({
+      where: { id: blogId },
+    });
+
+    if (!existingBlog) {
+       res.status(404).json({
+        success: false,
+        message: "Blog not found.",
+      });
+      return
+    }
+
+    const toBoolean = (val: any): boolean =>
+      typeof val === 'boolean' ? val : String(val).toLowerCase() === 'true';
+
+    const updatedBlog = await prisma.frontend_blog.update({
+      where: { id: blogId },
+      data: {
+        is_active: toBoolean(is_active),
+        updated_by: await getUserNameFromToken(req),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Blog ${toBoolean(is_active) ? "activated" : "deactivated"} successfully.`,
+      blog: updatedBlog,
+    });
+  } catch (error: any) {
+    console.error("Toggle is_active error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
+  }
+};
+
 export const deleteBlog = async (req: Request, res: Response) => {
   try {
     const blogId = parseInt(req.params.id);
@@ -376,12 +426,14 @@ export const getBlogs = async (req: Request, res: Response) => {
       page_size = "10",
       ordering,
       search = "",
+      tag_id
     } = req.query as {
       is_active?: string;
       page?: string;
       page_size?: string;
       ordering?: string;
       search?: string;
+      tag_id?: string;
     };
 
     const pageNumber = parseInt(page);
@@ -392,6 +444,7 @@ export const getBlogs = async (req: Request, res: Response) => {
 
     const where: any = {
       ...(is_active !== undefined && { is_active: is_active === "true" }),
+      ...(tag_id !== undefined && {product_tag_id : Number(tag_id)}),
       ...(search && {
         OR: [
           { title: { contains: search, mode: "insensitive" } },
@@ -414,8 +467,16 @@ export const getBlogs = async (req: Request, res: Response) => {
         skip,
         take,
         include: {
-          tagjoints: true,
-          seofocuskeywordjoints: true,
+          tagjoints: {
+            include: {
+              frontend_blogtag: true,
+            },
+          },
+          seofocuskeywordjoints: {
+            include: {
+              seo_focus_keyword: true,
+            },
+          },
         },
       }),
       prisma.frontend_blog.count({ where }),
@@ -423,10 +484,10 @@ export const getBlogs = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: blogs,
       total,
       page: pageNumber,
       page_size: pageSizeNumber,
+      data: blogs,
     });
     return;
   } catch (error: any) {
