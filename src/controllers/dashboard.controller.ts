@@ -241,10 +241,18 @@ export const getDashboard = async (req: Request, res: Response) => {
 
     if (settings['top_customers_data'] !== undefined) {
       // 🔹 Top by orders
+        const nonAdminUsers = await prisma.user.findMany({
+    where: { role: { not: 'ADMIN' } },
+    select: { id: true },
+  });
+    const nonAdminUserIds = nonAdminUsers.map(user => user.id);
       const topByOrders = await prisma.order.groupBy({
         by: ['userId'],
         _count: { id: true },
-        where: { createdAt: { gte: start, lte: end } },
+        where: { 
+          createdAt: { gte: start, lte: end },
+          userId: { in: nonAdminUserIds },
+        },
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       });
