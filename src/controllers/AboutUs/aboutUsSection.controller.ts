@@ -6,10 +6,23 @@ import { getUserNameFromToken } from '../../utils/extractName';
 // GET all
 export const getAllAboutUsSections = async (req: Request, res: Response) => {
   try {
+    const { is_active } = req.query;
+
+    const activeFilter =
+      typeof is_active !== 'undefined'
+        ? { is_active: String(is_active).toLowerCase() === 'true' }
+        : {};
+
     const sections = await prisma.aboutUsSection.findMany({
+      where: {
+        ...activeFilter,
+      },
       orderBy: { sequence_number: 'asc' },
       include: {
         components: {
+          where: {
+            ...activeFilter,
+          },
           orderBy: { sequence_number: 'asc' },
         },
       },
@@ -34,8 +47,8 @@ export const getAllAboutUsSections = async (req: Request, res: Response) => {
         sequence_number: component.sequence_number,
         title: component.title,
         description: component.description,
-        heading:component.heading,
-        sub_heading:component.sub_heading,
+        heading: component.heading,
+        sub_heading: component.sub_heading,
         image: component.image,
         is_active: component.is_active,
         created_by: component.created_by,
@@ -74,16 +87,20 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
   let image = existing.image;
 
   try {
-    const seq=Number(sequence_number)
-    if (seq != null && seq <= 0) {
-      res.status(400).json({
+    const seq = Number(sequence_number);
+    if (!isNaN(seq) && seq <= 0) {
+       res.status(400).json({
         success: false,
-        message: `sequence_number is not positive`,
+        message: `sequence_number must be a positive number`,
       });
       return;
     }
-    // 🔁 Check for duplicate sequence_number if changed
-    if (sequence_number && Number(sequence_number) !== existing.sequence_number) {
+
+    // Check for duplicate sequence_number if changed
+    if (
+      typeof sequence_number !== 'undefined' &&
+      Number(sequence_number) !== existing.sequence_number
+    ) {
       const duplicate = await prisma.aboutUsSection.findFirst({
         where: {
           sequence_number: Number(sequence_number),
@@ -100,7 +117,7 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
       }
     }
 
-    // 🔼 Upload new image if provided
+    // Upload new image if provided
     if (req.file?.buffer) {
       const upload = await uploadToCloudinary(req.file.buffer, 'aboutus_section');
       image = upload.secure_url;
@@ -111,16 +128,25 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
     const updated = await prisma.aboutUsSection.update({
       where: { id },
       data: {
-        sequence_number: Number(sequence_number) || existing.sequence_number,
-        section_name: section_name || existing.section_name,
-        heading: heading || existing.heading,
-        sub_heading: sub_heading || existing.sub_heading,
-        description: description || existing.description,
+        sequence_number: typeof sequence_number !== 'undefined'
+          ? Number(sequence_number)
+          : existing.sequence_number,
+        section_name: typeof section_name !== 'undefined'
+          ? section_name
+          : existing.section_name,
+        heading: typeof heading !== 'undefined'
+          ? heading
+          : existing.heading,
+        sub_heading: typeof sub_heading !== 'undefined'
+          ? sub_heading
+          : existing.sub_heading,
+        description: typeof description !== 'undefined'
+          ? description
+          : existing.description,
         image,
-        is_active:
-          is_active !== undefined
-            ? is_active === 'true' || is_active === true
-            : existing.is_active,
+        is_active: typeof is_active !== 'undefined'
+          ? is_active === 'true' || is_active === true
+          : existing.is_active,
         updated_by,
       },
     });
@@ -139,6 +165,7 @@ export const updateAboutUsSection = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
 
 // DELETE
 export const deleteAboutUsSection = async (req: Request, res: Response) => {
