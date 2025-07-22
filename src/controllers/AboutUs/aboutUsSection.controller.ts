@@ -6,10 +6,23 @@ import { getUserNameFromToken } from '../../utils/extractName';
 // GET all
 export const getAllAboutUsSections = async (req: Request, res: Response) => {
   try {
+    const { is_active } = req.query;
+
+    const activeFilter =
+      typeof is_active !== 'undefined'
+        ? { is_active: String(is_active).toLowerCase() === 'true' }
+        : {};
+
     const sections = await prisma.aboutUsSection.findMany({
+      where: {
+        ...activeFilter,
+      },
       orderBy: { sequence_number: 'asc' },
       include: {
         components: {
+          where: {
+            ...activeFilter,
+          },
           orderBy: { sequence_number: 'asc' },
         },
       },
@@ -34,8 +47,8 @@ export const getAllAboutUsSections = async (req: Request, res: Response) => {
         sequence_number: component.sequence_number,
         title: component.title,
         description: component.description,
-        heading:component.heading,
-        sub_heading:component.sub_heading,
+        heading: component.heading,
+        sub_heading: component.sub_heading,
         image: component.image,
         is_active: component.is_active,
         created_by: component.created_by,

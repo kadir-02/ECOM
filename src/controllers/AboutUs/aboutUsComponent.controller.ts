@@ -116,14 +116,18 @@ export const updateComponent = async (req: Request, res: Response) => {
     } = req.body;
 
     const seqNum = Number(sequence_number);
-    if (seqNum != null && seqNum <= 0) {
-      res.status(400).json({
+    if (!isNaN(seqNum) && seqNum <= 0) {
+       res.status(400).json({
         success: false,
-        message: `sequence_number is not positive`,
+        message: `sequence_number must be a positive number`,
       });
       return;
     }
-    if (seqNum && seqNum !== existing.sequence_number) {
+
+    if (
+      typeof sequence_number !== 'undefined' &&
+      seqNum !== existing.sequence_number
+    ) {
       const duplicate = await prisma.aboutUsComponent.findFirst({
         where: {
           sectionId,
@@ -137,7 +141,7 @@ export const updateComponent = async (req: Request, res: Response) => {
           success: false,
           message: `This sequence number already exists`,
         });
-        return;
+        return
       }
     }
 
@@ -153,14 +157,19 @@ export const updateComponent = async (req: Request, res: Response) => {
       where: { id },
       data: {
         sectionId,
-        sequence_number: seqNum || existing.sequence_number,
-        heading: heading || existing.heading,
-        sub_heading: sub_heading || existing.sub_heading,
-        description: description || existing.description,
-        precentage: precentage || existing.precentage,
+        sequence_number:
+          typeof sequence_number !== 'undefined' ? seqNum : existing.sequence_number,
+        heading:
+          typeof heading !== 'undefined' ? heading : existing.heading,
+        sub_heading:
+          typeof sub_heading !== 'undefined' ? sub_heading : existing.sub_heading,
+        description:
+          typeof description !== 'undefined' ? description : existing.description,
+        precentage:
+          typeof precentage !== 'undefined' ? precentage : existing.precentage,
         image,
         is_active:
-          is_active !== undefined
+          typeof is_active !== 'undefined'
             ? is_active === 'true' || is_active === true
             : existing.is_active,
         updated_by,
