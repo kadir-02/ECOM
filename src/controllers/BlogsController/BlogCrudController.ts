@@ -482,9 +482,12 @@ export const getBlogs = async (req: Request, res: Response) => {
       prisma.frontend_blog.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / pageSizeNumber);
+
     res.status(200).json({
       success: true,
       total,
+      totalPages,
       page: pageNumber,
       page_size: pageSizeNumber,
       data: blogs,
