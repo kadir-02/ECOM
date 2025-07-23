@@ -3,7 +3,8 @@ import prisma from '../../db/prisma';
 import { getUserNameFromToken } from '../../utils/extractName';
 import { Prisma } from '@prisma/client';
 import * as fastcsv from 'fast-csv';
-import { uploadMemory } from '../../upload/multerCloudinary';
+import * as XLSX from 'xlsx';
+import path from 'path';
 
 export const getAllStores = async (req: Request, res: Response) => {
   try {
@@ -91,30 +92,6 @@ export const createStore = async (req: Request, res: Response) => {
     // Convert to number early
     const numericZip = Number(zipcode);
 
-    // ✅ Check if pincode already exists
-    const existingPincode = await prisma.pincode.findFirst({
-      where: {
-        zipcode: numericZip,
-        city,
-        state,
-      },
-    });
-
-    // ✅ Create pincode only if it doesn't exist
-    if (!existingPincode) {
-      await prisma.pincode.create({
-        data: {
-          city,
-          state,
-          zipcode: numericZip,
-          estimatedDeliveryDays: 3, // or infer dynamically
-          isActive: true,
-          createdBy: created_by,
-          updatedBy: created_by,
-        },
-      });
-    }
-
     // ✅ Now create store
     const store = await prisma.store.create({
       data: {
@@ -135,9 +112,23 @@ export const createStore = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ success: true, result: store });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Failed to create store' });
+  }  catch (err: any) {
+    console.error("Create Store Error:", err);
+
+    if (err.code === "P2002") {
+       res.status(409).json({
+        success: false,
+        message: "Store with the same name/email/phone already exists",
+        meta: err.meta,
+      });
+      return;
+    }
+
+     res.status(500).json({
+      success: false,
+      message: "Failed to create store",
+      error: err.message || err,
+    });
   }
 };
 
@@ -221,7 +212,7 @@ const sanitizeNumber = (input: string | undefined): string => {
 //   try {
 //     if (!req.file || !req.file.buffer) {
 //        res.status(400).json({ message: 'No file uploaded or file is empty' });
-//       return;
+//        return;
 //     }
 
 //     const stream = fastcsv.parse({ headers: true, trim: true });
@@ -231,12 +222,10 @@ const sanitizeNumber = (input: string | undefined): string => {
 //     stream.on('error', (error) => {
 //       console.error('CSV parse error:', error);
 //        res.status(400).json({ message: 'Error parsing CSV' });
-//        return
+//        return;
 //     });
 
-//     stream.on('data', (row) => {
-//       rows.push(row);
-//     });
+//     stream.on('data', (row) => rows.push(row));
 
 //     stream.on('end', async () => {
 //       for (const row of rows) {
@@ -254,6 +243,9 @@ const sanitizeNumber = (input: string | undefined): string => {
 
 //           const phone = sanitizeNumber(row['PHONE']);
 //           const mobile = sanitizeNumber(row['MOBILE']);
+//           const latitude = row['LATITUDE']?.trim() || '0.0';
+//           const longitude = row['LONGITUDE']?.trim() || '0.0';
+//           const estimatedDeliveryDays = parseInt(row['DELIVERY_DAYS']?.trim(), 10) || 3;
 
 //           const storeData = {
 //             name,
@@ -262,21 +254,41 @@ const sanitizeNumber = (input: string | undefined): string => {
 //             state,
 //             zipcode,
 //             phone_numbers: [phone, mobile].filter(Boolean).join(', '),
-//             email: null,
-//             locality: '',
+//             latitude,
+//             longitude,
 //             country: 'India',
-//             latitude: '0.0',
-//             longitude: '0.0',
 //             is_active: true,
 //             created_by: 'CSV Import',
 //             updated_by: 'CSV Import',
 //           };
 
-//           const existing = await prisma.store.findFirst({ where: { name } });
+//           // ✅ Ensure pincode exists or create
+//           const existingPincode = await prisma.pincode.findFirst({
+//             where: { zipcode, city, state },
+//           });
 
-//           if (existing) {
+//           if (!existingPincode) {
+//             await prisma.pincode.create({
+//               data: {
+//                 city,
+//                 state,
+//                 zipcode,
+//                 estimatedDeliveryDays,
+//                 isActive: true,
+//                 createdBy: 'CSV Import',
+//                 updatedBy: 'CSV Import',
+//               },
+//             });
+//           }
+
+//           // ✅ Upsert store by name
+//           const existingStore = await prisma.store.findFirst({
+//             where: { name },
+//           });
+
+//           if (existingStore) {
 //             await prisma.store.update({
-//               where: { id: existing.id },
+//               where: { id: existingStore.id },
 //               data: storeData,
 //             });
 //           } else {
@@ -289,8 +301,11 @@ const sanitizeNumber = (input: string | undefined): string => {
 //         }
 //       }
 
-//        res.status(200).json({ message: 'Store CSV processed successfully', count });
-//        return
+//        res.status(200).json({
+//         message: 'Store CSV processed successfully',
+//         count,
+//       });
+//       return;
 //     });
 
 //     stream.write(req.file.buffer);
@@ -298,7 +313,7 @@ const sanitizeNumber = (input: string | undefined): string => {
 //   } catch (err) {
 //     console.error('Upload error:', err);
 //      res.status(500).json({ message: 'Internal server error' });
-//      ;return
+//      return;
 //   }
 // };
 
@@ -310,104 +325,113 @@ export const uploadCsvAndUpsertStores = async (req: Request, res: Response) => {
        return;
     }
 
-    const stream = fastcsv.parse({ headers: true, trim: true });
-    const rows: any[] = [];
-    let count = 0;
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    let rows: Record<string, any>[] = [];
 
-    stream.on('error', (error) => {
-      console.error('CSV parse error:', error);
-       res.status(400).json({ message: 'Error parsing CSV' });
-       return;
-    });
+    if (ext === '.csv') {
+      rows = await new Promise((resolve, reject) => {
+        const bufferRows: Record<string, any>[] = [];
+        const stream = fastcsv.parse({ headers: true, trim: true });
 
-    stream.on('data', (row) => rows.push(row));
+        stream.on('error', reject);
+        stream.on('data', (row) => bufferRows.push(row));
+        stream.on('end', () => resolve(bufferRows));
 
-    stream.on('end', async () => {
-      for (const row of rows) {
-        try {
-          const name = row['NAME']?.trim();
-          const address = row['ADDRESS']?.trim();
-          const city = row['CITY']?.trim();
-          const state = row['STATE']?.trim();
-          const zipcode = parseInt(sanitizeNumber(row['ZIP']), 10);
-
-          if (!name || !address || !city || !state || isNaN(zipcode)) {
-            console.warn('Skipping invalid row:', row);
-            continue;
-          }
-
-          const phone = sanitizeNumber(row['PHONE']);
-          const mobile = sanitizeNumber(row['MOBILE']);
-          const latitude = row['LATITUDE']?.trim() || '0.0';
-          const longitude = row['LONGITUDE']?.trim() || '0.0';
-          const estimatedDeliveryDays = parseInt(row['DELIVERY_DAYS']?.trim(), 10) || 3;
-
-          const storeData = {
-            name,
-            address,
-            city,
-            state,
-            zipcode,
-            phone_numbers: [phone, mobile].filter(Boolean).join(', '),
-            latitude,
-            longitude,
-            country: 'India',
-            is_active: true,
-            created_by: 'CSV Import',
-            updated_by: 'CSV Import',
-          };
-
-          // ✅ Ensure pincode exists or create
-          const existingPincode = await prisma.pincode.findFirst({
-            where: { zipcode, city, state },
-          });
-
-          if (!existingPincode) {
-            await prisma.pincode.create({
-              data: {
-                city,
-                state,
-                zipcode,
-                estimatedDeliveryDays,
-                isActive: true,
-                createdBy: 'CSV Import',
-                updatedBy: 'CSV Import',
-              },
-            });
-          }
-
-          // ✅ Upsert store by name
-          const existingStore = await prisma.store.findFirst({
-            where: { name },
-          });
-
-          if (existingStore) {
-            await prisma.store.update({
-              where: { id: existingStore.id },
-              data: storeData,
-            });
-          } else {
-            await prisma.store.create({ data: storeData });
-          }
-
-          count++;
-        } catch (err) {
-          console.error('Error processing row:', row, err);
-        }
-      }
-
-       res.status(200).json({
-        message: 'Store CSV processed successfully',
-        count,
+        stream.write(req.file!.buffer);
+        stream.end();
+      });
+    } else if (ext === '.xls' || ext === '.xlsx') {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    } else {
+       res.status(400).json({
+        message: 'Unsupported file type. Please upload a .csv, .xls, or .xlsx file.',
       });
       return;
-    });
+    }
 
-    stream.write(req.file.buffer);
-    stream.end();
-  } catch (err) {
+    let count = 0;
+
+    for (const row of rows) {
+      try {
+        const name = row['NAME']?.toString().trim();
+        const address = row['ADDRESS']?.toString().trim();
+        const city = row['CITY']?.toString().trim();
+        const state = row['STATE']?.toString().trim();
+        const zipcode = parseInt(sanitizeNumber(row['ZIP']), 10);
+
+        if (!name || !address || !city || !state || isNaN(zipcode)) {
+          console.warn('Skipping invalid row:', row);
+          continue;
+        }
+
+        const phone = sanitizeNumber(row['PHONE']);
+        const mobile = sanitizeNumber(row['MOBILE']);
+        const latitude = row['LATITUDE']?.toString().trim() || '0.0';
+        const longitude = row['LONGITUDE']?.toString().trim() || '0.0';
+
+        const storeData = {
+          name,
+          address,
+          city,
+          state,
+          zipcode,
+          phone_numbers: [phone, mobile].filter(Boolean).join(', '),
+          latitude,
+          longitude,
+          country: 'India',
+          is_active: true,
+          created_by: 'CSV/Excel Import',
+          updated_by: 'CSV/Excel Import',
+        };
+
+        // Ensure pincode exists
+        const existingPincode = await prisma.pincode.findFirst({
+          where: { zipcode, city, state },
+        });
+
+        if (!existingPincode) {
+          await prisma.pincode.create({
+            data: {
+              city,
+              state,
+              zipcode,
+              estimatedDeliveryDays: parseInt(row['DELIVERY_DAYS']?.toString() || '3', 10),
+              isActive: true,
+              createdBy: 'CSV/Excel Import',
+              updatedBy: 'CSV/Excel Import',
+            },
+          });
+        }
+
+        const existingStore = await prisma.store.findFirst({ where: { name } });
+
+        if (existingStore) {
+          await prisma.store.update({
+            where: { id: existingStore.id },
+            data: storeData,
+          });
+        } else {
+          await prisma.store.create({ data: storeData });
+        }
+
+        count++;
+      } catch (err) {
+        console.error('Error processing row:', row, err);
+      }
+    }
+
+     res.status(200).json({
+      message: `Stores processed successfully from ${ext} upload.`,
+      count,
+    });
+  } catch (err: any) {
     console.error('Upload error:', err);
-     res.status(500).json({ message: 'Internal server error' });
-     return;
+     res.status(500).json({
+      message: 'Internal server error',
+      error: err.message,
+    });
   }
 };

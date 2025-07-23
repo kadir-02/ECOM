@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import prisma from "../../db/prisma";
 import { generateSlug } from "../../utils/slugify";
 import { buildProductQuery } from '../../utils/productFilters';
+import * as fastcsv from "fast-csv";
+import * as XLSX from "xlsx";
+import path from "path";
 
 export const createProduct = async (req: Request, res: Response) => {
   try {
@@ -807,5 +810,109 @@ export const toggleProductStatus = async (req: Request, res: Response) => {
     res
       .status(500)
       .json({ success: false, message: 'Failed to update product status' });
+  }
+};
+
+
+export const uploadProductsFromSheet = async (req: Request, res: Response) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+       res.status(400).json({ message: 'No file uploaded or file is empty' });
+       return;
+    }
+
+    const file = req.file; // ✅ TypeScript now knows `file` is defined
+    const ext = path.extname(file.originalname).toLowerCase();
+    let rows: any[] = [];
+
+    if (ext === '.csv') {
+      rows = await new Promise<any[]>((resolve, reject) => {
+        const results: any[] = [];
+        const stream = fastcsv.parse({ headers: true, trim: true });
+
+        stream.on('error', reject);
+        stream.on('data', (row) => results.push(row));
+        stream.on('end', () => resolve(results));
+
+        stream.write(file.buffer);
+        stream.end();
+      });
+    } else if (ext === '.xls' || ext === '.xlsx') {
+      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet);
+    } else {
+       res.status(400).json({ message: 'Unsupported file format' });
+       return
+    }
+
+    let count = 0;
+    for (const row of rows) {
+      try {
+        const name = row['Name']?.trim();
+        const description = row['Description']?.trim();
+        const categoryName = row['Parent category name']?.trim();
+        const SEOtitle = row['SEO title']?.trim();
+        const SEOdescription = row['SEO description']?.trim();
+        const SEOkeywords = row['SEO keywords']?.trim();
+        const seoData = row['SEO data']?.trim();
+        const heading = row['Heading']?.trim();
+        const title = row['Title']?.trim();
+        const minOrderQty = parseInt(row['Minimum order quantity'], 10) || 1;
+
+        if (!name || !categoryName) {
+          console.warn('Skipping invalid row:', row);
+          continue;
+        }
+
+        const category = await prisma.category.findFirst({ where: { name: categoryName } });
+        if (!category) {
+          console.warn(`Category not found for row: ${name}`);
+          continue;
+        }
+
+        const slug = await generateSlug(name, String(Date.now()));
+
+        await prisma.product.create({
+          data: {
+            name,
+            description,
+            SKU: `SKU-${Date.now()}-${count}`,
+            basePrice: 100,
+            sellingPrice: 90,
+            priceDifferencePercent: 10,
+            stock: 10,
+            isNewArrival: false,
+            isActive: true,
+            isDeleted: false,
+            createdById: 1,
+            updatedById: 1,
+            categoryId: category.id,
+            subcategoryId: null,
+            slug,
+            sequenceNumber: count + 1,
+            seoTitle: SEOtitle,
+            seoKeyword: SEOkeywords,
+            seoDescription: SEOdescription,
+            productDetails: seoData,
+            specifications: {
+              create: [
+                { name: 'Title', value: title, isActive: true, isDeleted: false },
+                { name: 'Heading', value: heading, isActive: true, isDeleted: false },
+              ],
+            },
+          },
+        });
+
+        count++;
+      } catch (err) {
+        console.error('Error processing product row:', err);
+      }
+    }
+
+    res.json({ message: 'Products uploaded successfully', count });
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -41,7 +41,8 @@
     "prisma": "^6.8.2",
     "puppeteer": "^24.14.0",
     "razorpay": "^2.9.6",
-    "ws": "^8.18.2"
+    "ws": "^8.18.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

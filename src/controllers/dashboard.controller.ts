@@ -9,7 +9,15 @@ type DailySales = {
 
 export const getDashboard = async (req: Request, res: Response) => {
   const { user_id, start_date, end_date } = req.body;
-  const start = new Date(start_date), end = new Date(end_date);
+ const IST_OFFSET = 5.5 * 60 * 60 * 1000; // 5.5 hours in ms
+
+const startIST = new Date(start_date);
+startIST.setHours(0, 0, 0, 0);
+const start = new Date(startIST.getTime() - IST_OFFSET);
+
+const endIST = new Date(end_date);
+endIST.setHours(23, 59, 59, 999);
+const end = new Date(endIST.getTime() - IST_OFFSET);
 
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
     res.status(400).json({ message: 'Invalid date format' });
@@ -176,7 +184,7 @@ export const getDashboard = async (req: Request, res: Response) => {
         where: {
           createdAt: {
             gte: start,
-            lt: new Date(end.getTime() + 24 * 60 * 60 * 1000), // include entire end date
+            lt: end, // include entire end date
           },
           // no userId filter here to get all users' orders
         },
@@ -448,7 +456,7 @@ export const getDashboard = async (req: Request, res: Response) => {
 
     if (settings['recent_orders_data'] !== undefined) {
       const recentOrders = await prisma.order.findMany({
-        where: { userId: user_id },
+        // where: { userId: user_id },
         orderBy: { createdAt: 'desc' },
         take: 5,
         include: {
