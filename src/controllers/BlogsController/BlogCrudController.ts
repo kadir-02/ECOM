@@ -502,3 +502,78 @@ export const getBlogs = async (req: Request, res: Response) => {
     return;
   }
 };
+
+export const duplicateBlog = async (req: Request, res: Response) => {
+  const blogId = parseInt(req.params.id);
+
+  try {
+    const original = await prisma.frontend_blog.findUnique({
+      where: { id: blogId },
+      include: {
+        tagjoints: true,
+        seofocuskeywordjoints: true,
+      },
+    });
+
+    if (!original) {
+       res.status(404).json({ message: 'Blog not found' });
+       return;
+    }
+
+    const username = await getUserNameFromToken(req);
+
+    const duplicated = await prisma.frontend_blog.create({
+      data: {
+        title: `${original.title} (Copy)`,
+        slug: `${original.slug}-copy-${Date.now()}`,
+        content: original.content,
+        image: original.image,
+        created_by: username || 'admin',
+        updated_by: username || 'admin',
+        product_tag_id: original.product_tag_id,
+        author: original.author,
+        publish_date: new Date(),
+        image_alternate_text: original.image_alternate_text,
+        seo_metadata: original.seo_metadata,
+        seo_title: original.seo_title,
+        is_active: false,
+      },
+    });
+
+    // Duplicate TAG JOINTS (without created_by/updated_by)
+    if (original.tagjoints.length > 0) {
+      await prisma.frontend_blogandtagjoint.createMany({
+        data: original.tagjoints.map((tag) => ({
+          blog_id: duplicated.id,
+          tag_id: tag.tag_id,
+          is_active: tag.is_active,
+          created_at: new Date(),
+          updated_at: new Date(),
+          created_by: username || 'admin',
+          updated_by: username || 'admin',
+        })),
+      });
+    }
+
+    // Duplicate SEO FOCUS KEYWORD JOINTS (without created_by/updated_by)
+    if (original.seofocuskeywordjoints.length > 0) {
+      await prisma.frontend_blogandseofocuskeywordjoint.createMany({
+        data: original.seofocuskeywordjoints.map((item) => ({
+          blog_id: duplicated.id,
+          keyword_id: item.keyword_id,
+          is_active: item.is_active,
+          created_at: new Date(),
+          updated_at: new Date(),
+          created_by: username || 'admin',
+          updated_by: username || 'admin',
+        })),
+      });
+    }
+
+     res.status(201).json({ message: 'Blog duplicated', blog: duplicated });
+  } catch (error: any) {
+    console.error('Error duplicating blog:', error);
+     res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+

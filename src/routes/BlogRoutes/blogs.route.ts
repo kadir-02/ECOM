@@ -13,7 +13,7 @@ import {
 } from "../../controllers/BlogsController/seoKeywordsControllers";
 import { authenticate } from "../../middlewares/authenticate";
 import { authorizeAdmin } from "../../middlewares/authorizaAdmin";
-import { createblog, deleteBlog, getBlogs, toggleBlogActiveStatus, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
+import { createblog, deleteBlog, duplicateBlog, getBlogs, toggleBlogActiveStatus, updateBlog } from "../../controllers/BlogsController/BlogCrudController";
 import { uploadMemory } from "../../upload/multerCloudinary";
 import { getSingleBlogInfo } from "../../controllers/BlogsController/singleBlogInfoController";
 
@@ -35,6 +35,9 @@ router.post("/", imageUpload, createblog);
 router.patch("/:id", imageUpload, updateBlog);
 router.patch("/toggle/:blogId", toggleBlogActiveStatus);
 router.delete("/:id", deleteBlog);
+// routes/blogs.ts
+router.post('/duplicate/:id', duplicateBlog);
+
 
 router.post("/tag", createSeoTag);
 router.patch("/tag/:id", updateSeoTag);
