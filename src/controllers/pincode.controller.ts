@@ -5,6 +5,8 @@ import fs from 'fs';
 import * as fastcsv from 'fast-csv';
 import { getUserNameFromToken } from '../utils/extractName';
 import { Prisma } from '@prisma/client';
+import * as XLSX from 'xlsx';
+import path from 'path';
 
 export interface PincodePayload {
   city: string;
@@ -299,38 +301,129 @@ export const checkAvailability = async (req: Request, res: Response) => {
   }
 };
 
+// export const uploadCsvAndUpsertPincodes = async (req: Request, res: Response) => {
+//   try {
+//     if (!req.file) {
+//        res.status(400).json({ message: 'No file uploaded' });
+//        return
+//     }
+
+//     const stream = fastcsv.parse({ headers: true, trim: true });
+//     let count = 0;
+
+//     stream.on('error', (error) => {
+//       console.error('CSV parse error:', error);
+//        res.status(400).json({ message: 'Error parsing CSV' });
+//        return
+//     });
+
+//     stream.on('data', async (row) => {
+//       stream.pause(); // pause to await DB write
+
+//       try {
+//         // Map CSV row to DB model
+//         const data = {
+//           city: row['CITY'],
+//           state: row['STATE'],
+//           zipcode: parseInt(row['ZIPCODE'], 10),
+//           estimatedDeliveryDays: parseInt(row['ESTIMATED DELIVERY TIME (in days)'], 10),
+//           isActive: true,
+//           createdBy: 'ECOM Store',
+//           updatedBy: 'ECOM Store',
+//         };
+
+//         // Upsert based on zipcode
+//         await prisma.pincode.upsert({
+//           where: { zipcode: data.zipcode },
+//           update: data,
+//           create: data,
+//         });
+
+//         count++;
+//       } catch (err) {
+//         console.error('Error processing row:', row, err);
+//       } finally {
+//         stream.resume(); // resume reading
+//       }
+//     });
+
+//     stream.on('end', () => {
+//        res.json({ message: 'Pincodes processed successfully', count });
+//        return
+//     });
+
+//     // pipe uploaded file buffer into fastcsv parser
+//     if (req.file.buffer) {
+//       stream.write(req.file.buffer);
+//       stream.end();
+//     } else {
+//        res.status(400).json({ message: 'File buffer is empty' });
+//        return
+//     }
+//   } catch (err) {
+//     console.error('Upload error:', err);
+//      res.status(500).json({ message: 'Internal server error' });
+//   }
+// };
+
+
+
 export const uploadCsvAndUpsertPincodes = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
        res.status(400).json({ message: 'No file uploaded' });
-       return
+       return;
     }
 
-    const stream = fastcsv.parse({ headers: true, trim: true });
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    let rows: {
+      CITY: string;
+      STATE: string;
+      ZIPCODE: string | number;
+      'ESTIMATED DELIVERY TIME (in days)': string | number;
+    }[] = [];
+
+    if (ext === '.csv') {
+      rows = await new Promise((resolve, reject) => {
+        const results: typeof rows = [];
+        const stream = fastcsv.parse({ headers: true, trim: true });
+
+        stream.on('error', reject);
+        stream.on('data', (row) => results.push(row));
+        stream.on('end', () => resolve(results));
+
+        stream.write(req.file!.buffer);
+        stream.end();
+      });
+    } else if (ext === '.xls' || ext === '.xlsx') {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json<typeof rows[0]>(sheet);
+    } else {
+       res.status(400).json({ message: 'Unsupported file type' });
+       return;
+    }
+
     let count = 0;
 
-    stream.on('error', (error) => {
-      console.error('CSV parse error:', error);
-       res.status(400).json({ message: 'Error parsing CSV' });
-       return
-    });
-
-    stream.on('data', async (row) => {
-      stream.pause(); // pause to await DB write
-
+    for (const row of rows) {
       try {
-        // Map CSV row to DB model
         const data = {
-          city: row['CITY'],
-          state: row['STATE'],
-          zipcode: parseInt(row['ZIPCODE'], 10),
-          estimatedDeliveryDays: parseInt(row['ESTIMATED DELIVERY TIME (in days)'], 10),
+          city: row.CITY?.toString().trim(),
+          state: row.STATE?.toString().trim(),
+          zipcode: parseInt(row.ZIPCODE.toString(), 10),
+          estimatedDeliveryDays: parseInt(
+            row['ESTIMATED DELIVERY TIME (in days)'].toString(),
+            10
+          ),
           isActive: true,
           createdBy: 'ECOM Store',
           updatedBy: 'ECOM Store',
         };
 
-        // Upsert based on zipcode
+        if (!data.zipcode || isNaN(data.zipcode)) continue;
+
         await prisma.pincode.upsert({
           where: { zipcode: data.zipcode },
           update: data,
@@ -340,24 +433,10 @@ export const uploadCsvAndUpsertPincodes = async (req: Request, res: Response) =>
         count++;
       } catch (err) {
         console.error('Error processing row:', row, err);
-      } finally {
-        stream.resume(); // resume reading
       }
-    });
-
-    stream.on('end', () => {
-       res.json({ message: 'Pincodes processed successfully', count });
-       return
-    });
-
-    // pipe uploaded file buffer into fastcsv parser
-    if (req.file.buffer) {
-      stream.write(req.file.buffer);
-      stream.end();
-    } else {
-       res.status(400).json({ message: 'File buffer is empty' });
-       return
     }
+
+     res.json({ message: 'Pincodes processed successfully', count });
   } catch (err) {
     console.error('Upload error:', err);
      res.status(500).json({ message: 'Internal server error' });
