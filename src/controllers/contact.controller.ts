@@ -252,22 +252,21 @@ export const createContactRequest = async (req: Request, res: Response) => {
     await sendContactConfirmationToUser(email, name);
 
     // Get all admin users
-    const admins = await prisma.user.findMany({
-      where: { role: 'ADMIN', isDeleted: false },
+    const companyEmail = await prisma.companySettings.findFirst({
+      // where: { isDeleted: false },
       select: { email: true },
     });
 
-    // Send alert to all admins
-    for (const admin of admins) {
+  if (companyEmail?.email) {
       await sendContactAlertToAdmin(
-        admin.email,
+        companyEmail.email,
         name,
         email,
         subject,
         message
       );
+    
     }
-
     res.status(201).json({ message: 'Contact request created', contact: newContact });
   } catch (error: any) {
     console.error('Error creating contact request:', error);
