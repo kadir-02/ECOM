@@ -184,7 +184,7 @@ const end = new Date(endIST.getTime() - IST_OFFSET);
         where: {
           createdAt: {
             gte: start,
-            lt: new Date(end.getTime() + 24 * 60 * 60 * 1000), // include entire end date
+            lt: end, // include entire end date
           },
           // no userId filter here to get all users' orders
         },
