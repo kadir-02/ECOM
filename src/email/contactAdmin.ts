@@ -19,7 +19,7 @@ export const sendContactAlertToAdmin = async (
   `;
 
   await transporter.sendMail({
-    from: '"E-COM Contact Form" <no-reply@ecom.com>',
+    from: '"Glam Contact Form" <no-reply@ecom.com>',
     to: adminEmail,
     subject: `📨 New Contact Request from ${userName}`,
     html,

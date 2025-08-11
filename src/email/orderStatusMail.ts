@@ -17,7 +17,7 @@ export const sendOrderStatusUpdateEmail = async (
   `;
 
   await transporter.sendMail({
-    from: '"E-COM" <no-reply@ecom.com>',
+    from: '"Glam" <no-reply@ecom.com>',
     to: email,
     subject: `📦 Order #${orderId} Status Update: ${status}`,
     html,

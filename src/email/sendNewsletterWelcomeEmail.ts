@@ -5,7 +5,7 @@ export const sendNewsletterWelcomeEmail = async (email: string, name?: string) =
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9f9f9;padding:32px;border-radius:8px;border:1px solid #ddd;">
-      <h2 style="color:#1e88e5;text-align:center;">🎉 Welcome to the E-COM Newsletter!</h2>
+      <h2 style="color:#1e88e5;text-align:center;">🎉 Welcome to the Glam Newsletter!</h2>
       <p style="font-size:16px;color:#444;text-align:center;">Hi ${customerName},</p>
       <p style="font-size:15px;text-align:center;">
         Thanks for subscribing to our newsletter! You're now part of our exclusive list that gets first access to new products, offers, and beauty tips.
@@ -22,9 +22,9 @@ export const sendNewsletterWelcomeEmail = async (email: string, name?: string) =
   `;
 
   await transporter.sendMail({
-    from: '"E-COM" <no-reply@ecom.com>',
+    from: '"Glam" <no-reply@ecom.com>',
     to: email,
-    subject: '👋 Welcome to E-COM Newsletter',
+    subject: '👋 Welcome to Glam Newsletter',
     html,
   });
 };

@@ -314,7 +314,7 @@ if (paymentMethod.toUpperCase() === 'RAZORPAY') {
 
     await sendNotification(userId, `🎉 Your order #${order.id} has been created and status ${order.status}. Final amount: ₹${totalAmount}`, 'ORDER');
 
-    await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
+    // await sendOrderStatusUpdateEmail(order.user.email, order.user.profile?.firstName || 'Customer', order.id, order.status);
 
   } catch (error) {
     console.error('Create order failed:', error);

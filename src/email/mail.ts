@@ -10,7 +10,7 @@ export const transporter = nodemailer.createTransport({
 
 export const sendOTPEmail = async (to: string, otp: string) => {
   await transporter.sendMail({
-    from: `"E-COM Support" <${process.env.EMAIL_USER}>`,
+    from: `"Glam Support" <${process.env.EMAIL_USER}>`,
     to,
     subject: '🔐 Your OTP for Password Reset',
     html: `
@@ -23,7 +23,7 @@ export const sendOTPEmail = async (to: string, otp: string) => {
             <span style="display: inline-block; font-size: 24px; letter-spacing: 4px; font-weight: bold; color: #2c3e50;">${otp}</span>
           </div>
           <p style="font-size: 14px; color: #888;">This OTP will expire in 10 minutes. If you didn’t request a password reset, you can safely ignore this email.</p>
-          <p style="margin-top: 30px; font-size: 14px; color: #aaa;">— E-COM Team</p>
+          <p style="margin-top: 30px; font-size: 14px; color: #aaa;">— Glam Team</p>
         </div>
       </div>
     `,

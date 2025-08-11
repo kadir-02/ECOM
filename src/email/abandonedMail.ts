@@ -53,7 +53,7 @@ export const sendAbandonedCartEmail = async (
   `;
 
   await transporter.sendMail({
-    from: '"E-COM" <no-reply@ecom.com>',
+    from: '"Glam" <no-reply@ecom.com>',
     to: email,
     subject: `🔥 Your cart has special discounts waiting!`,
     html,

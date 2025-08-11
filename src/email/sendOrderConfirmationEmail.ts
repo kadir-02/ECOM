@@ -57,9 +57,9 @@ export const sendOrderConfirmationEmail = async (
   `;
 
   await transporter.sendMail({
-    from: '"E-COM" <no-reply@ecom.com>',
+    from: '"Glam" <no-reply@ecom.com>',
     to: email,
-    subject: '🧾 Order Confirmation - E-COM',
+    subject: '🧾 Order Confirmation - Glam',
     html,
   });
 };

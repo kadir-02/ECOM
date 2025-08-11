@@ -14,7 +14,7 @@ export const sendContactConfirmationToUser = async (
   `;
 
   await transporter.sendMail({
-    from: '"E-COM Support" <no-reply@ecom.com>',
+    from: '"Glam Support" <no-reply@ecom.com>',
     to: userEmail,
     subject: '📩 We’ve received your message',
     html,

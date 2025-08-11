@@ -215,7 +215,7 @@ const razorpay = new Razorpay({
     });
     
 
-    await sendOrderStatusUpdateEmail(req?.body?.email, order?.address?.fullName || 'Customer', order.id, order.status);
+    // await sendOrderStatusUpdateEmail(req?.body?.email, order?.address?.fullName || 'Customer', order.id, order.status);
   
     const customerName =
   order.user.profile?.firstName && order.user.profile?.lastName

@@ -11,7 +11,7 @@ export async function sendOrderCancelledEmail(email: string, orderId: number) {
   `;
 
   await transporter.sendMail({
-    from: '"E-COM" <no-reply@ecom.com>',
+    from: '"Glam" <no-reply@ecom.com>',
     to: email,
     subject: `Your Order #${orderId} Has Been Cancelled`,
     html,
